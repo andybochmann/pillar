@@ -75,7 +75,8 @@ export function TaskList({ tasks, projects }: TaskListProps) {
                     <span
                       className={cn(
                         "font-medium",
-                        task.completedAt && "line-through text-muted-foreground",
+                        task.completedAt &&
+                          "line-through text-muted-foreground",
                       )}
                     >
                       {task.title}
@@ -107,11 +108,7 @@ export function TaskList({ tasks, projects }: TaskListProps) {
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {task.labels.map((label) => (
-                      <Badge
-                        key={label}
-                        variant="outline"
-                        className="text-xs"
-                      >
+                      <Badge key={label} variant="outline" className="text-xs">
                         {label}
                       </Badge>
                     ))}

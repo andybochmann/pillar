@@ -1,0 +1,236 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  startOfMonth,
+  endOfMonth,
+  startOfWeek,
+  endOfWeek,
+  eachDayOfInterval,
+  isSameMonth,
+  addMonths,
+  subMonths,
+  format,
+} from "date-fns";
+import { Button } from "@/components/ui/button";
+import { CalendarDay } from "./calendar-day";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import type { Task } from "@/types";
+
+const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+interface CalendarViewProps {
+  tasks: Task[];
+  currentMonth: Date;
+  onTaskClick: (task: Task) => void;
+  onDateClick: (date: Date) => void;
+  onTaskReschedule: (taskId: string, newDate: Date) => Promise<void>;
+}
+
+export function CalendarView({
+  tasks,
+  currentMonth,
+  onTaskClick,
+  onDateClick,
+  onTaskReschedule,
+}: CalendarViewProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+  );
+
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  const gridStart = startOfWeek(monthStart);
+  const gridEnd = endOfWeek(monthEnd);
+
+  const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
+
+  const tasksByDate = (() => {
+    const map = new Map<string, Task[]>();
+    for (const task of tasks) {
+      if (!task.dueDate) continue;
+      const dateKey = task.dueDate.slice(0, 10);
+      const existing = map.get(dateKey) ?? [];
+      existing.push(task);
+      map.set(dateKey, existing);
+    }
+    return map;
+  })();
+
+  function getTasksForDate(date: Date): Task[] {
+    const key = format(date, "yyyy-MM-dd");
+    return tasksByDate.get(key) ?? [];
+  }
+
+  function navigateMonth(offset: number) {
+    const newDate = offset > 0 ? addMonths(currentMonth, offset) : subMonths(currentMonth, Math.abs(offset));
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("month", format(newDate, "yyyy-MM"));
+    router.push(`/calendar?${params.toString()}`);
+  }
+
+  function goToToday() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("month");
+    router.push(`/calendar?${params.toString()}`);
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    const task = tasks.find((t) => t._id === event.active.id);
+    setActiveTask(task ?? null);
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    setActiveTask(null);
+    const { active, over } = event;
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const overId = over.id as string;
+    if (!overId.startsWith("date-")) return;
+
+    const newDateStr = overId.replace("date-", "");
+    const task = tasks.find((t) => t._id === taskId);
+    if (!task?.dueDate) return;
+
+    const currentDateStr = task.dueDate.slice(0, 10);
+    if (currentDateStr === newDateStr) return;
+
+    try {
+      await onTaskReschedule(taskId, new Date(newDateStr + "T00:00:00Z"));
+    } catch {
+      toast.error("Failed to reschedule task");
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Month navigation */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-semibold">
+          {format(currentMonth, "MMMM yyyy")}
+        </h2>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={goToToday}
+          >
+            Today
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigateMonth(-1)}
+            aria-label="Previous month"
+          >
+            ‹
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigateMonth(1)}
+            aria-label="Next month"
+          >
+            ›
+          </Button>
+        </div>
+      </div>
+
+      {/* Calendar grid */}
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="rounded-lg border">
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 border-b">
+            {WEEKDAYS.map((day) => (
+              <div
+                key={day}
+                className="py-2 text-center text-sm font-medium text-muted-foreground"
+              >
+                {day}
+              </div>
+            ))}
+          </div>
+
+          {/* Day grid */}
+          <div className="grid grid-cols-7">
+            {days.map((day) => {
+              const dayTasks = getTasksForDate(day);
+              return (
+                <CalendarDay
+                  key={day.toISOString()}
+                  date={day}
+                  tasks={dayTasks}
+                  isCurrentMonth={isSameMonth(day, currentMonth)}
+                  onDateClick={onDateClick}
+                  onTaskClick={onTaskClick}
+                />
+              );
+            })}
+          </div>
+        </div>
+
+        <DragOverlay>
+          {activeTask ? (
+            <DraggableTaskPill task={activeTask} isOverlay />
+          ) : null}
+        </DragOverlay>
+      </DndContext>
+    </div>
+  );
+}
+
+/* Wrapper to make task pills in CalendarDay draggable */
+interface DraggableTaskPillProps {
+  task: Task;
+  isOverlay?: boolean;
+}
+
+function DraggableTaskPill({ task, isOverlay }: DraggableTaskPillProps) {
+  const priorityColors: Record<string, string> = {
+    urgent: "bg-red-500",
+    high: "bg-orange-500",
+    medium: "bg-blue-500",
+    low: "bg-gray-400",
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-1 rounded bg-background border px-1.5 py-0.5 text-xs shadow-sm",
+        isOverlay && "shadow-lg rotate-1",
+      )}
+    >
+      <span
+        className={cn(
+          "h-1.5 w-1.5 shrink-0 rounded-full",
+          priorityColors[task.priority] ?? "bg-gray-400",
+        )}
+      />
+      <span className="truncate">{task.title}</span>
+    </div>
+  );
+}
+
+export { DraggableTaskPill };

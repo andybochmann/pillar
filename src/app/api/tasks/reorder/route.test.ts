@@ -21,7 +21,11 @@ import {
 import { PATCH } from "./route";
 
 const session = vi.hoisted(() => ({
-  user: { id: "507f1f77bcf86cd799439011", name: "Test User", email: "test@example.com" },
+  user: {
+    id: "507f1f77bcf86cd799439011",
+    name: "Test User",
+    email: "test@example.com",
+  },
   expires: new Date(Date.now() + 86400000).toISOString(),
 }));
 

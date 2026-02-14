@@ -182,10 +182,7 @@ export function ColumnManager({
     if (!trimmed) return;
 
     const id = crypto.randomUUID();
-    setColumns((prev) => [
-      ...prev,
-      { id, name: trimmed, order: prev.length },
-    ]);
+    setColumns((prev) => [...prev, { id, name: trimmed, order: prev.length }]);
     setNewName("");
     setDirty(true);
   }

@@ -21,7 +21,11 @@ import {
 import { GET, POST } from "./route";
 
 const session = vi.hoisted(() => ({
-  user: { id: "507f1f77bcf86cd799439011", name: "Test User", email: "test@example.com" },
+  user: {
+    id: "507f1f77bcf86cd799439011",
+    name: "Test User",
+    email: "test@example.com",
+  },
   expires: new Date(Date.now() + 86400000).toISOString(),
 }));
 
@@ -79,9 +83,7 @@ describe("GET /api/tasks", () => {
     await createTestTask({ projectId, userId, title: "Task 1" });
     await createTestTask({ projectId, userId, title: "Task 2" });
 
-    const res = await GET(
-      createRequest({ projectId: projectId.toString() }),
-    );
+    const res = await GET(createRequest({ projectId: projectId.toString() }));
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data).toHaveLength(2);
@@ -96,7 +98,9 @@ describe("GET /api/tasks", () => {
     const res = await GET(createRequest({ priority: "urgent" }));
     const data = await res.json();
     expect(data).toHaveLength(2);
-    expect(data.every((t: { priority: string }) => t.priority === "urgent")).toBe(true);
+    expect(
+      data.every((t: { priority: string }) => t.priority === "urgent"),
+    ).toBe(true);
   });
 
   it("filters by multiple priorities", async () => {

@@ -21,8 +21,9 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
 import { toast } from "sonner";
-import type { Task, Column, Priority, RecurrenceFrequency } from "@/types";
+import type { Task, Column, Priority, Recurrence } from "@/types";
 
 interface TaskSheetProps {
   task: Task | null;
@@ -63,13 +64,6 @@ export function TaskSheet({
 }
 
 const PRIORITIES: Priority[] = ["urgent", "high", "medium", "low"];
-const FREQUENCIES: RecurrenceFrequency[] = [
-  "none",
-  "daily",
-  "weekly",
-  "monthly",
-  "yearly",
-];
 
 interface TaskSheetFormProps {
   task: Task;
@@ -95,10 +89,11 @@ function TaskSheetForm({
   );
   const [labelInput, setLabelInput] = useState("");
   const [labels, setLabels] = useState<string[]>(task.labels);
-  const [frequency, setFrequency] = useState<RecurrenceFrequency>(
-    task.recurrence?.frequency ?? "none",
-  );
-  const [interval, setInterval] = useState(task.recurrence?.interval ?? 1);
+  const [recurrence, setRecurrence] = useState<Recurrence>({
+    frequency: task.recurrence?.frequency ?? "none",
+    interval: task.recurrence?.interval ?? 1,
+    endDate: task.recurrence?.endDate,
+  });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -148,19 +143,9 @@ function TaskSheetForm({
     });
   }
 
-  function handleFrequencyChange(value: RecurrenceFrequency) {
-    setFrequency(value);
-    saveField({
-      recurrence: { frequency: value, interval },
-    });
-  }
-
-  function handleIntervalChange(value: number) {
-    const clamped = Math.max(1, value);
-    setInterval(clamped);
-    saveField({
-      recurrence: { frequency, interval: clamped },
-    });
+  function handleRecurrenceChange(value: Recurrence) {
+    setRecurrence(value);
+    saveField({ recurrence: value });
   }
 
   function handleAddLabel(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -283,33 +268,10 @@ function TaskSheetForm({
         {/* Recurrence */}
         <div className="space-y-2">
           <Label>Recurrence</Label>
-          <div className="flex gap-2">
-            <Select value={frequency} onValueChange={handleFrequencyChange}>
-              <SelectTrigger
-                className="flex-1"
-                aria-label="Recurrence frequency"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {FREQUENCIES.map((f) => (
-                  <SelectItem key={f} value={f}>
-                    {f.charAt(0).toUpperCase() + f.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {frequency !== "none" && (
-              <Input
-                type="number"
-                min={1}
-                value={interval}
-                onChange={(e) => handleIntervalChange(Number(e.target.value))}
-                className="w-20"
-                aria-label="Recurrence interval"
-              />
-            )}
-          </div>
+          <RecurrencePicker
+            value={recurrence}
+            onChange={handleRecurrenceChange}
+          />
         </div>
 
         <Separator />

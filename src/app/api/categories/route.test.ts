@@ -19,7 +19,11 @@ import {
 import { GET, POST } from "./route";
 
 const session = vi.hoisted(() => ({
-  user: { id: "507f1f77bcf86cd799439011", name: "Test User", email: "test@example.com" },
+  user: {
+    id: "507f1f77bcf86cd799439011",
+    name: "Test User",
+    email: "test@example.com",
+  },
   expires: new Date(Date.now() + 86400000).toISOString(),
 }));
 
@@ -90,9 +94,7 @@ describe("Categories API", () => {
 
     it("creates a category with auto-order", async () => {
       await setupUser();
-      const res = await POST(
-        createRequest({ name: "Work", color: "#6366f1" }),
-      );
+      const res = await POST(createRequest({ name: "Work", color: "#6366f1" }));
       expect(res.status).toBe(201);
       const data = await res.json();
       expect(data.name).toBe("Work");
