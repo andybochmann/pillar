@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/user";
 import { SettingsClient } from "@/components/settings/settings-client";
+import { Separator } from "@/components/ui/separator";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -32,6 +33,7 @@ export default async function SettingsPage() {
           Manage your account and preferences
         </p>
       </div>
+      <Separator />
       <SettingsClient profile={profile} />
     </div>
   );

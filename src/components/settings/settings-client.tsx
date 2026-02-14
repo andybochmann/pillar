@@ -12,6 +12,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -135,7 +136,7 @@ export function SettingsClient({ profile }: SettingsClientProps) {
   ] as const;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-2xl space-y-8">
       {/* Appearance section */}
       <Card>
         <CardHeader>
@@ -189,10 +190,12 @@ export function SettingsClient({ profile }: SettingsClientProps) {
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+        </CardContent>
+        <CardFooter className="border-t">
           <Button onClick={handleProfileSave} disabled={saving || !name.trim()}>
             {saving ? "Saving…" : "Save changes"}
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
 
       {/* Password section */}
@@ -231,6 +234,8 @@ export function SettingsClient({ profile }: SettingsClientProps) {
               onChange={(e) => setConfirmPassword(e.target.value)}
             />
           </div>
+        </CardContent>
+        <CardFooter className="border-t">
           <Button
             onClick={handlePasswordChange}
             disabled={
@@ -242,7 +247,7 @@ export function SettingsClient({ profile }: SettingsClientProps) {
           >
             {changingPassword ? "Changing…" : "Change password"}
           </Button>
-        </CardContent>
+        </CardFooter>
       </Card>
 
       {/* Install app */}
@@ -256,7 +261,7 @@ export function SettingsClient({ profile }: SettingsClientProps) {
             Permanently delete your account and all associated data
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardFooter className="border-t">
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" disabled={deleting}>
@@ -279,7 +284,7 @@ export function SettingsClient({ profile }: SettingsClientProps) {
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
-        </CardContent>
+        </CardFooter>
       </Card>
     </div>
   );
