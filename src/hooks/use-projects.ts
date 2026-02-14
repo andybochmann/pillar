@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { offlineFetch } from "@/lib/offline-fetch";
 import type { Project } from "@/types";
 
 interface UseProjectsReturn {
@@ -60,7 +61,7 @@ export function useProjects(): UseProjectsReturn {
       description?: string;
       categoryId: string;
     }) => {
-      const res = await fetch("/api/projects", {
+      const res = await offlineFetch("/api/projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -86,7 +87,7 @@ export function useProjects(): UseProjectsReturn {
         >
       >,
     ) => {
-      const res = await fetch(`/api/projects/${id}`, {
+      const res = await offlineFetch(`/api/projects/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -103,7 +104,7 @@ export function useProjects(): UseProjectsReturn {
   );
 
   const deleteProject = useCallback(async (id: string) => {
-    const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    const res = await offlineFetch(`/api/projects/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const body = await res.json();
       throw new Error(body.error || "Failed to delete project");

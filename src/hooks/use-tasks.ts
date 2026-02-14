@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { offlineFetch } from "@/lib/offline-fetch";
 import type { Task } from "@/types";
 
 interface UseTasksReturn {
@@ -66,7 +67,7 @@ export function useTasks(initialTasks: Task[] = []): UseTasksReturn {
       priority?: string;
       description?: string;
     }) => {
-      const res = await fetch("/api/tasks", {
+      const res = await offlineFetch("/api/tasks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -100,7 +101,7 @@ export function useTasks(initialTasks: Task[] = []): UseTasksReturn {
         >
       >,
     ) => {
-      const res = await fetch(`/api/tasks/${id}`, {
+      const res = await offlineFetch(`/api/tasks/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -117,7 +118,7 @@ export function useTasks(initialTasks: Task[] = []): UseTasksReturn {
   );
 
   const deleteTask = useCallback(async (id: string) => {
-    const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    const res = await offlineFetch(`/api/tasks/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const body = await res.json();
       throw new Error(body.error || "Failed to delete task");

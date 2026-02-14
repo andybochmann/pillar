@@ -25,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { InstallPromptCard } from "./install-prompt-card";
 
 interface Profile {
   id: string;
@@ -193,6 +194,9 @@ export function SettingsClient({ profile }: SettingsClientProps) {
           </Button>
         </CardContent>
       </Card>
+
+      {/* Install app */}
+      <InstallPromptCard />
 
       {/* Danger zone */}
       <Card className="border-destructive">

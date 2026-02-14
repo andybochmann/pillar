@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom/vitest";
+import "fake-indexeddb/auto";
 
 // Polyfill ResizeObserver for jsdom (used by cmdk/radix)
 if (typeof globalThis.ResizeObserver === "undefined") {

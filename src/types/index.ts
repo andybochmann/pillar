@@ -67,3 +67,17 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface QueuedMutation {
+  id: string;
+  method: "POST" | "PATCH" | "DELETE";
+  url: string;
+  body?: unknown;
+  timestamp: number;
+}
+
+export interface SyncResult {
+  total: number;
+  succeeded: number;
+  failed: number;
+}

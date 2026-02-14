@@ -2,6 +2,8 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { CommandPalette } from "@/components/search/command-palette";
 import { KeyboardShortcutsDialog } from "@/components/layout/keyboard-shortcuts";
 import { Toaster } from "@/components/ui/sonner";
+import { SwRegistrar } from "@/components/layout/sw-registrar";
+import { OfflineBanner } from "@/components/layout/offline-banner";
 
 export default function DashboardLayout({
   children,
@@ -16,10 +18,12 @@ export default function DashboardLayout({
       >
         Skip to content
       </a>
+      <OfflineBanner />
       <DashboardShell>{children}</DashboardShell>
       <CommandPalette />
       <KeyboardShortcutsDialog />
       <Toaster />
+      <SwRegistrar />
     </>
   );
 }

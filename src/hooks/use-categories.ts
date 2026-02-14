@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { offlineFetch } from "@/lib/offline-fetch";
 import type { Category } from "@/types";
 
 interface UseCategoriesReturn {
@@ -50,7 +51,7 @@ export function useCategories(): UseCategoriesReturn {
 
   const createCategory = useCallback(
     async (data: { name: string; color?: string; icon?: string }) => {
-      const res = await fetch("/api/categories", {
+      const res = await offlineFetch("/api/categories", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -71,7 +72,7 @@ export function useCategories(): UseCategoriesReturn {
       id: string,
       data: Partial<Pick<Category, "name" | "color" | "icon" | "order">>,
     ) => {
-      const res = await fetch(`/api/categories/${id}`, {
+      const res = await offlineFetch(`/api/categories/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -88,7 +89,7 @@ export function useCategories(): UseCategoriesReturn {
   );
 
   const deleteCategory = useCallback(async (id: string) => {
-    const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
+    const res = await offlineFetch(`/api/categories/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const body = await res.json();
       throw new Error(body.error || "Failed to delete category");

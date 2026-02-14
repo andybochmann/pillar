@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { offlineFetch } from "@/lib/offline-fetch";
 import type { Label } from "@/types";
 
 interface UseLabelsReturn {
@@ -44,7 +45,7 @@ export function useLabels(): UseLabelsReturn {
 
   const createLabel = useCallback(
     async (data: { name: string; color: string }) => {
-      const res = await fetch("/api/labels", {
+      const res = await offlineFetch("/api/labels", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -64,7 +65,7 @@ export function useLabels(): UseLabelsReturn {
 
   const updateLabel = useCallback(
     async (id: string, data: Partial<Pick<Label, "name" | "color">>) => {
-      const res = await fetch(`/api/labels/${id}`, {
+      const res = await offlineFetch(`/api/labels/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
@@ -85,7 +86,7 @@ export function useLabels(): UseLabelsReturn {
   );
 
   const deleteLabel = useCallback(async (id: string) => {
-    const res = await fetch(`/api/labels/${id}`, { method: "DELETE" });
+    const res = await offlineFetch(`/api/labels/${id}`, { method: "DELETE" });
     if (!res.ok) {
       const body = await res.json();
       throw new Error(body.error || "Failed to delete label");
