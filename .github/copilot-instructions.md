@@ -6,66 +6,116 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 
 ## Architecture
 
-- **Monorepo**: Single Next.js app with App Router (`src/app/`)
-- **API**: REST via Next.js Route Handlers (`src/app/api/`)
-- **Database**: MongoDB via Mongoose schemas (`src/models/`)
-- **Auth**: Auth.js v5 with Credentials provider and JWT sessions (`src/lib/auth.ts`)
-- **Components**: shadcn/ui base components (`src/components/ui/`), custom components alongside
-- **State**: Server components for data fetching, client components for interactivity
+- **Single Next.js app** with App Router (`src/app/`), two route groups: `(auth)` (login/register, no sidebar) and `(dashboard)` (main app with sidebar)
+- **REST API** via Route Handlers (`src/app/api/`) — every handler: auth check → `connectDB()` → Zod validate → query with `userId` filter → respond
+- **MongoDB** via Mongoose 9 (`src/models/`) — singleton connection in `src/lib/db.ts` with global HMR cache
+- **Auth.js v5** split across three files: `src/lib/auth.config.ts` (edge-safe, no bcryptjs), `src/lib/auth.ts` (full config with Credentials provider), `src/proxy.ts` (auth middleware — Next.js 16 convention, NOT `middleware.ts`)
+- **PWA/Offline**: vanilla service worker (`public/sw.js`), IndexedDB queue (`src/lib/offline-queue.ts`), `offlineFetch()` wrapper for mutations, auto-sync on reconnect (`src/lib/sync.ts`)
+- **State**: no SWR/React Query — custom hooks in `src/hooks/` with `useState` + `useCallback` + `fetch`/`offlineFetch`
+- **Types duality**: Mongoose models use `ObjectId`/`Date` (`I<Model>` in `src/models/`), components use `string` IDs/dates (`src/types/index.ts`). Conversion happens at JSON serialization boundary.
 
 ## Build & Validation
 
 ```bash
-pnpm dev              # Dev server at localhost:3000
-pnpm build            # Production build
-pnpm test             # Vitest unit/integration tests
+pnpm dev              # Dev server (Turbopack) at localhost:3000
+pnpm build            # Production build (output: standalone)
+pnpm test             # Vitest unit/integration tests (48 files, 320+ tests)
 pnpm test:watch       # Tests in watch mode
-pnpm test:e2e         # Playwright E2E tests
+pnpm test:e2e         # Playwright E2E tests (requires running dev server)
 pnpm lint             # ESLint
 docker compose up -d  # Full stack in Docker (app + MongoDB)
 ```
 
-## Testing (TDD Approach)
+## Critical Patterns
 
-1. Write tests before implementation
-2. Colocated test files: `foo.test.ts` next to `foo.ts`
-3. E2E tests in `e2e/*.spec.ts` (Playwright)
-4. Use `mongodb-memory-server` for database tests — never mock Mongoose
-5. Mock Auth.js sessions via `src/test/helpers/auth.ts`
-6. Test data factories in `src/test/helpers/factories.ts`
+### API Route Handlers (`src/app/api/`)
 
-## Coding Conventions
+- **Next.js 16**: `params` is a `Promise` — must `await params` in `[id]/route.ts`
+- **Zod schemas** defined per-route-file (top-level `const`), not shared — Create and Update schemas are separate
+- **Validation** returns only the first error: `result.error.issues[0].message`
+- **Auth first, then DB**: `connectDB()` called after auth check to save connections on 401
+- **Ownership always enforced**: every query includes `userId: session.user.id` — never trust client userId
+- **Mongoose 9**: use `{ returnDocument: "after" }` (not `{ new: true }`) with `findOneAndUpdate`
+- **DELETE** returns `{ success: true }` and handles cascade deletes manually
+- **Catch blocks** use empty `catch` (no error variable): `} catch { return NextResponse.json(...) }`
 
-- TypeScript strict mode, no `any` types
-- Functional components only, named exports
-- `"use client"` only when component uses hooks or browser APIs
-- `@/` import alias for everything under `src/`
-- Zod schemas for API input validation (define next to route handler)
-- API responses: `NextResponse.json(data, { status })` with proper HTTP codes
-- Error format: `{ error: "Human-readable message" }`
-- File naming: kebab-case for files, PascalCase for components, camelCase for functions
+### Hooks (`src/hooks/`)
 
-## Data Models (Mongoose)
+- **Mutations** use `offlineFetch()` from `@/lib/offline-fetch` — NOT raw `fetch()` — to support offline queuing
+- **GET requests** use plain `fetch()`
+- State updated optimistically after mutations: `setItems(prev => [...prev, created])`
+- `setTasks`/`setItems` exposed for external optimistic updates (DnD)
 
-- **User**: name, email, passwordHash, image
-- **Category**: name, color, icon, userId, order
-- **Project**: name, description, categoryId, userId, columns[], archived
-- **Task**: title, description, projectId, userId, columnId, priority, dueDate, recurrence, order, labels[], completedAt
+### Components (`src/components/`)
 
-## Key Patterns
+- Named exports only — no default exports
+- `"use client"` only when hooks/browser APIs are used
+- shadcn/ui primitives in `src/components/ui/`, custom components in feature folders (`kanban/`, `tasks/`, `calendar/`, etc.)
+- Toast via `import { toast } from "sonner"` (named import, not default)
+- `cn()` from `@/lib/utils` for conditional Tailwind classes
+- `Label` type collision: import as `Label as LabelType` from `@/types` when `Label` from shadcn/ui is also needed
 
-- Singleton Mongoose connection in `src/lib/db.ts` (reused across requests)
-- Auth proxy via `src/proxy.ts` (Next.js 16 convention) protecting all routes except `/login`, `/register`
-- Edge-safe auth config in `src/lib/auth.config.ts` (no bcryptjs/crypto imports)
-- Optimistic UI updates for drag-and-drop operations
-- shadcn/ui Sheet component for task detail editing (slide-over panel)
-- Priority enum: "urgent" | "high" | "medium" | "low"
-- Recurrence: { frequency: "daily"|"weekly"|"monthly"|"yearly"|"none", interval, endDate? }
+### Data Models
+
+- **Project** has default columns: `["todo", "in-progress", "review", "done"]`
+- **Task.priority**: `"urgent" | "high" | "medium" | "low"` (default: `"medium"`)
+- **Task.recurrence**: `{ frequency: "daily"|"weekly"|"monthly"|"yearly"|"none", interval, endDate? }`
+- Model re-registration guard: `mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema)`
+
+## Testing
+
+### Setup
+
+- **Vitest** with jsdom, globals enabled, 30s timeout, `@/` alias via `vite-tsconfig-paths`
+- `vitest.setup.ts` loads `@testing-library/jest-dom/vitest` + `fake-indexeddb/auto`
+- Colocated: `foo.test.ts` next to `foo.ts`, E2E in `e2e/*.spec.ts`
+
+### API Route Tests
+
+```typescript
+// 1. vi.hoisted() for session — must exist before vi.mock() closures
+const session = vi.hoisted(() => ({
+  user: { id: "...", name: "Test User", email: "test@example.com" },
+  expires: "...",
+}));
+// 2. Mock connectDB and auth
+vi.mock("@/lib/db", () => ({
+  connectDB: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/lib/auth", () => ({ auth: vi.fn(() => Promise.resolve(session)) }));
+// 3. Import and call handler directly
+import { GET, POST } from "./route";
+// 4. Mutate session.user.id in-place in setupFixtures() to sync with real DB user
+// 5. Use clearTestDB() in afterEach (all collections)
+```
+
+### Model Tests
+
+- Use `mongodb-memory-server` via `setupTestDB()`/`teardownTestDB()` — never mock Mongoose
+- Use `Model.deleteMany({})` (subject model only) in `afterEach`
+- Factories in `src/test/helpers/factories.ts` — require parent IDs (User → Category → Project → Task chain)
+
+### Component Tests
+
+- React Testing Library, query with `screen.getByRole()` as primary strategy
+- Fake timers with `vi.useFakeTimers({ shouldAdvanceTime: true })` for debounce testing
+- `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })`
+
+## Key Files
+
+| Purpose                   | File                       |
+| ------------------------- | -------------------------- |
+| Auth (edge-safe)          | `src/lib/auth.config.ts`   |
+| Auth (full)               | `src/lib/auth.ts`          |
+| Auth proxy                | `src/proxy.ts`             |
+| DB connection             | `src/lib/db.ts`            |
+| Shared types              | `src/types/index.ts`       |
+| Offline fetch wrapper     | `src/lib/offline-fetch.ts` |
+| Offline queue (IndexedDB) | `src/lib/offline-queue.ts` |
+| Sync engine               | `src/lib/sync.ts`          |
+| Test helpers              | `src/test/helpers/`        |
+| Service worker            | `public/sw.js`             |
 
 ## Test Credentials (Dev/E2E)
 
-- **Email**: `test@pillar.dev`
-- **Password**: `TestPassword123!`
-- **Name**: `Test User`
-
-Registered in local MongoDB. Use for manual testing and Playwright E2E tests.
+- **Email**: `test@pillar.dev` / **Password**: `TestPassword123!` / **Name**: `Test User`
