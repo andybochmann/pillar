@@ -60,7 +60,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const category = await Category.findOneAndUpdate(
       { _id: id, userId: session.user.id },
       result.data,
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!category) {

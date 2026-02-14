@@ -64,7 +64,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const project = await Project.findOneAndUpdate(
       { _id: id, userId: session.user.id },
       result.data,
-      { new: true },
+      { returnDocument: "after" },
     );
 
     if (!project) {
