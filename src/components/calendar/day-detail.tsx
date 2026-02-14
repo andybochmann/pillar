@@ -92,7 +92,10 @@ function DayDetailContent({
   const projectMap = new Map(projects.map((p) => [p._id, p]));
 
   // Group tasks by project
-  const grouped = new Map<string, { project: Project | undefined; tasks: Task[] }>();
+  const grouped = new Map<
+    string,
+    { project: Project | undefined; tasks: Task[] }
+  >();
   for (const task of tasks) {
     const entry = grouped.get(task.projectId) ?? {
       project: projectMap.get(task.projectId),
@@ -187,7 +190,11 @@ function DayDetailContent({
           disabled={creating}
           aria-label="New task title"
         />
-        <Button type="submit" size="sm" disabled={creating || !newTaskTitle.trim()}>
+        <Button
+          type="submit"
+          size="sm"
+          disabled={creating || !newTaskTitle.trim()}
+        >
           Add
         </Button>
       </form>

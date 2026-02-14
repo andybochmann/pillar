@@ -13,18 +13,16 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
     await page.getByLabel("Email").fill(TEST_USER.email);
     await page.getByLabel("Password").fill(TEST_USER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible({
+      timeout: 15000,
+    });
   });
 
-  test("calendar page shows monthly grid with navigation", async ({
-    page,
-  }) => {
+  test("calendar page shows monthly grid with navigation", async ({ page }) => {
     await page.getByRole("link", { name: "Calendar", exact: true }).click();
-    await expect(
-      page.getByRole("heading", { name: "Calendar" }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Weekday headers visible
     await expect(page.getByText("Sun")).toBeVisible();
@@ -42,9 +40,9 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
 
   test("month navigation updates URL and heading", async ({ page }) => {
     await page.getByRole("link", { name: "Calendar", exact: true }).click();
-    await expect(
-      page.getByRole("heading", { name: "Calendar" }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Navigate to next month
     await page.getByRole("button", { name: "Next month" }).click();
@@ -71,9 +69,9 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
     await page.getByLabel(`Add project to ${categoryName}`).click();
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(
-      page.getByRole("link", { name: projectName }),
-    ).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole("link", { name: projectName })).toBeVisible({
+      timeout: 5000,
+    });
 
     // Navigate to project & create task with due date
     await page.getByRole("link", { name: projectName }).click();
@@ -98,30 +96,40 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
 
     // Wait for the debounced PATCH to complete
     const patchPromise = page.waitForResponse(
-      (res) => res.url().includes("/api/tasks/") && res.request().method() === "PATCH",
+      (res) =>
+        res.url().includes("/api/tasks/") && res.request().method() === "PATCH",
     );
     await patchPromise;
 
     // Navigate to calendar
     await page.goto("/calendar");
-    await expect(
-      page.getByRole("heading", { name: "Calendar" }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Click on the 28th to open day detail (avoids overflow limit on calendar grid)
-    const targetLabel = new Date(today.getFullYear(), today.getMonth(), 28)
-      .toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    const targetLabel = new Date(
+      today.getFullYear(),
+      today.getMonth(),
+      28,
+    ).toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
     await page.getByLabel(targetLabel).click();
 
     // Task should appear in the day detail panel
-    await expect(page.getByText(taskTitle).last()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(taskTitle).last()).toBeVisible({
+      timeout: 10000,
+    });
   });
 
   test("clicking a date opens day detail panel", async ({ page }) => {
     await page.getByRole("link", { name: "Calendar", exact: true }).click();
-    await expect(
-      page.getByRole("heading", { name: "Calendar" }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Click on today's date number button
     const todayDate = new Date();

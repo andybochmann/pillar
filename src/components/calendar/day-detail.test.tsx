@@ -68,9 +68,7 @@ describe("DayDetail", () => {
 
   it("renders date heading", () => {
     render(<DayDetail {...defaultProps} />);
-    expect(
-      screen.getByText("Sunday, February 15, 2026"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Sunday, February 15, 2026")).toBeInTheDocument();
   });
 
   it("renders tasks grouped by project", () => {

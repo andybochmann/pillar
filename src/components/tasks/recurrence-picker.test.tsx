@@ -23,8 +23,12 @@ describe("RecurrencePicker", () => {
   it("hides interval and end date when frequency is none", () => {
     const onChange = vi.fn();
     render(<RecurrencePicker value={defaultValue} onChange={onChange} />);
-    expect(screen.queryByLabelText("Recurrence interval")).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Recurrence end date")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Recurrence interval"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("Recurrence end date"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows interval and end date when frequency is not none", () => {

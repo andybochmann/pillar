@@ -93,8 +93,12 @@ describe("CalendarView", () => {
 
   it("renders navigation buttons", () => {
     render(<CalendarView {...defaultProps} />);
-    expect(screen.getByRole("button", { name: "Previous month" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next month" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Previous month" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Next month" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Today" })).toBeInTheDocument();
   });
 

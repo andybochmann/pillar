@@ -80,7 +80,10 @@ export function CalendarView({
   }
 
   function navigateMonth(offset: number) {
-    const newDate = offset > 0 ? addMonths(currentMonth, offset) : subMonths(currentMonth, Math.abs(offset));
+    const newDate =
+      offset > 0
+        ? addMonths(currentMonth, offset)
+        : subMonths(currentMonth, Math.abs(offset));
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", format(newDate, "yyyy-MM"));
     router.push(`/calendar?${params.toString()}`);
@@ -128,11 +131,7 @@ export function CalendarView({
           {format(currentMonth, "MMMM yyyy")}
         </h2>
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={goToToday}
-          >
+          <Button variant="outline" size="sm" onClick={goToToday}>
             Today
           </Button>
           <Button

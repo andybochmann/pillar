@@ -110,10 +110,9 @@ function DraggableTaskPill({ task, onClick }: DraggableTaskPillProps) {
         )}
       />
       <span className="truncate">{task.title}</span>
-      {task.recurrence?.frequency &&
-        task.recurrence.frequency !== "none" && (
-          <span className="shrink-0 text-muted-foreground">↻</span>
-        )}
+      {task.recurrence?.frequency && task.recurrence.frequency !== "none" && (
+        <span className="shrink-0 text-muted-foreground">↻</span>
+      )}
     </button>
   );
 }

@@ -108,7 +108,10 @@ export function RecurrencePicker({ value, onChange }: RecurrencePickerProps) {
         />
       )}
       {preview && (
-        <p className="text-xs text-muted-foreground" data-testid="recurrence-preview">
+        <p
+          className="text-xs text-muted-foreground"
+          data-testid="recurrence-preview"
+        >
           {preview}
         </p>
       )}
