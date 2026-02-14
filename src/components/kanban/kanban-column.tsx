@@ -16,6 +16,8 @@ interface KanbanColumnProps {
   labelColors?: Map<string, string>;
   selectedIds?: Set<string>;
   onSelect?: (taskId: string) => void;
+  showForm?: boolean;
+  onFormOpenChange?: (open: boolean) => void;
 }
 
 export function KanbanColumn({
@@ -26,15 +28,25 @@ export function KanbanColumn({
   labelColors,
   selectedIds,
   onSelect,
+  showForm: showFormProp,
+  onFormOpenChange,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
-  const [showForm, setShowForm] = useState(false);
+  const [localShowForm, setLocalShowForm] = useState(false);
+  const showForm = showFormProp || localShowForm;
+
+  function setShowForm(open: boolean) {
+    setLocalShowForm(open);
+    onFormOpenChange?.(open);
+  }
 
   return (
     <div
       ref={setNodeRef}
+      role="region"
+      aria-label={`${column.name} column, ${tasks.length} tasks`}
       className={cn(
-        "flex w-72 flex-shrink-0 flex-col rounded-lg bg-muted/50 p-3",
+        "flex w-72 min-w-[18rem] flex-shrink-0 flex-col rounded-lg bg-muted/50 p-3",
         isOver && "ring-2 ring-primary/30",
       )}
     >

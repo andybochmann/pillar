@@ -14,7 +14,11 @@ import { CreateProjectDialog } from "@/components/projects/create-dialog";
 import { useCategories } from "@/hooks/use-categories";
 import { useProjects } from "@/hooks/use-projects";
 
-export function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const {
     categories,
@@ -78,6 +82,7 @@ export function Sidebar() {
             <>
               <Link
                 href="/"
+                onClick={onNavigate}
                 className={cn(
                   "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent",
                   pathname === "/" && "bg-accent",
@@ -87,6 +92,7 @@ export function Sidebar() {
               </Link>
               <Link
                 href="/overview"
+                onClick={onNavigate}
                 className={cn(
                   "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent",
                   pathname === "/overview" && "bg-accent",
@@ -96,12 +102,23 @@ export function Sidebar() {
               </Link>
               <Link
                 href="/calendar"
+                onClick={onNavigate}
                 className={cn(
                   "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent",
                   pathname === "/calendar" && "bg-accent",
                 )}
               >
                 Calendar
+              </Link>
+              <Link
+                href="/settings"
+                onClick={onNavigate}
+                className={cn(
+                  "flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-accent",
+                  pathname === "/settings" && "bg-accent",
+                )}
+              >
+                Settings
               </Link>
 
               <button
@@ -163,6 +180,7 @@ export function Sidebar() {
                     <Link
                       key={project._id}
                       href={`/projects/${project._id}`}
+                      onClick={onNavigate}
                       className={cn(
                         "flex items-center rounded-md px-3 py-2 pl-7 text-sm transition-colors hover:bg-accent",
                         pathname === `/projects/${project._id}` &&

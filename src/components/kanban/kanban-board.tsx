@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -51,6 +51,33 @@ export function KanbanBoard({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [newTaskColumnId, setNewTaskColumnId] = useState<string | null>(null);
+  const [dndAnnouncement, setDndAnnouncement] = useState("");
+
+  const sortedColumns = useMemo(
+    () => [...columns].sort((a, b) => a.order - b.order),
+    [columns],
+  );
+
+  // Keyboard shortcut: "n" to open new task form in first column
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+      if (e.key === "n" && sortedColumns.length > 0) {
+        e.preventDefault();
+        setNewTaskColumnId(sortedColumns[0].id);
+      }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [sortedColumns]);
 
   const labelColors = new Map(allLabels.map((l) => [l.name, l.color]));
 
@@ -96,8 +123,6 @@ export function KanbanBoard({
     }),
   );
 
-  const sortedColumns = [...columns].sort((a, b) => a.order - b.order);
-
   const getColumnTasks = useCallback(
     (columnId: string) =>
       filteredTasks
@@ -109,6 +134,9 @@ export function KanbanBoard({
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t._id === event.active.id);
     setActiveTask(task ?? null);
+    if (task) {
+      setDndAnnouncement(`Picked up task: ${task.title}`);
+    }
   }
 
   function handleDragOver(event: DragOverEvent) {
@@ -144,7 +172,10 @@ export function KanbanBoard({
     setActiveTask(null);
 
     const { active, over } = event;
-    if (!over) return;
+    if (!over) {
+      setDndAnnouncement("Task dropped");
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
@@ -310,6 +341,10 @@ export function KanbanBoard({
                 labelColors={labelColors}
                 selectedIds={selectedIds}
                 onSelect={toggleSelection}
+                showForm={newTaskColumnId === column.id}
+                onFormOpenChange={(open) => {
+                  if (!open) setNewTaskColumnId(null);
+                }}
               />
             </SortableContext>
           ))}
@@ -337,6 +372,11 @@ export function KanbanBoard({
           await createLabel(data);
         }}
       />
+
+      {/* Screen reader announcements for DnD */}
+      <div aria-live="assertive" className="sr-only" role="status">
+        {dndAnnouncement}
+      </div>
     </>
   );
 }

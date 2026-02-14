@@ -1,0 +1,86 @@
+import { NextResponse } from "next/server";
+import { z } from "zod";
+import { auth } from "@/lib/auth";
+import { connectDB } from "@/lib/db";
+import { User } from "@/models/user";
+
+const UpdateProfileSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  image: z.string().url().optional(),
+});
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  await connectDB();
+
+  const user = await User.findById(session.user.id).select(
+    "name email image createdAt",
+  );
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    createdAt: user.createdAt.toISOString(),
+  });
+}
+
+export async function PATCH(request: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await request.json();
+  const result = UpdateProfileSchema.safeParse(body);
+  if (!result.success) {
+    return NextResponse.json(
+      { error: result.error.issues[0].message },
+      { status: 400 },
+    );
+  }
+
+  await connectDB();
+
+  const user = await User.findByIdAndUpdate(
+    session.user.id,
+    { $set: result.data },
+    { new: true },
+  ).select("name email image createdAt");
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    id: user._id.toString(),
+    name: user.name,
+    email: user.email,
+    image: user.image,
+    createdAt: user.createdAt.toISOString(),
+  });
+}
+
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  await connectDB();
+
+  const deleted = await User.findByIdAndDelete(session.user.id);
+  if (!deleted) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ message: "Account deleted" });
+}
