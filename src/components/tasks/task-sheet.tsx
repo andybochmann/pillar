@@ -395,14 +395,35 @@ function TaskSheetForm({
           </div>
         </div>
 
-        {/* Delete action pinned to bottom */}
-        <div className="mt-auto pt-6">
+        {/* Actions pinned to bottom */}
+        <div className="mt-auto space-y-2 pt-6">
+          {task.completedAt ? (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                saveField({ completedAt: null });
+              }}
+            >
+              Reopen
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                saveField({ completedAt: new Date().toISOString() });
+              }}
+            >
+              Mark Complete
+            </Button>
+          )}
           <Button
             variant="destructive"
             className="w-full"
             onClick={() => setShowDeleteConfirm(true)}
           >
-            Delete Task
+            Delete
           </Button>
         </div>
       </div>
