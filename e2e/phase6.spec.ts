@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ensureSidebar } from "./helpers";
 
 const TEST_USER = {
   email: "test@pillar.dev",
@@ -11,9 +12,9 @@ test.describe("Phase 6 — Polish, Error Handling & Mobile", () => {
     await page.getByLabel("Email").fill(TEST_USER.email);
     await page.getByLabel("Password").fill(TEST_USER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test("skip-to-content link is present", async ({ page }) => {
@@ -23,7 +24,9 @@ test.describe("Phase 6 — Polish, Error Handling & Mobile", () => {
 
   test("? key opens keyboard shortcuts dialog", async ({ page }) => {
     await page.keyboard.press("?");
-    await expect(page.getByText("Keyboard Shortcuts")).toBeVisible({
+    await expect(
+      page.getByText("Keyboard Shortcuts", { exact: true }),
+    ).toBeVisible({
       timeout: 5000,
     });
     await expect(page.getByText("Open search")).toBeVisible();
@@ -36,21 +39,25 @@ test.describe("Phase 6 — Polish, Error Handling & Mobile", () => {
       timeout: 10000,
     });
     await expect(page.getByText("Profile")).toBeVisible();
-    await expect(page.getByText("Change Password")).toBeVisible();
+    await expect(
+      page.getByText("Change Password", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Danger Zone")).toBeVisible();
   });
 
   test("sidebar has Settings link", async ({ page }) => {
+    await ensureSidebar(page);
     await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
   });
 
   test("loading skeleton appears on navigation", async ({ page }) => {
     // Navigate to overview - should show skeleton briefly
+    await ensureSidebar(page);
     const overviewLink = page.getByRole("link", { name: "Overview" });
     await overviewLink.click();
-    await expect(
-      page.getByRole("heading", { name: "Overview" }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible({
+      timeout: 10000,
+    });
   });
 });
 
@@ -62,9 +69,9 @@ test.describe("Phase 6 — Mobile", () => {
     await page.getByLabel("Email").fill(TEST_USER.email);
     await page.getByLabel("Password").fill(TEST_USER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await expect(
-      page.getByRole("heading", { name: "Dashboard" }),
-    ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible({
+      timeout: 15000,
+    });
   });
 
   test("mobile shows topbar hamburger menu", async ({ page }) => {
@@ -75,7 +82,9 @@ test.describe("Phase 6 — Mobile", () => {
 
   test("hamburger opens sidebar as sheet overlay", async ({ page }) => {
     await page.getByRole("button", { name: "Toggle menu" }).click();
-    await expect(page.getByText("Dashboard")).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Overview")).toBeVisible();
+    await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(page.getByRole("link", { name: "Overview" })).toBeVisible();
   });
 });

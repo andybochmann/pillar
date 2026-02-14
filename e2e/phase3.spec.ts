@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ensureSidebar, scrollClick } from "./helpers";
 
 const TEST_USER = {
   email: "test@pillar.dev",
@@ -29,14 +30,17 @@ test.describe("Phase 3 Features", () => {
   });
 
   test("overview page shows filters and task list", async ({ page }) => {
+    await ensureSidebar(page);
     await page.getByRole("link", { name: "Overview" }).click();
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible({
       timeout: 10000,
     });
 
     // Filter controls should be visible
-    await expect(page.getByText("All projects")).toBeVisible();
-    await expect(page.getByText("All priorities")).toBeVisible();
+    await expect(page.getByText("All projects", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("All priorities", { exact: true }),
+    ).toBeVisible();
   });
 
   test("overview filters update URL and results", async ({ page }) => {
@@ -57,14 +61,21 @@ test.describe("Phase 3 Features", () => {
     const categoryName = `E2E SettCat ${SUFFIX}`;
     const projectName = `E2E SettProj ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Create category
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
     // Create project
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByRole("link", { name: projectName })).toBeVisible({
@@ -72,7 +83,7 @@ test.describe("Phase 3 Features", () => {
     });
 
     // Navigate to project
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     // Open settings
@@ -91,20 +102,27 @@ test.describe("Phase 3 Features", () => {
     const categoryName = `E2E ColCat ${SUFFIX}`;
     const projectName = `E2E ColProj ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Setup project
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByRole("link", { name: projectName })).toBeVisible({
       timeout: 5000,
     });
 
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     // Open settings
@@ -131,13 +149,20 @@ test.describe("Phase 3 Features", () => {
     const categoryName = `E2E ArcCat ${SUFFIX}`;
     const projectName = `E2E ArcProj ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Setup project
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByRole("link", { name: projectName })).toBeVisible({
@@ -145,7 +170,7 @@ test.describe("Phase 3 Features", () => {
     });
 
     // Navigate into project
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     // Open settings and toggle archive
@@ -162,17 +187,20 @@ test.describe("Phase 3 Features", () => {
       timeout: 10000,
     });
 
+    // Open sidebar on mobile to check project is hidden
+    await ensureSidebar(page);
+
     // Project should not be visible in sidebar (archived)
     await expect(
       page.getByRole("link", { name: projectName }),
     ).not.toBeVisible();
 
     // Toggle "Show archived" in sidebar
-    await page.getByLabel("Show archived projects").click();
+    await page.getByRole("switch", { name: "Show archived projects" }).click();
 
     // Project should now be visible with "archived" label
     await expect(page.getByRole("link", { name: projectName })).toBeVisible({
-      timeout: 5000,
+      timeout: 10000,
     });
   });
 });

@@ -92,7 +92,9 @@ export function SettingsClient({ profile }: SettingsClientProps) {
       setNewPassword("");
       setConfirmPassword("");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to change password");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to change password",
+      );
     } finally {
       setChangingPassword(false);
     }
@@ -108,7 +110,9 @@ export function SettingsClient({ profile }: SettingsClientProps) {
       }
       await signOut({ callbackUrl: "/login" });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete account");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete account",
+      );
       setDeleting(false);
     }
   }

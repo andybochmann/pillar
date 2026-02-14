@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ensureSidebar, scrollClick } from "./helpers";
 
 const TEST_USER = {
   email: "test@pillar.dev",
@@ -23,8 +24,11 @@ test.describe("CRUD Flows", () => {
   test("create → navigate → delete category", async ({ page }) => {
     const categoryName = `E2E Cat ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Click "Create category" button in sidebar
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
 
     // Dialog should appear
     await expect(
@@ -41,7 +45,9 @@ test.describe("CRUD Flows", () => {
     await expect(
       page.getByRole("heading", { name: "Create Category" }),
     ).not.toBeVisible();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
   });
 
   test("create category → create project → navigate to board", async ({
@@ -50,14 +56,21 @@ test.describe("CRUD Flows", () => {
     const categoryName = `E2E ProjCat ${SUFFIX}`;
     const projectName = `E2E Project ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Create a category first
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
     // Click "Add project to {categoryName}" button
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
 
     // Dialog should appear
     await expect(
@@ -80,7 +93,7 @@ test.describe("CRUD Flows", () => {
     });
 
     // Navigate to the project
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
 
     // Should see the kanban board with default columns
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
@@ -95,14 +108,21 @@ test.describe("CRUD Flows", () => {
     const projectName = `E2E TaskProj ${SUFFIX}`;
     const taskTitle = `E2E Task ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Create category
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
     // Create project
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByRole("link", { name: projectName })).toBeVisible({
@@ -110,7 +130,7 @@ test.describe("CRUD Flows", () => {
     });
 
     // Navigate to project
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     // Click "Add task to To Do" button
@@ -161,20 +181,27 @@ test.describe("CRUD Flows", () => {
     const projectName = `E2E CompProj ${SUFFIX}`;
     const taskTitle = `E2E Complete ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Setup: create category + project
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByRole("link", { name: projectName })).toBeVisible({
       timeout: 5000,
     });
 
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     // Create a task

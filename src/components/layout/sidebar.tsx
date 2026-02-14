@@ -53,7 +53,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "flex h-screen flex-col border-r bg-card transition-all duration-200",
+        "flex h-full flex-col border-r bg-card transition-all duration-200",
         collapsed ? "w-16" : "w-64",
       )}
     >
@@ -76,7 +76,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <ScrollArea className="flex-1">
+      <ScrollArea className="min-h-0 flex-1">
         <nav className="p-3 space-y-1">
           {!collapsed && (
             <>

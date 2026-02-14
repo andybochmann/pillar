@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ensureSidebar, scrollClick } from "./helpers";
 
 const TEST_USER = {
   email: "test@pillar.dev",
@@ -21,8 +22,9 @@ test.describe("Phase 5 — Search, Filters, Labels & Bulk Ops", () => {
   test("sidebar shows search trigger with / shortcut hint", async ({
     page,
   }) => {
-    await expect(page.getByText("Search…")).toBeVisible();
-    await expect(page.getByText("/")).toBeVisible();
+    await ensureSidebar(page);
+    await expect(page.getByText("Search\u2026").last()).toBeVisible();
+    await expect(page.getByText("/").last()).toBeVisible();
   });
 
   test("/ key opens command palette", async ({ page }) => {
@@ -37,16 +39,23 @@ test.describe("Phase 5 — Search, Filters, Labels & Bulk Ops", () => {
     const projectName = `E2E SrchProj ${SUFFIX}`;
     const taskTitle = `E2E SearchTarget ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Create category + project + task
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     await page.getByLabel("Add task to To Do").click();
@@ -66,16 +75,23 @@ test.describe("Phase 5 — Search, Filters, Labels & Bulk Ops", () => {
     const projectName = `E2E LblProj ${SUFFIX}`;
     const taskTitle = `E2E LblTask ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Create category + project + task
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     await page.getByLabel("Add task to To Do").click();
@@ -106,16 +122,23 @@ test.describe("Phase 5 — Search, Filters, Labels & Bulk Ops", () => {
     const categoryName = `E2E FiltCat ${SUFFIX}`;
     const projectName = `E2E FiltProj ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Create category + project
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     // Create two tasks
@@ -153,7 +176,7 @@ test.describe("Phase 5 — Search, Filters, Labels & Bulk Ops", () => {
 
     // Open filters and select urgent only
     await page.getByRole("button", { name: "Filters" }).click();
-    await page.getByRole("button", { name: "urgent" }).click();
+    await page.getByRole("button", { name: "urgent", exact: true }).click();
 
     // Urgent task visible, low task hidden
     await expect(page.getByText(`E2E UrgentTask ${SUFFIX}`)).toBeVisible();

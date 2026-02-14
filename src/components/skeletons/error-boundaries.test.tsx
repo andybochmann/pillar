@@ -17,9 +17,7 @@ vi.mock("next/link", () => ({
 describe("Error boundaries", () => {
   it("DashboardError renders error message and retry button", () => {
     const reset = vi.fn();
-    render(
-      <DashboardError error={new Error("Test failure")} reset={reset} />,
-    );
+    render(<DashboardError error={new Error("Test failure")} reset={reset} />);
 
     expect(screen.getByText("Something went wrong")).toBeTruthy();
     expect(screen.getByText("Test failure")).toBeTruthy();
@@ -33,9 +31,7 @@ describe("Error boundaries", () => {
     render(<DashboardError error={new Error("")} reset={reset} />);
 
     expect(
-      screen.getByText(
-        "An unexpected error occurred while loading this page.",
-      ),
+      screen.getByText("An unexpected error occurred while loading this page."),
     ).toBeTruthy();
   });
 

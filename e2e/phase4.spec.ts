@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ensureSidebar, scrollClick } from "./helpers";
 
 const TEST_USER = {
   email: "test@pillar.dev",
@@ -19,6 +20,7 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
   });
 
   test("calendar page shows monthly grid with navigation", async ({ page }) => {
+    await ensureSidebar(page);
     await page.getByRole("link", { name: "Calendar", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible({
       timeout: 10000,
@@ -39,6 +41,7 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
   });
 
   test("month navigation updates URL and heading", async ({ page }) => {
+    await ensureSidebar(page);
     await page.getByRole("link", { name: "Calendar", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible({
       timeout: 10000,
@@ -60,13 +63,20 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
     const projectName = `E2E CalProj ${SUFFIX}`;
     const taskTitle = `E2E CalTask ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Create category + project
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
     await expect(page.getByRole("link", { name: projectName })).toBeVisible({
@@ -74,7 +84,7 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
     });
 
     // Navigate to project & create task with due date
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     // Click "Add task" button, then fill inline form
@@ -126,6 +136,7 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
   });
 
   test("clicking a date opens day detail panel", async ({ page }) => {
+    await ensureSidebar(page);
     await page.getByRole("link", { name: "Calendar", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible({
       timeout: 10000,
@@ -153,16 +164,23 @@ test.describe("Phase 4 — Calendar & Recurring Tasks", () => {
     const projectName = `E2E RecProj ${SUFFIX}`;
     const taskTitle = `E2E RecTask ${SUFFIX}`;
 
+    // Open sidebar on mobile
+    await ensureSidebar(page);
+
     // Setup
-    await page.getByLabel("Create category").click();
+    await page.getByRole("button", { name: "Create category" }).click();
     await page.getByLabel("Name").fill(categoryName);
     await page.getByRole("button", { name: "Create" }).click();
-    await expect(page.getByText(categoryName)).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText(categoryName).last()).toBeVisible({
+      timeout: 5000,
+    });
 
-    await page.getByLabel(`Add project to ${categoryName}`).click();
+    await scrollClick(
+      page.getByRole("button", { name: `Add project to ${categoryName}` }),
+    );
     await page.getByLabel("Name").fill(projectName);
     await page.getByRole("button", { name: "Create" }).click();
-    await page.getByRole("link", { name: projectName }).click();
+    await scrollClick(page.getByRole("link", { name: projectName }));
     await expect(page.getByText("To Do")).toBeVisible({ timeout: 10000 });
 
     // Create task and open it

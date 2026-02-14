@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { ensureSidebar } from "./helpers";
 
 const TEST_USER = {
   name: "Test User",
@@ -117,7 +118,8 @@ test.describe("Dashboard (authenticated)", () => {
   });
 
   test("sidebar is visible with navigation links", async ({ page }) => {
-    await expect(page.getByText("Pillar")).toBeVisible();
+    await ensureSidebar(page);
+    await expect(page.getByRole("link", { name: "Pillar" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Overview" })).toBeVisible();
     await expect(
@@ -126,18 +128,26 @@ test.describe("Dashboard (authenticated)", () => {
   });
 
   test("can navigate to overview page", async ({ page }) => {
+    await ensureSidebar(page);
     await page.getByRole("link", { name: "Overview" }).click();
     await expect(page).toHaveURL(/\/overview/);
     await expect(page.getByRole("heading", { name: "Overview" })).toBeVisible();
   });
 
   test("can navigate to calendar page", async ({ page }) => {
+    await ensureSidebar(page);
     await page.getByRole("link", { name: "Calendar", exact: true }).click();
     await expect(page).toHaveURL(/\/calendar/);
     await expect(page.getByRole("heading", { name: "Calendar" })).toBeVisible();
   });
 
   test("sidebar can be collapsed and expanded", async ({ page }) => {
+    const { width } = page.viewportSize()!;
+    test.skip(
+      width < 768,
+      "Collapse not available on mobile — uses sheet overlay",
+    );
+
     const collapseButton = page.getByLabel("Collapse sidebar");
     await collapseButton.click();
 
@@ -153,6 +163,7 @@ test.describe("Dashboard (authenticated)", () => {
   });
 
   test("can sign out", async ({ page }) => {
+    await ensureSidebar(page);
     await page.getByRole("button", { name: "Sign out" }).click();
 
     // Should be redirected to login

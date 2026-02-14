@@ -19,7 +19,8 @@ export default function DashboardError({
       <div className="text-center space-y-4 max-w-md">
         <h2 className="text-2xl font-bold">Something went wrong</h2>
         <p className="text-muted-foreground">
-          {error.message || "An unexpected error occurred while loading this page."}
+          {error.message ||
+            "An unexpected error occurred while loading this page."}
         </p>
         <Button onClick={reset}>Try again</Button>
       </div>

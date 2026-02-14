@@ -45,9 +45,7 @@ describe("Accessibility", () => {
   it("topbar has aria-label on menu button", async () => {
     const { Topbar } = await import("@/components/layout/topbar");
     render(<Topbar onMenuToggle={vi.fn()} />);
-    expect(
-      screen.getByRole("button", { name: "Toggle menu" }),
-    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Toggle menu" })).toBeTruthy();
   });
 
   it("sidebar has settings link", async () => {

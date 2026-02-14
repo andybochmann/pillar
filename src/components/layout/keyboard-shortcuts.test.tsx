@@ -25,7 +25,9 @@ describe("KeyboardShortcutsDialog", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Open search")).toBeTruthy();
-      expect(screen.getByText("Create new task (in current board)")).toBeTruthy();
+      expect(
+        screen.getByText("Create new task (in current board)"),
+      ).toBeTruthy();
       expect(screen.getByText("Show keyboard shortcuts")).toBeTruthy();
       expect(screen.getByText("Close dialog / sheet / search")).toBeTruthy();
     });

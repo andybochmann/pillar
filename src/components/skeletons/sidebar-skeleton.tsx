@@ -32,7 +32,10 @@ export function SidebarSkeleton() {
                 <Skeleton className="h-3 w-16" />
               </div>
               {Array.from({ length: 2 }).map((_, proj) => (
-                <Skeleton key={proj} className="ml-4 h-9 w-[calc(100%-1rem)] rounded-md" />
+                <Skeleton
+                  key={proj}
+                  className="ml-4 h-9 w-[calc(100%-1rem)] rounded-md"
+                />
               ))}
             </div>
           ))}
