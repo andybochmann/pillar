@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
+import { Plus, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TaskCard } from "./task-card";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -61,11 +62,11 @@ export function KanbanColumn({
         <Button
           variant="ghost"
           size="icon"
-          className="h-6 w-6"
+          className="h-6 w-6 text-muted-foreground hover:text-foreground"
           onClick={() => setShowForm(true)}
           aria-label={`Add task to ${column.name}`}
         >
-          +
+          <Plus className="h-4 w-4" />
         </Button>
       </div>
 
@@ -82,9 +83,18 @@ export function KanbanColumn({
           />
         ))}
         {tasks.length === 0 && !showForm && (
-          <p className="py-8 text-center text-xs text-muted-foreground">
-            No tasks yet
-          </p>
+          <div className="flex flex-col items-center py-8 text-center">
+            <Inbox className="h-8 w-8 text-muted-foreground/30" />
+            <p className="mt-2 text-xs text-muted-foreground">No tasks yet</p>
+            <Button
+              variant="link"
+              size="sm"
+              className="mt-1 h-auto p-0 text-xs"
+              onClick={() => setShowForm(true)}
+            >
+              Add a task
+            </Button>
+          </div>
         )}
         {showForm && (
           <TaskForm

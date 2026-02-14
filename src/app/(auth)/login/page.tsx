@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,8 +47,11 @@ export default function LoginPage() {
   }
 
   return (
-    <Card>
-      <CardHeader className="text-center">
+    <Card className="border-border/50 shadow-xl shadow-primary/5">
+      <CardHeader className="text-center pb-2">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-primary shadow-lg shadow-primary/25">
+          <FolderKanban className="h-6 w-6 text-primary-foreground" />
+        </div>
         <CardTitle className="text-2xl font-bold">Welcome to Pillar</CardTitle>
         <CardDescription>Sign in to manage your tasks</CardDescription>
       </CardHeader>

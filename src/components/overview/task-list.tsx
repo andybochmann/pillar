@@ -89,7 +89,7 @@ export function TaskList({ tasks, projects }: TaskListProps) {
                   </div>
                 </TableCell>
                 <TableCell className="text-muted-foreground">
-                  {project?.name ?? "—"}
+                  {project?.name ?? "Unknown"}
                 </TableCell>
                 <TableCell>
                   <Badge className={cn("text-xs", priority.className)}>
@@ -102,7 +102,9 @@ export function TaskList({ tasks, projects }: TaskListProps) {
                       {dueInfo.label}
                     </span>
                   ) : (
-                    <span className="text-muted-foreground">—</span>
+                    <span className="text-xs text-muted-foreground/60 italic">
+                      No date
+                    </span>
                   )}
                 </TableCell>
                 <TableCell>

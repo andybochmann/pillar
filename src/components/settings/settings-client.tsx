@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
 import { signOut } from "next-auth/react";
+import { Sun, Moon, Monitor } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +26,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InstallPromptCard } from "./install-prompt-card";
 
@@ -118,8 +121,55 @@ export function SettingsClient({ profile }: SettingsClientProps) {
     }
   }
 
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const themeOptions = [
+    { value: "light", label: "Light", icon: Sun },
+    { value: "dark", label: "Dark", icon: Moon },
+    { value: "system", label: "System", icon: Monitor },
+  ] as const;
+
   return (
     <div className="max-w-2xl space-y-6">
+      {/* Appearance section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Appearance</CardTitle>
+          <CardDescription>
+            Customize how Pillar looks on your device
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {themeOptions.map((option) => {
+              const Icon = option.icon;
+              const isActive = mounted && theme === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setTheme(option.value)}
+                  className={cn(
+                    "flex flex-col items-center gap-2 rounded-lg border-2 p-4 transition-colors",
+                    isActive
+                      ? "border-primary bg-primary/5 text-primary"
+                      : "border-border hover:border-primary/30 hover:bg-accent text-muted-foreground",
+                  )}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-sm font-medium">{option.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Profile section */}
       <Card>
         <CardHeader>
