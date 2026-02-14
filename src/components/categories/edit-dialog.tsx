@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,25 +13,34 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PRESET_COLORS } from "./preset-colors";
+import type { Category } from "@/types";
 
-interface CreateCategoryDialogProps {
+interface EditCategoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreate: (data: {
-    name: string;
-    color: string;
-    icon?: string;
-  }) => Promise<unknown>;
+  category: Category;
+  onSave: (
+    id: string,
+    data: { name?: string; color?: string },
+  ) => Promise<unknown>;
 }
 
-export function CreateCategoryDialog({
+export function EditCategoryDialog({
   open,
   onOpenChange,
-  onCreate,
-}: CreateCategoryDialogProps) {
-  const [name, setName] = useState("");
-  const [color, setColor] = useState(PRESET_COLORS[0]);
+  category,
+  onSave,
+}: EditCategoryDialogProps) {
+  const [name, setName] = useState(category.name);
+  const [color, setColor] = useState(category.color);
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setName(category.name);
+      setColor(category.color);
+    }
+  }, [open, category.name, category.color]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -39,14 +48,12 @@ export function CreateCategoryDialog({
 
     setSubmitting(true);
     try {
-      await onCreate({ name: name.trim(), color });
-      toast.success("Category created");
-      setName("");
-      setColor(PRESET_COLORS[0]);
+      await onSave(category._id, { name: name.trim(), color });
+      toast.success("Category updated");
       onOpenChange(false);
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Failed to create category",
+        err instanceof Error ? err.message : "Failed to update category",
       );
     } finally {
       setSubmitting(false);
@@ -57,13 +64,13 @@ export function CreateCategoryDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create Category</DialogTitle>
+          <DialogTitle>Edit Category</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="category-name">Name</Label>
+            <Label htmlFor="edit-category-name">Name</Label>
             <Input
-              id="category-name"
+              id="edit-category-name"
               placeholder="e.g. Work, Personal"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -107,7 +114,7 @@ export function CreateCategoryDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={!name.trim() || submitting}>
-              {submitting ? "Creating…" : "Create"}
+              {submitting ? "Saving…" : "Save"}
             </Button>
           </DialogFooter>
         </form>

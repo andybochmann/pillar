@@ -17,6 +17,7 @@ import {
   LogOut,
   FolderKanban,
 } from "lucide-react";
+import { CategoryActions } from "@/components/categories/category-actions";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -43,6 +44,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const {
     categories,
     createCategory,
+    updateCategory,
+    deleteCategory,
     refresh: refreshCategories,
   } = useCategories();
   const { projects, createProject, refresh: refreshProjects } = useProjects();
@@ -181,7 +184,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                 const isCatCollapsed = collapsedCategories.has(cat._id);
                 return (
                   <div key={cat._id} className="space-y-0.5">
-                    <div className="flex items-center justify-between rounded-md px-3 py-1 hover:bg-accent/50 transition-colors">
+                    <div className="group flex items-center justify-between rounded-md px-3 py-1 hover:bg-accent/50 transition-colors">
                       <button
                         type="button"
                         onClick={() => toggleCategory(cat._id)}
@@ -200,15 +203,15 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                           {cat.name}
                         </span>
                       </button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 hover:opacity-100"
-                        onClick={() => handleOpenProjectDialog(cat._id)}
-                        aria-label={`Add project to ${cat.name}`}
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
+                      <CategoryActions
+                        category={cat}
+                        onAddProject={handleOpenProjectDialog}
+                        onUpdate={updateCategory}
+                        onDelete={async (id) => {
+                          await deleteCategory(id);
+                          refreshProjects(showArchived);
+                        }}
+                      />
                     </div>
                     {!isCatCollapsed &&
                       cat.projects.map((project) => (
