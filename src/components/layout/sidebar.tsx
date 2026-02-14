@@ -104,6 +104,21 @@ export function Sidebar() {
                 Calendar
               </Link>
 
+              <button
+                type="button"
+                onClick={() =>
+                  document.dispatchEvent(
+                    new KeyboardEvent("keydown", { key: "/" }),
+                  )
+                }
+                className="flex w-full items-center rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent"
+              >
+                Search…
+                <kbd className="ml-auto rounded border bg-muted px-1.5 py-0.5 text-[10px] font-mono">
+                  /
+                </kbd>
+              </button>
+
               <Separator className="my-3" />
 
               {/* Categories & Projects */}

@@ -5,6 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { Checkbox } from "@/components/ui/checkbox";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
 import type { Task } from "@/types";
 
@@ -12,6 +13,9 @@ interface TaskCardProps {
   task: Task;
   isOverlay?: boolean;
   onClick?: () => void;
+  labelColors?: Map<string, string>;
+  selected?: boolean;
+  onSelect?: (taskId: string) => void;
 }
 
 const priorityConfig = {
@@ -51,7 +55,14 @@ function getDueDateStyle(dueDateStr?: string) {
   };
 }
 
-export function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
+export function TaskCard({
+  task,
+  isOverlay,
+  onClick,
+  labelColors,
+  selected,
+  onSelect,
+}: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -81,11 +92,23 @@ export function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
         isDragging && "opacity-50",
         isOverlay && "shadow-lg rotate-2",
         onClick && "cursor-pointer hover:ring-1 hover:ring-primary/20",
+        selected && "ring-2 ring-primary",
       )}
     >
       <CardContent className="p-3 space-y-2">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-medium leading-snug">{task.title}</p>
+          <div className="flex items-start gap-2">
+            {onSelect && (
+              <Checkbox
+                checked={selected}
+                onCheckedChange={() => onSelect(task._id)}
+                onClick={(e) => e.stopPropagation()}
+                aria-label={`Select ${task.title}`}
+                className="mt-0.5"
+              />
+            )}
+            <p className="text-sm font-medium leading-snug">{task.title}</p>
+          </div>
           {task.recurrence?.frequency &&
             task.recurrence.frequency !== "none" && (
               <span
@@ -111,11 +134,27 @@ export function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
               {dueDateStyle.label}
             </span>
           )}
-          {task.labels.map((label) => (
-            <Badge key={label} variant="outline" className="text-xs">
-              {label}
-            </Badge>
-          ))}
+          {task.labels.map((label) => {
+            const color = labelColors?.get(label);
+            return (
+              <Badge
+                key={label}
+                variant="outline"
+                className="text-xs"
+                style={
+                  color
+                    ? {
+                        backgroundColor: color + "20",
+                        color,
+                        borderColor: color,
+                      }
+                    : undefined
+                }
+              >
+                {label}
+              </Badge>
+            );
+          })}
         </div>
       </CardContent>
     </Card>

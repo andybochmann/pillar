@@ -50,8 +50,8 @@ describe("TaskSheet", () => {
     expect(screen.getByLabelText("Description")).toHaveValue(
       "Users can't log in on mobile",
     );
-    expect(screen.getByText("bug")).toBeInTheDocument();
-    expect(screen.getByText("urgent")).toBeInTheDocument();
+    expect(screen.getByText("bug ×")).toBeInTheDocument();
+    expect(screen.getByText("urgent ×")).toBeInTheDocument();
   });
 
   it("renders priority and column selects", () => {
@@ -129,8 +129,10 @@ describe("TaskSheet", () => {
     expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
   });
 
-  it("renders labels input", () => {
+  it("renders labels section", () => {
     render(<TaskSheet {...defaultProps} />);
-    expect(screen.getByLabelText("Labels")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Manage labels" }),
+    ).toBeInTheDocument();
   });
 });

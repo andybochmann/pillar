@@ -6,4 +6,5 @@ export {
   createTestCategory,
   createTestProject,
   createTestTask,
+  createTestLabel,
 } from "./factories";

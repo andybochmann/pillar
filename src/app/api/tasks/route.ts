@@ -46,6 +46,11 @@ export async function GET(request: Request) {
   if (projectId) filter.projectId = projectId;
   if (columnId) filter.columnId = columnId;
 
+  const search = searchParams.get("search");
+  if (search) {
+    filter.title = { $regex: search, $options: "i" };
+  }
+
   if (priority) {
     const priorities = priority.split(",");
     filter.priority = { $in: priorities };

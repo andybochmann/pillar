@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -20,9 +20,17 @@ import {
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { TaskSheet } from "@/components/tasks/task-sheet";
+import {
+  BoardFilterBar,
+  EMPTY_FILTERS,
+  type BoardFilters,
+} from "./board-filter-bar";
+import { BulkActionsBar } from "./bulk-actions-bar";
 import { useTasks } from "@/hooks/use-tasks";
+import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
-import type { Task, Column } from "@/types";
+import { isToday, isBefore, startOfDay, endOfWeek } from "date-fns";
+import type { Task, Column, Priority } from "@/types";
 
 interface KanbanBoardProps {
   projectId: string;
@@ -37,9 +45,50 @@ export function KanbanBoard({
 }: KanbanBoardProps) {
   const { tasks, setTasks, createTask, updateTask, deleteTask } =
     useTasks(initialTasks);
+  const { labels: allLabels, createLabel } = useLabels();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const labelColors = new Map(allLabels.map((l) => [l.name, l.color]));
+
+  const filteredTasks = useMemo(() => {
+    const hasFilters =
+      filters.priorities.length > 0 ||
+      filters.labels.length > 0 ||
+      filters.dueDateRange !== null;
+    if (!hasFilters) return tasks;
+
+    return tasks.filter((t) => {
+      if (
+        filters.priorities.length > 0 &&
+        !filters.priorities.includes(t.priority)
+      )
+        return false;
+      if (
+        filters.labels.length > 0 &&
+        !filters.labels.some((l) => t.labels.includes(l))
+      )
+        return false;
+      if (filters.dueDateRange && t.dueDate) {
+        const due = new Date(t.dueDate);
+        const now = new Date();
+        if (filters.dueDateRange === "overdue") {
+          if (!isBefore(due, startOfDay(now))) return false;
+        } else if (filters.dueDateRange === "today") {
+          if (!isToday(due)) return false;
+        } else if (filters.dueDateRange === "week") {
+          if (isBefore(due, startOfDay(now)) || !isBefore(due, endOfWeek(now)))
+            return false;
+        }
+      } else if (filters.dueDateRange && !t.dueDate) {
+        return false;
+      }
+      return true;
+    });
+  }, [tasks, filters]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -51,10 +100,10 @@ export function KanbanBoard({
 
   const getColumnTasks = useCallback(
     (columnId: string) =>
-      tasks
+      filteredTasks
         .filter((t) => t.columnId === columnId)
         .sort((a, b) => a.order - b.order),
-    [tasks],
+    [filteredTasks],
   );
 
   function handleDragStart(event: DragStartEvent) {
@@ -175,8 +224,70 @@ export function KanbanBoard({
     setSelectedTask(null);
   }
 
+  function toggleSelection(taskId: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  }
+
+  async function handleBulkMove(columnId: string) {
+    const ids = [...selectedIds];
+    await fetch("/api/tasks/bulk", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskIds: ids, action: "move", columnId }),
+    });
+    setTasks((prev) =>
+      prev.map((t) => (ids.includes(t._id) ? { ...t, columnId } : t)),
+    );
+    setSelectedIds(new Set());
+    toast.success(`Moved ${ids.length} tasks`);
+  }
+
+  async function handleBulkPriority(priority: Priority) {
+    const ids = [...selectedIds];
+    await fetch("/api/tasks/bulk", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskIds: ids, action: "priority", priority }),
+    });
+    setTasks((prev) =>
+      prev.map((t) => (ids.includes(t._id) ? { ...t, priority } : t)),
+    );
+    setSelectedIds(new Set());
+    toast.success(`Updated ${ids.length} tasks`);
+  }
+
+  async function handleBulkDelete() {
+    const ids = [...selectedIds];
+    await fetch("/api/tasks/bulk", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskIds: ids, action: "delete" }),
+    });
+    setTasks((prev) => prev.filter((t) => !ids.includes(t._id)));
+    setSelectedIds(new Set());
+    toast.success(`Deleted ${ids.length} tasks`);
+  }
+
   return (
     <>
+      <BoardFilterBar
+        filters={filters}
+        onChange={setFilters}
+        allLabels={allLabels}
+      />
+      <BulkActionsBar
+        selectedCount={selectedIds.size}
+        columns={columns}
+        onClearSelection={() => setSelectedIds(new Set())}
+        onBulkMove={handleBulkMove}
+        onBulkPriority={handleBulkPriority}
+        onBulkDelete={handleBulkDelete}
+      />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -196,13 +307,18 @@ export function KanbanBoard({
                 tasks={getColumnTasks(column.id)}
                 onAddTask={(title) => handleAddTask(column.id, title)}
                 onTaskClick={handleTaskClick}
+                labelColors={labelColors}
+                selectedIds={selectedIds}
+                onSelect={toggleSelection}
               />
             </SortableContext>
           ))}
         </div>
 
         <DragOverlay>
-          {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+          {activeTask ? (
+            <TaskCard task={activeTask} isOverlay labelColors={labelColors} />
+          ) : null}
         </DragOverlay>
       </DndContext>
 
@@ -216,6 +332,10 @@ export function KanbanBoard({
         }}
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
+        allLabels={allLabels}
+        onCreateLabel={async (data) => {
+          await createLabel(data);
+        }}
       />
     </>
   );

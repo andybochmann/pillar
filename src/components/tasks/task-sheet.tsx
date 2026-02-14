@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -22,8 +21,15 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
+import { LabelPicker } from "@/components/tasks/label-picker";
 import { toast } from "sonner";
-import type { Task, Column, Priority, Recurrence } from "@/types";
+import type {
+  Task,
+  Column,
+  Priority,
+  Recurrence,
+  Label as LabelType,
+} from "@/types";
 
 interface TaskSheetProps {
   task: Task | null;
@@ -32,6 +38,8 @@ interface TaskSheetProps {
   onOpenChange: (open: boolean) => void;
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
+  allLabels?: LabelType[];
+  onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
 }
 
 export function TaskSheet({
@@ -41,6 +49,8 @@ export function TaskSheet({
   onOpenChange,
   onUpdate,
   onDelete,
+  allLabels,
+  onCreateLabel,
 }: TaskSheetProps) {
   if (!task) return null;
 
@@ -57,6 +67,8 @@ export function TaskSheet({
           onUpdate={onUpdate}
           onDelete={onDelete}
           onClose={() => onOpenChange(false)}
+          allLabels={allLabels}
+          onCreateLabel={onCreateLabel}
         />
       </SheetContent>
     </Sheet>
@@ -71,6 +83,8 @@ interface TaskSheetFormProps {
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
   onClose: () => void;
+  allLabels?: LabelType[];
+  onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
 }
 
 function TaskSheetForm({
@@ -79,6 +93,8 @@ function TaskSheetForm({
   onUpdate,
   onDelete,
   onClose,
+  allLabels,
+  onCreateLabel,
 }: TaskSheetFormProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
@@ -87,7 +103,6 @@ function TaskSheetForm({
   const [dueDate, setDueDate] = useState(
     task.dueDate ? task.dueDate.slice(0, 10) : "",
   );
-  const [labelInput, setLabelInput] = useState("");
   const [labels, setLabels] = useState<string[]>(task.labels);
   const [recurrence, setRecurrence] = useState<Recurrence>({
     frequency: task.recurrence?.frequency ?? "none",
@@ -148,23 +163,18 @@ function TaskSheetForm({
     saveField({ recurrence: value });
   }
 
-  function handleAddLabel(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      const label = labelInput.trim();
-      if (label && !labels.includes(label)) {
-        const newLabels = [...labels, label];
-        setLabels(newLabels);
-        setLabelInput("");
-        saveField({ labels: newLabels });
-      }
-    }
-  }
-
-  function handleRemoveLabel(label: string) {
-    const newLabels = labels.filter((l) => l !== label);
+  function handleToggleLabel(labelName: string) {
+    const newLabels = labels.includes(labelName)
+      ? labels.filter((l) => l !== labelName)
+      : [...labels, labelName];
     setLabels(newLabels);
     saveField({ labels: newLabels });
+  }
+
+  async function handleCreateLabel(data: { name: string; color: string }) {
+    if (onCreateLabel) {
+      await onCreateLabel(data);
+    }
   }
 
   async function handleDelete() {
@@ -278,26 +288,12 @@ function TaskSheetForm({
 
         {/* Labels */}
         <div className="space-y-2">
-          <Label htmlFor="task-labels">Labels</Label>
-          <div className="flex flex-wrap gap-1.5 min-h-[28px]">
-            {labels.map((label) => (
-              <Badge
-                key={label}
-                variant="secondary"
-                className="gap-1 cursor-pointer"
-                onClick={() => handleRemoveLabel(label)}
-              >
-                {label}
-                <span aria-label={`Remove ${label}`}>×</span>
-              </Badge>
-            ))}
-          </div>
-          <Input
-            id="task-labels"
-            placeholder="Type a label and press Enter"
-            value={labelInput}
-            onChange={(e) => setLabelInput(e.target.value)}
-            onKeyDown={handleAddLabel}
+          <Label>Labels</Label>
+          <LabelPicker
+            labels={allLabels ?? []}
+            selectedLabels={labels}
+            onToggle={handleToggleLabel}
+            onCreate={handleCreateLabel}
           />
         </div>
 

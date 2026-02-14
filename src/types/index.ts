@@ -42,6 +42,15 @@ export interface Project {
   updatedAt: string;
 }
 
+export interface Label {
+  _id: string;
+  name: string;
+  color: string;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Task {
   _id: string;
   title: string;

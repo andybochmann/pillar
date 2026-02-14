@@ -245,6 +245,33 @@ describe("GET /api/tasks", () => {
     const res = await GET(createRequest());
     expect(res.status).toBe(401);
   });
+
+  it("searches tasks by title", async () => {
+    await setupFixtures();
+    await createTestTask({ projectId, userId, title: "Fix login bug" });
+    await createTestTask({ projectId, userId, title: "Add dark mode" });
+    await createTestTask({ projectId, userId, title: "Fix signup flow" });
+
+    const res = await GET(createRequest({ search: "fix" }));
+    const data = await res.json();
+    expect(data).toHaveLength(2);
+    expect(data.map((t: { title: string }) => t.title)).toContain(
+      "Fix login bug",
+    );
+    expect(data.map((t: { title: string }) => t.title)).toContain(
+      "Fix signup flow",
+    );
+  });
+
+  it("search is case-insensitive", async () => {
+    await setupFixtures();
+    await createTestTask({ projectId, userId, title: "Login BUG" });
+
+    const res = await GET(createRequest({ search: "login" }));
+    const data = await res.json();
+    expect(data).toHaveLength(1);
+    expect(data[0].title).toBe("Login BUG");
+  });
 });
 
 describe("POST /api/tasks", () => {

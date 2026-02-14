@@ -3,6 +3,7 @@ import { User, type IUser } from "@/models/user";
 import { Category, type ICategory } from "@/models/category";
 import { Project, type IProject } from "@/models/project";
 import { Task, type ITask } from "@/models/task";
+import { Label, type ILabel } from "@/models/label";
 import { hash } from "bcryptjs";
 
 interface CreateUserInput {
@@ -98,5 +99,21 @@ export async function createTestTask(
     recurrence: overrides.recurrence,
     order: overrides.order ?? 0,
     labels: overrides.labels ?? [],
+  });
+}
+
+interface CreateLabelInput {
+  name?: string;
+  color?: string;
+  userId: mongoose.Types.ObjectId;
+}
+
+export async function createTestLabel(
+  overrides: CreateLabelInput,
+): Promise<ILabel> {
+  return Label.create({
+    name: overrides.name ?? "Test Label",
+    color: overrides.color ?? "#ef4444",
+    userId: overrides.userId,
   });
 }

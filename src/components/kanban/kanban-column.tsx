@@ -13,6 +13,9 @@ interface KanbanColumnProps {
   tasks: Task[];
   onAddTask: (title: string) => Promise<void>;
   onTaskClick: (task: Task) => void;
+  labelColors?: Map<string, string>;
+  selectedIds?: Set<string>;
+  onSelect?: (taskId: string) => void;
 }
 
 export function KanbanColumn({
@@ -20,6 +23,9 @@ export function KanbanColumn({
   tasks,
   onAddTask,
   onTaskClick,
+  labelColors,
+  selectedIds,
+  onSelect,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [showForm, setShowForm] = useState(false);
@@ -58,6 +64,9 @@ export function KanbanColumn({
             key={task._id}
             task={task}
             onClick={() => onTaskClick(task)}
+            labelColors={labelColors}
+            selected={selectedIds?.has(task._id)}
+            onSelect={onSelect}
           />
         ))}
         {tasks.length === 0 && !showForm && (
