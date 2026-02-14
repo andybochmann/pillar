@@ -34,14 +34,23 @@ export default async function ProjectPage({ params }: PageProps) {
     _id: t._id.toString(),
     title: t.title,
     description: t.description,
+    projectId: t.projectId.toString(),
+    userId: t.userId.toString(),
     columnId: t.columnId,
     priority: t.priority,
     dueDate: t.dueDate?.toISOString(),
     order: t.order,
     labels: t.labels,
     recurrence: t.recurrence
-      ? { frequency: t.recurrence.frequency }
+      ? {
+          frequency: t.recurrence.frequency,
+          interval: t.recurrence.interval,
+          endDate: t.recurrence.endDate?.toISOString(),
+        }
       : undefined,
+    completedAt: t.completedAt?.toISOString(),
+    createdAt: t.createdAt.toISOString(),
+    updatedAt: t.updatedAt.toISOString(),
   }));
 
   const serializedColumns = project.columns.map((c) => ({

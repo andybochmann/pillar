@@ -18,24 +18,10 @@ import {
 } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
-
-interface Column {
-  id: string;
-  name: string;
-  order: number;
-}
-
-interface Task {
-  _id: string;
-  title: string;
-  description?: string;
-  columnId: string;
-  priority: "urgent" | "high" | "medium" | "low";
-  dueDate?: string;
-  order: number;
-  labels: string[];
-  recurrence?: { frequency: string };
-}
+import { TaskSheet } from "@/components/tasks/task-sheet";
+import { useTasks } from "@/hooks/use-tasks";
+import { toast } from "sonner";
+import type { Task, Column } from "@/types";
 
 interface KanbanBoardProps {
   projectId: string;
@@ -50,8 +36,11 @@ export function KanbanBoard({
   columns,
   initialTasks,
 }: KanbanBoardProps) {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const { tasks, setTasks, createTask, updateTask, deleteTask } =
+    useTasks(initialTasks);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -88,7 +77,6 @@ export function KanbanBoard({
     const activeTaskItem = tasks.find((t) => t._id === activeId);
     if (!activeTaskItem) return;
 
-    // Determine target column
     const overTask = tasks.find((t) => t._id === overId);
     const targetColumnId = overTask
       ? overTask.columnId
@@ -98,7 +86,6 @@ export function KanbanBoard({
 
     if (!targetColumnId || activeTaskItem.columnId === targetColumnId) return;
 
-    // Move task to new column (optimistic)
     setTasks((prev) =>
       prev.map((t) =>
         t._id === activeId ? { ...t, columnId: targetColumnId } : t,
@@ -116,15 +103,10 @@ export function KanbanBoard({
     const task = tasks.find((t) => t._id === activeId);
     if (!task) return;
 
-    // Persist the move to the API
     try {
-      await fetch(`/api/tasks/${activeId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          columnId: task.columnId,
-          order: task.order,
-        }),
+      await updateTask(activeId, {
+        columnId: task.columnId,
+        order: task.order,
       });
     } catch {
       // Revert on failure — reload tasks
@@ -133,56 +115,74 @@ export function KanbanBoard({
     }
   }
 
-  async function handleAddTask(columnId: string) {
-    const title = prompt("Task title:");
-    if (!title?.trim()) return;
-
+  async function handleAddTask(columnId: string, title: string) {
     try {
-      const res = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          projectId,
-          columnId,
-        }),
-      });
-      if (res.ok) {
-        const newTask = await res.json();
-        setTasks((prev) => [...prev, newTask]);
-      }
-    } catch {
-      // Task creation failed
+      await createTask({ title, projectId, columnId });
+      toast.success("Task created");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create task");
+      throw err;
     }
   }
 
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCorners}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {sortedColumns.map((column) => (
-          <SortableContext
-            key={column.id}
-            items={getColumnTasks(column.id).map((t) => t._id)}
-            strategy={horizontalListSortingStrategy}
-          >
-            <KanbanColumn
-              column={column}
-              tasks={getColumnTasks(column.id)}
-              onAddTask={() => handleAddTask(column.id)}
-            />
-          </SortableContext>
-        ))}
-      </div>
+  function handleTaskClick(task: Task) {
+    setSelectedTask(task);
+    setSheetOpen(true);
+  }
 
-      <DragOverlay>
-        {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
-      </DragOverlay>
-    </DndContext>
+  async function handleTaskUpdate(id: string, data: Partial<Task>) {
+    const updated = await updateTask(id, data);
+    setSelectedTask(updated);
+  }
+
+  async function handleTaskDelete(id: string) {
+    await deleteTask(id);
+    setSheetOpen(false);
+    setSelectedTask(null);
+  }
+
+  return (
+    <>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex gap-4 overflow-x-auto pb-4">
+          {sortedColumns.map((column) => (
+            <SortableContext
+              key={column.id}
+              items={getColumnTasks(column.id).map((t) => t._id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              <KanbanColumn
+                column={column}
+                tasks={getColumnTasks(column.id)}
+                onAddTask={(title) => handleAddTask(column.id, title)}
+                onTaskClick={handleTaskClick}
+              />
+            </SortableContext>
+          ))}
+        </div>
+
+        <DragOverlay>
+          {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+        </DragOverlay>
+      </DndContext>
+
+      <TaskSheet
+        task={selectedTask}
+        columns={columns}
+        open={sheetOpen}
+        onOpenChange={(open) => {
+          setSheetOpen(open);
+          if (!open) setSelectedTask(null);
+        }}
+        onUpdate={handleTaskUpdate}
+        onDelete={handleTaskDelete}
+      />
+    </>
   );
 }

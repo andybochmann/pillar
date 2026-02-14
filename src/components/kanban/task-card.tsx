@@ -6,22 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
-
-interface Task {
-  _id: string;
-  title: string;
-  description?: string;
-  columnId: string;
-  priority: "urgent" | "high" | "medium" | "low";
-  dueDate?: string;
-  order: number;
-  labels: string[];
-  recurrence?: { frequency: string };
-}
+import type { Task } from "@/types";
 
 interface TaskCardProps {
   task: Task;
   isOverlay?: boolean;
+  onClick?: () => void;
 }
 
 const priorityConfig = {
@@ -61,7 +51,7 @@ function getDueDateStyle(dueDateStr?: string) {
   };
 }
 
-export function TaskCard({ task, isOverlay }: TaskCardProps) {
+export function TaskCard({ task, isOverlay, onClick }: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -85,10 +75,12 @@ export function TaskCard({ task, isOverlay }: TaskCardProps) {
       style={style}
       {...attributes}
       {...listeners}
+      onClick={onClick}
       className={cn(
         "cursor-grab active:cursor-grabbing",
         isDragging && "opacity-50",
         isOverlay && "shadow-lg rotate-2",
+        onClick && "cursor-pointer hover:ring-1 hover:ring-primary/20",
       )}
     >
       <CardContent className="p-3 space-y-2">

@@ -1,36 +1,28 @@
 "use client";
 
+import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import { Button } from "@/components/ui/button";
 import { TaskCard } from "./task-card";
+import { TaskForm } from "@/components/tasks/task-form";
 import { cn } from "@/lib/utils";
-
-interface Column {
-  id: string;
-  name: string;
-  order: number;
-}
-
-interface Task {
-  _id: string;
-  title: string;
-  description?: string;
-  columnId: string;
-  priority: "urgent" | "high" | "medium" | "low";
-  dueDate?: string;
-  order: number;
-  labels: string[];
-  recurrence?: { frequency: string };
-}
+import type { Task, Column } from "@/types";
 
 interface KanbanColumnProps {
   column: Column;
   tasks: Task[];
-  onAddTask: () => void;
+  onAddTask: (title: string) => Promise<void>;
+  onTaskClick: (task: Task) => void;
 }
 
-export function KanbanColumn({ column, tasks, onAddTask }: KanbanColumnProps) {
+export function KanbanColumn({
+  column,
+  tasks,
+  onAddTask,
+  onTaskClick,
+}: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const [showForm, setShowForm] = useState(false);
 
   return (
     <div
@@ -52,7 +44,7 @@ export function KanbanColumn({ column, tasks, onAddTask }: KanbanColumnProps) {
           variant="ghost"
           size="icon"
           className="h-6 w-6"
-          onClick={onAddTask}
+          onClick={() => setShowForm(true)}
           aria-label={`Add task to ${column.name}`}
         >
           +
@@ -62,12 +54,25 @@ export function KanbanColumn({ column, tasks, onAddTask }: KanbanColumnProps) {
       {/* Task list */}
       <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
         {tasks.map((task) => (
-          <TaskCard key={task._id} task={task} />
+          <TaskCard
+            key={task._id}
+            task={task}
+            onClick={() => onTaskClick(task)}
+          />
         ))}
-        {tasks.length === 0 && (
+        {tasks.length === 0 && !showForm && (
           <p className="py-8 text-center text-xs text-muted-foreground">
             No tasks yet
           </p>
+        )}
+        {showForm && (
+          <TaskForm
+            onSubmit={async (title) => {
+              await onAddTask(title);
+              setShowForm(false);
+            }}
+            onCancel={() => setShowForm(false)}
+          />
         )}
       </div>
     </div>

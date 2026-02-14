@@ -8,45 +8,41 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-
-interface Category {
-  _id: string;
-  name: string;
-  color: string;
-}
-
-interface Project {
-  _id: string;
-  name: string;
-  categoryId: string;
-}
+import { CreateCategoryDialog } from "@/components/categories/create-dialog";
+import { CreateProjectDialog } from "@/components/projects/create-dialog";
+import { useCategories } from "@/hooks/use-categories";
+import { useProjects } from "@/hooks/use-projects";
 
 export function Sidebar() {
   const pathname = usePathname();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
+  const {
+    categories,
+    createCategory,
+    refresh: refreshCategories,
+  } = useCategories();
+  const { projects, createProject, refresh: refreshProjects } = useProjects();
   const [collapsed, setCollapsed] = useState(false);
+  const [showCategoryDialog, setShowCategoryDialog] = useState(false);
+  const [showProjectDialog, setShowProjectDialog] = useState(false);
+  const [projectDialogCategoryId, setProjectDialogCategoryId] = useState<
+    string | undefined
+  >();
 
+  // Re-fetch when navigating
   useEffect(() => {
-    async function loadData() {
-      try {
-        const [catRes, projRes] = await Promise.all([
-          fetch("/api/categories"),
-          fetch("/api/projects"),
-        ]);
-        if (catRes.ok) setCategories(await catRes.json());
-        if (projRes.ok) setProjects(await projRes.json());
-      } catch {
-        // Silently fail — sidebar will show empty state
-      }
-    }
-    loadData();
-  }, [pathname]);
+    refreshCategories();
+    refreshProjects();
+  }, [pathname, refreshCategories, refreshProjects]);
 
   const projectsByCategory = categories.map((cat) => ({
     ...cat,
     projects: projects.filter((p) => p.categoryId === cat._id),
   }));
+
+  function handleOpenProjectDialog(categoryId?: string) {
+    setProjectDialogCategoryId(categoryId);
+    setShowProjectDialog(true);
+  }
 
   return (
     <aside
@@ -109,16 +105,42 @@ export function Sidebar() {
               <Separator className="my-3" />
 
               {/* Categories & Projects */}
+              <div className="flex items-center justify-between px-3 py-1">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Categories
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  onClick={() => setShowCategoryDialog(true)}
+                  aria-label="Create category"
+                >
+                  +
+                </Button>
+              </div>
+
               {projectsByCategory.map((cat) => (
                 <div key={cat._id} className="space-y-1">
-                  <div className="flex items-center gap-2 px-3 py-1">
-                    <div
-                      className="h-2.5 w-2.5 rounded-full"
-                      style={{ backgroundColor: cat.color }}
-                    />
-                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {cat.name}
-                    </span>
+                  <div className="flex items-center justify-between px-3 py-1">
+                    <div className="flex items-center gap-2">
+                      <div
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                        {cat.name}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5"
+                      onClick={() => handleOpenProjectDialog(cat._id)}
+                      aria-label={`Add project to ${cat.name}`}
+                    >
+                      +
+                    </Button>
                   </div>
                   {cat.projects.map((project) => (
                     <Link
@@ -159,6 +181,21 @@ export function Sidebar() {
           </Button>
         )}
       </div>
+
+      <CreateCategoryDialog
+        open={showCategoryDialog}
+        onOpenChange={setShowCategoryDialog}
+        onCreate={createCategory}
+      />
+
+      <CreateProjectDialog
+        key={projectDialogCategoryId ?? "no-cat"}
+        open={showProjectDialog}
+        onOpenChange={setShowProjectDialog}
+        categories={categories}
+        defaultCategoryId={projectDialogCategoryId}
+        onCreate={createProject}
+      />
     </aside>
   );
 }

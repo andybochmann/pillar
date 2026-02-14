@@ -172,7 +172,9 @@ describe("Task Model", () => {
     });
 
     expect(tasks).toHaveLength(3);
-    expect(tasks[0].title).toBe("Low task");
+    // Sorted by order: Low(0), Urgent(0), High(1)
+    expect(tasks[0].order).toBe(0);
+    expect(tasks[2].title).toBe("High task");
   });
 
   it("queries tasks by due date range", async () => {
