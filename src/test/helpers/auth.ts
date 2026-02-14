@@ -1,12 +1,10 @@
-import { vi } from "vitest";
-
 interface MockSessionUser {
   id: string;
   name: string;
   email: string;
 }
 
-interface MockSession {
+export interface MockSession {
   user: MockSessionUser;
   expires: string;
 }
@@ -24,16 +22,4 @@ export function createMockSession(
     user: { ...defaultUser, ...overrides },
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
   };
-}
-
-export function mockAuthSession(
-  session: MockSession | null = createMockSession(),
-) {
-  vi.mock("next-auth", () => ({
-    default: vi.fn(),
-  }));
-
-  vi.mock("@/lib/auth", () => ({
-    auth: vi.fn(() => Promise.resolve(session)),
-  }));
 }

@@ -1,5 +1,6 @@
 export { setupTestDB, teardownTestDB, clearTestDB } from "./db";
-export { createMockSession, mockAuthSession } from "./auth";
+export { createMockSession } from "./auth";
+export type { MockSession } from "./auth";
 export {
   createTestUser,
   createTestCategory,

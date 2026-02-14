@@ -22,7 +22,7 @@ interface UseProjectsReturn {
     >,
   ) => Promise<Project>;
   deleteProject: (id: string) => Promise<void>;
-  refresh: () => Promise<void>;
+  refresh: (includeArchived?: boolean) => Promise<void>;
 }
 
 export function useProjects(): UseProjectsReturn {
@@ -30,11 +30,14 @@ export function useProjects(): UseProjectsReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProjects = useCallback(async () => {
+  const fetchProjects = useCallback(async (includeArchived = false) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch("/api/projects");
+      const url = includeArchived
+        ? "/api/projects?includeArchived=true"
+        : "/api/projects";
+      const res = await fetch(url);
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "Failed to fetch projects");

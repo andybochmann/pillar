@@ -14,7 +14,8 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  horizontalListSortingStrategy,
+  verticalListSortingStrategy,
+  arrayMove,
 } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
@@ -28,8 +29,6 @@ interface KanbanBoardProps {
   columns: Column[];
   initialTasks: Task[];
 }
-
-const PRIORITY_ORDER = { urgent: 0, high: 1, medium: 2, low: 3 };
 
 export function KanbanBoard({
   projectId,
@@ -54,11 +53,7 @@ export function KanbanBoard({
     (columnId: string) =>
       tasks
         .filter((t) => t.columnId === columnId)
-        .sort(
-          (a, b) =>
-            PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority] ||
-            a.order - b.order,
-        ),
+        .sort((a, b) => a.order - b.order),
     [tasks],
   );
 
@@ -84,13 +79,16 @@ export function KanbanBoard({
         ? overId
         : null;
 
-    if (!targetColumnId || activeTaskItem.columnId === targetColumnId) return;
+    if (!targetColumnId) return;
 
-    setTasks((prev) =>
-      prev.map((t) =>
-        t._id === activeId ? { ...t, columnId: targetColumnId } : t,
-      ),
-    );
+    // Cross-column move: update columnId
+    if (activeTaskItem.columnId !== targetColumnId) {
+      setTasks((prev) =>
+        prev.map((t) =>
+          t._id === activeId ? { ...t, columnId: targetColumnId } : t,
+        ),
+      );
+    }
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -100,18 +98,54 @@ export function KanbanBoard({
     if (!over) return;
 
     const activeId = active.id as string;
+    const overId = over.id as string;
+
     const task = tasks.find((t) => t._id === activeId);
     if (!task) return;
 
-    try {
-      await updateTask(activeId, {
-        columnId: task.columnId,
-        order: task.order,
+    // Compute new order for the column the task is now in
+    const columnTasks = tasks
+      .filter((t) => t.columnId === task.columnId)
+      .sort((a, b) => a.order - b.order);
+
+    const oldIndex = columnTasks.findIndex((t) => t._id === activeId);
+    const newIndex = columnTasks.findIndex((t) => t._id === overId);
+
+    if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
+      // Reorder within column
+      const reordered = arrayMove(columnTasks, oldIndex, newIndex);
+      const updates = reordered.map((t, i) => ({ ...t, order: i }));
+
+      setTasks((prev) => {
+        const otherTasks = prev.filter((t) => t.columnId !== task.columnId);
+        return [...otherTasks, ...updates];
       });
-    } catch {
-      // Revert on failure — reload tasks
-      const res = await fetch(`/api/tasks?projectId=${projectId}`);
-      if (res.ok) setTasks(await res.json());
+
+      // Persist to API
+      try {
+        await fetch("/api/tasks/reorder", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tasks: updates.map((t) => ({ id: t._id, order: t.order })),
+          }),
+        });
+      } catch {
+        // Revert on failure
+        const res = await fetch(`/api/tasks?projectId=${projectId}`);
+        if (res.ok) setTasks(await res.json());
+      }
+    } else {
+      // Cross-column move — just persist the columnId change
+      try {
+        await updateTask(activeId, {
+          columnId: task.columnId,
+          order: task.order,
+        });
+      } catch {
+        const res = await fetch(`/api/tasks?projectId=${projectId}`);
+        if (res.ok) setTasks(await res.json());
+      }
     }
   }
 
@@ -155,7 +189,7 @@ export function KanbanBoard({
             <SortableContext
               key={column.id}
               items={getColumnTasks(column.id).map((t) => t._id)}
-              strategy={horizontalListSortingStrategy}
+              strategy={verticalListSortingStrategy}
             >
               <KanbanColumn
                 column={column}

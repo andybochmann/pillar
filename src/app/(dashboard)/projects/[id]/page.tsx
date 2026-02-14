@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/db";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { redirect, notFound } from "next/navigation";
-import { KanbanBoard } from "@/components/kanban";
+import { ProjectView } from "@/components/projects/project-view";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -30,6 +30,22 @@ export default async function ProjectPage({ params }: PageProps) {
     .sort({ order: 1 })
     .lean();
 
+  const serializedProject = {
+    _id: project._id.toString(),
+    name: project.name,
+    description: project.description,
+    categoryId: project.categoryId.toString(),
+    userId: project.userId.toString(),
+    columns: project.columns.map((c) => ({
+      id: c.id,
+      name: c.name,
+      order: c.order,
+    })),
+    archived: project.archived,
+    createdAt: project.createdAt.toISOString(),
+    updatedAt: project.updatedAt.toISOString(),
+  };
+
   const serializedTasks = tasks.map((t) => ({
     _id: t._id.toString(),
     title: t.title,
@@ -53,25 +69,7 @@ export default async function ProjectPage({ params }: PageProps) {
     updatedAt: t.updatedAt.toISOString(),
   }));
 
-  const serializedColumns = project.columns.map((c) => ({
-    id: c.id,
-    name: c.name,
-    order: c.order,
-  }));
-
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-        {project.description && (
-          <p className="text-muted-foreground">{project.description}</p>
-        )}
-      </div>
-      <KanbanBoard
-        projectId={id}
-        columns={serializedColumns}
-        initialTasks={serializedTasks}
-      />
-    </div>
+    <ProjectView project={serializedProject} initialTasks={serializedTasks} />
   );
 }

@@ -9,13 +9,41 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { connectDB } from "@/lib/db";
+import { Task } from "@/models/task";
+import { startOfDay, endOfDay, addDays } from "date-fns";
 
 export default async function DashboardPage() {
   const session = await auth();
 
-  if (!session) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
+
+  await connectDB();
+
+  const now = new Date();
+  const todayStart = startOfDay(now);
+  const todayEnd = endOfDay(now);
+  const weekEnd = endOfDay(addDays(now, 7));
+
+  const userId = session.user.id;
+  const baseFilter = { userId, completedAt: null };
+
+  const [overdue, dueToday, dueThisWeek] = await Promise.all([
+    Task.countDocuments({
+      ...baseFilter,
+      dueDate: { $lt: todayStart },
+    }),
+    Task.countDocuments({
+      ...baseFilter,
+      dueDate: { $gte: todayStart, $lte: todayEnd },
+    }),
+    Task.countDocuments({
+      ...baseFilter,
+      dueDate: { $gte: todayStart, $lte: weekEnd },
+    }),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -33,7 +61,7 @@ export default async function DashboardPage() {
             <CardDescription>Tasks past their due date</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">0</p>
+            <p className="text-3xl font-bold">{overdue}</p>
           </CardContent>
         </Card>
         <Card>
@@ -42,7 +70,7 @@ export default async function DashboardPage() {
             <CardDescription>Tasks due today</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">0</p>
+            <p className="text-3xl font-bold">{dueToday}</p>
           </CardContent>
         </Card>
         <Card>
@@ -51,7 +79,7 @@ export default async function DashboardPage() {
             <CardDescription>Tasks due in the next 7 days</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-3xl font-bold">0</p>
+            <p className="text-3xl font-bold">{dueThisWeek}</p>
           </CardContent>
         </Card>
       </div>

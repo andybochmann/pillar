@@ -1,0 +1,328 @@
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  afterEach,
+  vi,
+} from "vitest";
+import mongoose from "mongoose";
+import { NextRequest } from "next/server";
+import {
+  setupTestDB,
+  teardownTestDB,
+  clearTestDB,
+  createTestUser,
+  createTestCategory,
+  createTestProject,
+  createTestTask,
+} from "@/test/helpers";
+import { GET, POST } from "./route";
+
+const session = vi.hoisted(() => ({
+  user: { id: "507f1f77bcf86cd799439011", name: "Test User", email: "test@example.com" },
+  expires: new Date(Date.now() + 86400000).toISOString(),
+}));
+
+vi.mock("@/lib/db", () => ({
+  connectDB: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/lib/auth", () => ({
+  auth: vi.fn(() => Promise.resolve(session)),
+}));
+
+describe("GET /api/tasks", () => {
+  let userId: mongoose.Types.ObjectId;
+  let projectId: mongoose.Types.ObjectId;
+
+  beforeAll(async () => {
+    await setupTestDB();
+  });
+
+  afterAll(async () => {
+    await teardownTestDB();
+  });
+
+  afterEach(async () => {
+    await clearTestDB();
+  });
+
+  async function setupFixtures() {
+    const user = await createTestUser({
+      email: "test@example.com",
+    });
+    userId = user._id as mongoose.Types.ObjectId;
+    // Override session user id to match the created user
+    session.user.id = userId.toString();
+
+    const category = await createTestCategory({ userId });
+    const project = await createTestProject({
+      categoryId: category._id as mongoose.Types.ObjectId,
+      userId,
+    });
+    projectId = project._id as mongoose.Types.ObjectId;
+    return { user, category, project };
+  }
+
+  function createRequest(params: Record<string, string> = {}) {
+    const url = new URL("http://localhost:3000/api/tasks");
+    for (const [key, value] of Object.entries(params)) {
+      url.searchParams.set(key, value);
+    }
+    return new NextRequest(url);
+  }
+
+  it("returns tasks filtered by projectId", async () => {
+    await setupFixtures();
+    await createTestTask({ projectId, userId, title: "Task 1" });
+    await createTestTask({ projectId, userId, title: "Task 2" });
+
+    const res = await GET(
+      createRequest({ projectId: projectId.toString() }),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveLength(2);
+  });
+
+  it("filters by priority", async () => {
+    await setupFixtures();
+    await createTestTask({ projectId, userId, priority: "urgent" });
+    await createTestTask({ projectId, userId, priority: "low" });
+    await createTestTask({ projectId, userId, priority: "urgent" });
+
+    const res = await GET(createRequest({ priority: "urgent" }));
+    const data = await res.json();
+    expect(data).toHaveLength(2);
+    expect(data.every((t: { priority: string }) => t.priority === "urgent")).toBe(true);
+  });
+
+  it("filters by multiple priorities", async () => {
+    await setupFixtures();
+    await createTestTask({ projectId, userId, priority: "urgent" });
+    await createTestTask({ projectId, userId, priority: "low" });
+    await createTestTask({ projectId, userId, priority: "high" });
+
+    const res = await GET(createRequest({ priority: "urgent,high" }));
+    const data = await res.json();
+    expect(data).toHaveLength(2);
+  });
+
+  it("filters by due date range", async () => {
+    await setupFixtures();
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Past",
+      dueDate: new Date("2025-01-01"),
+    });
+    await createTestTask({
+      projectId,
+      userId,
+      title: "InRange",
+      dueDate: new Date("2025-06-15"),
+    });
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Future",
+      dueDate: new Date("2026-01-01"),
+    });
+
+    const res = await GET(
+      createRequest({
+        dueDateFrom: "2025-06-01",
+        dueDateTo: "2025-06-30",
+      }),
+    );
+    const data = await res.json();
+    expect(data).toHaveLength(1);
+    expect(data[0].title).toBe("InRange");
+  });
+
+  it("filters by labels", async () => {
+    await setupFixtures();
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Tagged",
+      labels: ["bug", "frontend"],
+    });
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Untagged",
+      labels: [],
+    });
+
+    const res = await GET(createRequest({ labels: "bug" }));
+    const data = await res.json();
+    expect(data).toHaveLength(1);
+    expect(data[0].title).toBe("Tagged");
+  });
+
+  it("filters by completion status — completed", async () => {
+    await setupFixtures();
+    const task = await createTestTask({ projectId, userId, title: "Done" });
+    task.completedAt = new Date();
+    await task.save();
+    await createTestTask({ projectId, userId, title: "Open" });
+
+    const res = await GET(createRequest({ completed: "true" }));
+    const data = await res.json();
+    expect(data).toHaveLength(1);
+    expect(data[0].title).toBe("Done");
+  });
+
+  it("filters by completion status — incomplete", async () => {
+    await setupFixtures();
+    const task = await createTestTask({ projectId, userId, title: "Done" });
+    task.completedAt = new Date();
+    await task.save();
+    await createTestTask({ projectId, userId, title: "Open" });
+
+    const res = await GET(createRequest({ completed: "false" }));
+    const data = await res.json();
+    expect(data).toHaveLength(1);
+    expect(data[0].title).toBe("Open");
+  });
+
+  it("sorts by dueDate ascending", async () => {
+    await setupFixtures();
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Later",
+      dueDate: new Date("2025-12-01"),
+    });
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Sooner",
+      dueDate: new Date("2025-06-01"),
+    });
+
+    const res = await GET(createRequest({ sortBy: "dueDate" }));
+    const data = await res.json();
+    expect(data[0].title).toBe("Sooner");
+    expect(data[1].title).toBe("Later");
+  });
+
+  it("sorts by priority ascending", async () => {
+    await setupFixtures();
+    await createTestTask({ projectId, userId, title: "Low", priority: "low" });
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Urgent",
+      priority: "urgent",
+    });
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Medium",
+      priority: "medium",
+    });
+
+    const res = await GET(createRequest({ sortBy: "priority" }));
+    const data = await res.json();
+    expect(data[0].title).toBe("Urgent");
+    expect(data[1].title).toBe("Medium");
+    expect(data[2].title).toBe("Low");
+  });
+
+  it("returns 401 for unauthenticated request", async () => {
+    // Re-mock auth to return null
+    const { auth } = await import("@/lib/auth");
+    vi.mocked(auth).mockResolvedValueOnce(null);
+
+    const res = await GET(createRequest());
+    expect(res.status).toBe(401);
+  });
+});
+
+describe("POST /api/tasks", () => {
+  let userId: mongoose.Types.ObjectId;
+  let projectId: mongoose.Types.ObjectId;
+
+  beforeAll(async () => {
+    await setupTestDB();
+  });
+
+  afterAll(async () => {
+    await teardownTestDB();
+  });
+
+  afterEach(async () => {
+    await clearTestDB();
+  });
+
+  async function setupFixtures() {
+    const user = await createTestUser({ email: "post@example.com" });
+    userId = user._id as mongoose.Types.ObjectId;
+    session.user.id = userId.toString();
+
+    const category = await createTestCategory({ userId });
+    const project = await createTestProject({
+      categoryId: category._id as mongoose.Types.ObjectId,
+      userId,
+    });
+    projectId = project._id as mongoose.Types.ObjectId;
+  }
+
+  function createRequest(body: Record<string, unknown>) {
+    return new NextRequest("http://localhost:3000/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  }
+
+  it("creates a task successfully", async () => {
+    await setupFixtures();
+    const res = await POST(
+      createRequest({
+        title: "New Task",
+        projectId: projectId.toString(),
+        columnId: "todo",
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.title).toBe("New Task");
+    expect(data.columnId).toBe("todo");
+    expect(data.priority).toBe("medium");
+    expect(data.order).toBe(0);
+  });
+
+  it("returns 400 for missing title", async () => {
+    await setupFixtures();
+    const res = await POST(
+      createRequest({
+        projectId: projectId.toString(),
+        columnId: "todo",
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("auto-increments order", async () => {
+    await setupFixtures();
+    await createTestTask({ projectId, userId, columnId: "todo", order: 0 });
+
+    const res = await POST(
+      createRequest({
+        title: "Second Task",
+        projectId: projectId.toString(),
+        columnId: "todo",
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.order).toBe(1);
+  });
+});

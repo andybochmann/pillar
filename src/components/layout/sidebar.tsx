@@ -7,6 +7,7 @@ import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { CreateCategoryDialog } from "@/components/categories/create-dialog";
 import { CreateProjectDialog } from "@/components/projects/create-dialog";
@@ -27,12 +28,13 @@ export function Sidebar() {
   const [projectDialogCategoryId, setProjectDialogCategoryId] = useState<
     string | undefined
   >();
+  const [showArchived, setShowArchived] = useState(false);
 
-  // Re-fetch when navigating
+  // Re-fetch when navigating or archive toggle changes
   useEffect(() => {
     refreshCategories();
-    refreshProjects();
-  }, [pathname, refreshCategories, refreshProjects]);
+    refreshProjects(showArchived);
+  }, [pathname, refreshCategories, refreshProjects, showArchived]);
 
   const projectsByCategory = categories.map((cat) => ({
     ...cat,
@@ -150,9 +152,15 @@ export function Sidebar() {
                         "flex items-center rounded-md px-3 py-2 pl-7 text-sm transition-colors hover:bg-accent",
                         pathname === `/projects/${project._id}` &&
                           "bg-accent font-medium",
+                        project.archived && "opacity-50",
                       )}
                     >
                       {project.name}
+                      {project.archived && (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          archived
+                        </span>
+                      )}
                     </Link>
                   ))}
                 </div>
@@ -163,6 +171,20 @@ export function Sidebar() {
                   No categories yet. Create one to get started.
                 </p>
               )}
+
+              <Separator className="my-3" />
+
+              <div className="flex items-center justify-between px-3 py-1">
+                <span className="text-xs text-muted-foreground">
+                  Show archived
+                </span>
+                <Switch
+                  checked={showArchived}
+                  onCheckedChange={setShowArchived}
+                  aria-label="Show archived projects"
+                  className="scale-75"
+                />
+              </div>
             </>
           )}
         </nav>
