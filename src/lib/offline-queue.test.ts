@@ -27,10 +27,18 @@ describe("offline-queue", () => {
   });
 
   it("retrieves all queued mutations sorted by timestamp", async () => {
-    await addToQueue({ method: "POST", url: "/api/tasks", body: { title: "First" } });
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "First" },
+    });
     // Small delay to ensure distinct timestamps
     await new Promise((r) => setTimeout(r, 5));
-    await addToQueue({ method: "PATCH", url: "/api/tasks/123", body: { title: "Updated" } });
+    await addToQueue({
+      method: "PATCH",
+      url: "/api/tasks/123",
+      body: { title: "Updated" },
+    });
     await new Promise((r) => setTimeout(r, 5));
     await addToQueue({ method: "DELETE", url: "/api/tasks/456" });
 
@@ -45,7 +53,11 @@ describe("offline-queue", () => {
   });
 
   it("removes a mutation by id", async () => {
-    const entry = await addToQueue({ method: "POST", url: "/api/tasks", body: {} });
+    const entry = await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: {},
+    });
     await addToQueue({ method: "DELETE", url: "/api/tasks/789" });
 
     await removeFromQueue(entry.id);

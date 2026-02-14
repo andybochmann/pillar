@@ -5,7 +5,12 @@ export async function offlineFetch(
   init?: RequestInit,
 ): Promise<Response> {
   const method = (init?.method ?? "GET").toUpperCase();
-  const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+  const url =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url;
 
   // GET requests pass through — SW cache handles offline GETs
   if (method === "GET") {

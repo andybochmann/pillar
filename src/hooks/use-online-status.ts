@@ -20,6 +20,10 @@ function getServerSnapshot() {
 }
 
 export function useOnlineStatus() {
-  const isOnline = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const isOnline = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    getServerSnapshot,
+  );
   return { isOnline };
 }

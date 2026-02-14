@@ -14,12 +14,21 @@ describe("offlineFetch", () => {
 
     const res = await offlineFetch("/api/tasks?projectId=123");
     expect(res).toBe(mockResponse);
-    expect(globalThis.fetch).toHaveBeenCalledWith("/api/tasks?projectId=123", undefined);
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/tasks?projectId=123",
+      undefined,
+    );
   });
 
   it("passes through mutations when online and fetch succeeds", async () => {
-    Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true });
-    const mockResponse = new Response(JSON.stringify({ _id: "real-id" }), { status: 200 });
+    Object.defineProperty(navigator, "onLine", {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+    const mockResponse = new Response(JSON.stringify({ _id: "real-id" }), {
+      status: 200,
+    });
     vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse);
 
     const res = await offlineFetch("/api/tasks", {
@@ -34,7 +43,11 @@ describe("offlineFetch", () => {
   });
 
   it("queues mutations when offline and returns synthetic response", async () => {
-    Object.defineProperty(navigator, "onLine", { value: false, writable: true, configurable: true });
+    Object.defineProperty(navigator, "onLine", {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
 
     const res = await offlineFetch("/api/tasks", {
       method: "POST",
@@ -54,7 +67,11 @@ describe("offlineFetch", () => {
   });
 
   it("queues mutations when online but fetch fails", async () => {
-    Object.defineProperty(navigator, "onLine", { value: true, writable: true, configurable: true });
+    Object.defineProperty(navigator, "onLine", {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
 
     const res = await offlineFetch("/api/tasks/1", {
@@ -70,7 +87,11 @@ describe("offlineFetch", () => {
   });
 
   it("returns empty body for offline DELETE", async () => {
-    Object.defineProperty(navigator, "onLine", { value: false, writable: true, configurable: true });
+    Object.defineProperty(navigator, "onLine", {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
 
     const res = await offlineFetch("/api/tasks/42", {
       method: "DELETE",

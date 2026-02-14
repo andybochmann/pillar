@@ -20,7 +20,10 @@ export function InstallPromptCard() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(() => {
-    if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+    if (
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function"
+    ) {
       return window.matchMedia("(display-mode: standalone)").matches;
     }
     return false;

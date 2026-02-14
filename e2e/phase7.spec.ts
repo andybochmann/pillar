@@ -72,7 +72,10 @@ test.describe("Phase 7: PWA & Offline", () => {
   });
 
   test.describe("Offline banner", () => {
-    test("offline banner appears when going offline", async ({ page, context }) => {
+    test("offline banner appears when going offline", async ({
+      page,
+      context,
+    }) => {
       await login(page);
 
       // Ensure SW is ready so offline mode works
@@ -101,12 +104,17 @@ test.describe("Phase 7: PWA & Offline", () => {
       const response = await page.goto("/offline.html");
       expect(response?.status()).toBe(200);
       await expect(page.getByText("You're offline")).toBeVisible();
-      await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Try again" }),
+      ).toBeVisible();
     });
   });
 
   test.describe("Offline mutation queue", () => {
-    test("mutations are queued when offline and synced on reconnect", async ({ page, context }) => {
+    test("mutations are queued when offline and synced on reconnect", async ({
+      page,
+      context,
+    }) => {
       await login(page);
 
       // Navigate to ensure SW caches API data
@@ -116,17 +124,23 @@ test.describe("Phase 7: PWA & Offline", () => {
       await page.getByRole("button", { name: "Create category" }).click();
       await page.getByLabel("Category name").fill("PWA Test Category");
       await page.getByRole("button", { name: "Create" }).click();
-      await expect(page.getByText("PWA Test Category")).toBeVisible({ timeout: 5000 });
+      await expect(page.getByText("PWA Test Category")).toBeVisible({
+        timeout: 5000,
+      });
 
       // Create a project
-      await page.getByRole("button", { name: /Add project to PWA Test Category/ }).click();
+      await page
+        .getByRole("button", { name: /Add project to PWA Test Category/ })
+        .click();
       await page.getByLabel("Project name").fill("PWA Test Project");
       await page.getByRole("button", { name: "Create" }).click();
 
       // Navigate to the project
       await ensureSidebar(page);
       await page.getByRole("link", { name: "PWA Test Project" }).click();
-      await expect(page.getByRole("heading", { name: "PWA Test Project" })).toBeVisible({ timeout: 10000 });
+      await expect(
+        page.getByRole("heading", { name: "PWA Test Project" }),
+      ).toBeVisible({ timeout: 10000 });
 
       // Wait for SW to be ready and cache the board data
       await page.evaluate(() => navigator.serviceWorker?.ready);
@@ -150,11 +164,15 @@ test.describe("Phase 7: PWA & Offline", () => {
   });
 
   test.describe("Install prompt", () => {
-    test("settings page renders without install prompt in automated browser", async ({ page }) => {
+    test("settings page renders without install prompt in automated browser", async ({
+      page,
+    }) => {
       await login(page);
       await ensureSidebar(page);
       await page.getByRole("link", { name: "Settings" }).click();
-      await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible({ timeout: 10000 });
+      await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible(
+        { timeout: 10000 },
+      );
 
       // In automated Chromium, beforeinstallprompt doesn't fire
       // so the install card should not be visible

@@ -33,8 +33,16 @@ describe("useOfflineQueue", () => {
   });
 
   it("reflects queue count", async () => {
-    await addToQueue({ method: "POST", url: "/api/tasks", body: { title: "A" } });
-    await addToQueue({ method: "POST", url: "/api/tasks", body: { title: "B" } });
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "A" },
+    });
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "B" },
+    });
 
     // Go offline so auto-sync doesn't fire
     Object.defineProperty(navigator, "onLine", {
@@ -57,11 +65,15 @@ describe("useOfflineQueue", () => {
       configurable: true,
     });
 
-    await addToQueue({ method: "POST", url: "/api/tasks", body: { title: "queued" } });
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "queued" },
+    });
 
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({}), { status: 200 }),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
 
     const { result } = renderHook(() => useOfflineQueue());
 

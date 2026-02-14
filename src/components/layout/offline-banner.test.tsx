@@ -34,9 +34,7 @@ describe("OfflineBanner", () => {
       configurable: true,
     });
     render(<OfflineBanner />);
-    expect(
-      screen.getByText(/you're offline/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/you're offline/i)).toBeInTheDocument();
   });
 
   it("has a status role for accessibility", () => {

@@ -49,8 +49,12 @@ describe("InstallPromptCard", () => {
     });
 
     expect(screen.getByText("Install Pillar")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /install/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /dismiss/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /install/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /dismiss/i }),
+    ).toBeInTheDocument();
   });
 
   it("persists dismissal to localStorage", async () => {

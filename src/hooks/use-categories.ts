@@ -89,7 +89,9 @@ export function useCategories(): UseCategoriesReturn {
   );
 
   const deleteCategory = useCallback(async (id: string) => {
-    const res = await offlineFetch(`/api/categories/${id}`, { method: "DELETE" });
+    const res = await offlineFetch(`/api/categories/${id}`, {
+      method: "DELETE",
+    });
     if (!res.ok) {
       const body = await res.json();
       throw new Error(body.error || "Failed to delete category");

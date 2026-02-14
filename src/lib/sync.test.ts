@@ -9,12 +9,22 @@ describe("sync", () => {
   });
 
   it("replays queued mutations and removes successful ones", async () => {
-    await addToQueue({ method: "POST", url: "/api/tasks", body: { title: "A" } });
-    await addToQueue({ method: "PATCH", url: "/api/tasks/1", body: { title: "B" } });
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "A" },
+    });
+    await addToQueue({
+      method: "PATCH",
+      url: "/api/tasks/1",
+      body: { title: "B" },
+    });
 
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ ok: true }), { status: 200 }),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ ok: true }), { status: 200 }),
+      );
 
     const result = await replayQueue();
 
@@ -45,11 +55,17 @@ describe("sync", () => {
   });
 
   it("does not retry on 4xx errors", async () => {
-    await addToQueue({ method: "POST", url: "/api/tasks", body: { title: "Bad" } });
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "Bad" },
+    });
 
-    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ error: "Bad request" }), { status: 400 }),
-    );
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({ error: "Bad request" }), { status: 400 }),
+      );
 
     const result = await replayQueue();
 
@@ -59,15 +75,17 @@ describe("sync", () => {
   });
 
   it("retries on network errors with backoff", async () => {
-    await addToQueue({ method: "PATCH", url: "/api/tasks/1", body: { title: "X" } });
+    await addToQueue({
+      method: "PATCH",
+      url: "/api/tasks/1",
+      body: { title: "X" },
+    });
 
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockRejectedValueOnce(new Error("Network error"))
       .mockRejectedValueOnce(new Error("Network error"))
-      .mockResolvedValueOnce(
-        new Response(JSON.stringify({}), { status: 200 }),
-      );
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }));
 
     const result = await replayQueue();
 

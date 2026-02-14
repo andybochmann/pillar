@@ -5,22 +5,35 @@ const PRECACHE_NAME = "pillar-precache-v1";
 const API_CACHE_NAME = "pillar-api-v1";
 const STATIC_CACHE_NAME = "pillar-static-v1";
 
-const PRECACHE_URLS = ["/offline.html", "/manifest.json", "/icons/icon-192x192.png", "/icons/icon-512x512.png"];
+const PRECACHE_URLS = [
+  "/offline.html",
+  "/manifest.json",
+  "/icons/icon-192x192.png",
+  "/icons/icon-512x512.png",
+];
 
 // Install: precache critical assets
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(PRECACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)));
+  event.waitUntil(
+    caches.open(PRECACHE_NAME).then((cache) => cache.addAll(PRECACHE_URLS)),
+  );
   self.skipWaiting();
 });
 
 // Activate: clean old caches
 self.addEventListener("activate", (event) => {
-  const currentCaches = new Set([PRECACHE_NAME, API_CACHE_NAME, STATIC_CACHE_NAME]);
+  const currentCaches = new Set([
+    PRECACHE_NAME,
+    API_CACHE_NAME,
+    STATIC_CACHE_NAME,
+  ]);
   event.waitUntil(
     caches
       .keys()
       .then((names) => names.filter((name) => !currentCaches.has(name)))
-      .then((toDelete) => Promise.all(toDelete.map((name) => caches.delete(name))))
+      .then((toDelete) =>
+        Promise.all(toDelete.map((name) => caches.delete(name))),
+      )
       .then(() => self.clients.claim()),
   );
 });
@@ -37,13 +50,20 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
 
   // Static assets (_next/static, fonts, icons): cache-first
-  if (url.pathname.startsWith("/_next/static") || url.pathname.startsWith("/icons") || url.pathname.startsWith("/fonts")) {
+  if (
+    url.pathname.startsWith("/_next/static") ||
+    url.pathname.startsWith("/icons") ||
+    url.pathname.startsWith("/fonts")
+  ) {
     event.respondWith(cacheFirst(request, STATIC_CACHE_NAME));
     return;
   }
 
   // API GET requests: network-first with cache fallback
-  if (url.pathname.startsWith("/api/") && !url.pathname.startsWith("/api/auth")) {
+  if (
+    url.pathname.startsWith("/api/") &&
+    !url.pathname.startsWith("/api/auth")
+  ) {
     event.respondWith(networkFirst(request, API_CACHE_NAME));
     return;
   }
