@@ -232,6 +232,15 @@ export function KanbanBoard({
     setSheetOpen(true);
   }
 
+  async function handlePriorityChange(taskId: string, priority: Priority) {
+    try {
+      await updateTask(taskId, { priority });
+      toast.success(`Priority set to ${priority}`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
   async function handleTaskUpdate(id: string, data: Partial<Task>) {
     const updated = await updateTask(id, data);
     setSelectedTask(updated);
@@ -308,7 +317,7 @@ export function KanbanBoard({
   }
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
       <BoardFilterBar
         filters={filters}
         onChange={setFilters}
@@ -329,7 +338,7 @@ export function KanbanBoard({
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto pb-4">
           {sortedColumns.map((column) => (
             <SortableContext
               key={column.id}
@@ -341,6 +350,7 @@ export function KanbanBoard({
                 tasks={getColumnTasks(column.id)}
                 onAddTask={(title) => handleAddTask(column.id, title)}
                 onTaskClick={handleTaskClick}
+                onPriorityChange={handlePriorityChange}
                 labelColors={labelColors}
                 selectedIds={selectedIds}
                 onSelect={toggleSelection}
@@ -380,6 +390,6 @@ export function KanbanBoard({
       <div aria-live="assertive" className="sr-only" role="status">
         {dndAnnouncement}
       </div>
-    </>
+    </div>
   );
 }

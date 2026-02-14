@@ -4,19 +4,29 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Check } from "lucide-react";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
-import type { Task } from "@/types";
+import type { Task, Priority } from "@/types";
 
 interface TaskCardProps {
   task: Task;
   isOverlay?: boolean;
   onClick?: () => void;
+  onPriorityChange?: (taskId: string, priority: Priority) => void;
   labelColors?: Map<string, string>;
   selected?: boolean;
   onSelect?: (taskId: string) => void;
 }
+
+const priorities: Priority[] = ["urgent", "high", "medium", "low"];
 
 const priorityConfig = {
   urgent: {
@@ -59,6 +69,7 @@ export function TaskCard({
   task,
   isOverlay,
   onClick,
+  onPriorityChange,
   labelColors,
   selected,
   onSelect,
@@ -121,9 +132,47 @@ export function TaskCard({
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
-          <Badge className={cn("text-xs", priority.className)}>
-            {priority.label}
-          </Badge>
+          {onPriorityChange ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                <Badge
+                  className={cn("text-xs cursor-pointer", priority.className)}
+                  tabIndex={0}
+                >
+                  {priority.label}
+                </Badge>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="start"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {priorities.map((p) => {
+                  const config = priorityConfig[p];
+                  return (
+                    <DropdownMenuItem
+                      key={p}
+                      onClick={() => onPriorityChange(task._id, p)}
+                    >
+                      <span
+                        className={cn(
+                          "mr-2 inline-block h-2 w-2 rounded-full",
+                          config.className,
+                        )}
+                      />
+                      {config.label}
+                      {task.priority === p && (
+                        <Check className="ml-auto h-4 w-4" />
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Badge className={cn("text-xs", priority.className)}>
+              {priority.label}
+            </Badge>
+          )}
           {dueDateStyle && (
             <span
               className={cn(

@@ -7,13 +7,14 @@ import { Button } from "@/components/ui/button";
 import { TaskCard } from "./task-card";
 import { TaskForm } from "@/components/tasks/task-form";
 import { cn } from "@/lib/utils";
-import type { Task, Column } from "@/types";
+import type { Task, Column, Priority } from "@/types";
 
 interface KanbanColumnProps {
   column: Column;
   tasks: Task[];
   onAddTask: (title: string) => Promise<void>;
   onTaskClick: (task: Task) => void;
+  onPriorityChange?: (taskId: string, priority: Priority) => void;
   labelColors?: Map<string, string>;
   selectedIds?: Set<string>;
   onSelect?: (taskId: string) => void;
@@ -26,6 +27,7 @@ export function KanbanColumn({
   tasks,
   onAddTask,
   onTaskClick,
+  onPriorityChange,
   labelColors,
   selectedIds,
   onSelect,
@@ -47,7 +49,7 @@ export function KanbanColumn({
       role="region"
       aria-label={`${column.name} column, ${tasks.length} tasks`}
       className={cn(
-        "flex w-72 min-w-[18rem] flex-shrink-0 flex-col rounded-lg bg-muted/50 p-3",
+        "flex w-64 min-w-[16rem] flex-shrink-0 flex-col rounded-lg bg-muted/50 p-3 sm:w-72 sm:min-w-[18rem]",
         isOver && "ring-2 ring-primary/30",
       )}
     >
@@ -77,6 +79,7 @@ export function KanbanColumn({
             key={task._id}
             task={task}
             onClick={() => onTaskClick(task)}
+            onPriorityChange={onPriorityChange}
             labelColors={labelColors}
             selected={selectedIds?.has(task._id)}
             onSelect={onSelect}
