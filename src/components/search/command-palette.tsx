@@ -115,7 +115,7 @@ export function CommandPalette() {
           Search for tasks across all projects
         </DialogDescription>
       </DialogHeader>
-      <DialogContent className="overflow-hidden p-0">
+      <DialogContent className="overflow-hidden p-0" showCloseButton={false}>
         <Command shouldFilter={false}>
           <CommandInput
             placeholder="Search tasks…"
