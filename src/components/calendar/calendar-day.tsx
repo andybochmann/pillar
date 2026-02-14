@@ -40,7 +40,7 @@ export function CalendarDay({
     <div
       ref={setNodeRef}
       className={cn(
-        "min-h-24 border-t p-1 transition-colors",
+        "min-h-16 border-t p-0.5 transition-colors sm:min-h-24 sm:p-1",
         !isCurrentMonth && "bg-muted/30 text-muted-foreground",
         isOver && "bg-accent/40",
       )}
@@ -49,7 +49,7 @@ export function CalendarDay({
         type="button"
         onClick={() => onDateClick(date)}
         className={cn(
-          "mb-1 flex h-7 w-7 items-center justify-center rounded-full text-sm",
+          "mb-0.5 flex h-6 w-6 items-center justify-center rounded-full text-xs sm:mb-1 sm:h-7 sm:w-7 sm:text-sm",
           today && "bg-primary text-primary-foreground font-bold",
           !today && "hover:bg-accent",
         )}

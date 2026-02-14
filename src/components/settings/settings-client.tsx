@@ -145,7 +145,7 @@ export function SettingsClient({ profile }: SettingsClientProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {themeOptions.map((option) => {
               const Icon = option.icon;
               const isActive = mounted && theme === option.value;

@@ -56,9 +56,9 @@ export function TaskSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto sm:max-w-lg">
-        <SheetHeader>
-          <SheetTitle className="sr-only">Edit Task</SheetTitle>
+      <SheetContent className="overflow-y-auto p-0 sm:max-w-lg">
+        <SheetHeader className="sr-only">
+          <SheetTitle>Edit Task</SheetTitle>
         </SheetHeader>
         <TaskSheetForm
           key={task._id}
@@ -194,131 +194,115 @@ function TaskSheetForm({
     }
   }
 
-  async function handleMarkComplete() {
-    try {
-      await onUpdate(task._id, {
-        completedAt: task.completedAt ? null : new Date().toISOString(),
-      });
-      toast.success(task.completedAt ? "Task reopened" : "Task completed");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to update task");
-    }
-  }
-
   return (
     <>
-      <div className="space-y-6 py-4">
-        {/* Title */}
-        <div className="space-y-2">
-          <Label htmlFor="task-title">Title</Label>
-          <Input
-            id="task-title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            onBlur={handleTitleBlur}
-            className="text-lg font-semibold"
-          />
-        </div>
-
-        {/* Description */}
-        <div className="space-y-2">
-          <Label htmlFor="task-description">Description</Label>
-          <Textarea
-            id="task-description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            onBlur={handleDescriptionBlur}
-            placeholder="Add a description…"
-            rows={4}
-          />
-        </div>
-
-        <Separator />
-
-        {/* Priority & Column */}
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="task-priority">Priority</Label>
-            <Select value={priority} onValueChange={handlePriorityChange}>
-              <SelectTrigger id="task-priority">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {PRIORITIES.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <div className="flex flex-1 flex-col px-6 pt-8 pb-6">
+        <div className="space-y-5">
+          {/* Title */}
+          <div className="space-y-1.5">
+            <Label htmlFor="task-title">Title</Label>
+            <Input
+              id="task-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={handleTitleBlur}
+              className="text-lg font-semibold"
+            />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="task-column">Column</Label>
-            <Select value={columnId} onValueChange={handleColumnChange}>
-              <SelectTrigger id="task-column">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {columns.map((col) => (
-                  <SelectItem key={col.id} value={col.id}>
-                    {col.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* Description */}
+          <div className="space-y-1.5">
+            <Label htmlFor="task-description">Description</Label>
+            <Textarea
+              id="task-description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={handleDescriptionBlur}
+              placeholder="Add a description…"
+              rows={3}
+            />
+          </div>
+
+          <Separator />
+
+          {/* Priority & Column */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="task-priority">Priority</Label>
+              <Select value={priority} onValueChange={handlePriorityChange}>
+                <SelectTrigger id="task-priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRIORITIES.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="task-column">Column</Label>
+              <Select value={columnId} onValueChange={handleColumnChange}>
+                <SelectTrigger id="task-column">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {columns.map((col) => (
+                    <SelectItem key={col.id} value={col.id}>
+                      {col.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Due Date & Recurrence */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="task-due-date">Due Date</Label>
+              <Input
+                id="task-due-date"
+                type="date"
+                value={dueDate}
+                onChange={(e) => handleDueDateChange(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Recurrence</Label>
+              <RecurrencePicker
+                value={recurrence}
+                onChange={handleRecurrenceChange}
+              />
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Labels */}
+          <div className="space-y-1.5">
+            <Label>Labels</Label>
+            <LabelPicker
+              labels={allLabels ?? []}
+              selectedLabels={labels}
+              onToggle={handleToggleLabel}
+              onCreate={handleCreateLabel}
+            />
           </div>
         </div>
 
-        {/* Due Date */}
-        <div className="space-y-2">
-          <Label htmlFor="task-due-date">Due Date</Label>
-          <Input
-            id="task-due-date"
-            type="date"
-            value={dueDate}
-            onChange={(e) => handleDueDateChange(e.target.value)}
-          />
-        </div>
-
-        {/* Recurrence */}
-        <div className="space-y-2">
-          <Label>Recurrence</Label>
-          <RecurrencePicker
-            value={recurrence}
-            onChange={handleRecurrenceChange}
-          />
-        </div>
-
-        <Separator />
-
-        {/* Labels */}
-        <div className="space-y-2">
-          <Label>Labels</Label>
-          <LabelPicker
-            labels={allLabels ?? []}
-            selectedLabels={labels}
-            onToggle={handleToggleLabel}
-            onCreate={handleCreateLabel}
-          />
-        </div>
-
-        <Separator />
-
-        {/* Actions */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            className="flex-1"
-            onClick={handleMarkComplete}
-          >
-            {task.completedAt ? "Reopen" : "Mark Complete"}
-          </Button>
+        {/* Delete action pinned to bottom */}
+        <div className="mt-auto pt-6">
           <Button
             variant="destructive"
+            className="w-full"
             onClick={() => setShowDeleteConfirm(true)}
           >
-            Delete
+            Delete Task
           </Button>
         </div>
       </div>

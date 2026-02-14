@@ -28,7 +28,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Task } from "@/types";
 
-const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
+const WEEKDAYS_FULL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface CalendarViewProps {
   tasks: Task[];
@@ -162,12 +163,13 @@ export function CalendarView({
         <div className="rounded-lg border">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 border-b">
-            {WEEKDAYS.map((day) => (
+            {WEEKDAYS_FULL.map((day, i) => (
               <div
                 key={day}
-                className="py-2 text-center text-sm font-medium text-muted-foreground"
+                className="py-1 text-center text-xs font-medium text-muted-foreground sm:py-2 sm:text-sm"
               >
-                {day}
+                <span className="hidden sm:inline">{day}</span>
+                <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
               </div>
             ))}
           </div>

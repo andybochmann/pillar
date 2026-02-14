@@ -56,7 +56,7 @@ export function ProjectView({ project, initialTasks }: ProjectViewProps) {
   }, [currentProject._id, router]);
 
   return (
-    <div className="space-y-4">
+    <div className="flex h-full flex-col gap-4">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">

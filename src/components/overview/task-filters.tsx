@@ -38,12 +38,12 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
   const hasFilters = searchParams.toString().length > 0;
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
       <Select
         value={searchParams.get("projectId") ?? "all"}
         onValueChange={(v) => setParam("projectId", v)}
       >
-        <SelectTrigger className="w-44">
+        <SelectTrigger className="w-full sm:w-44">
           <SelectValue placeholder="All projects" />
         </SelectTrigger>
         <SelectContent>
@@ -60,7 +60,7 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
         value={searchParams.get("priority") ?? "all"}
         onValueChange={(v) => setParam("priority", v)}
       >
-        <SelectTrigger className="w-32">
+        <SelectTrigger className="w-full sm:w-32">
           <SelectValue placeholder="Priority" />
         </SelectTrigger>
         <SelectContent>
@@ -76,7 +76,7 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
         value={searchParams.get("completed") ?? "false"}
         onValueChange={(v) => setParam("completed", v)}
       >
-        <SelectTrigger className="w-36">
+        <SelectTrigger className="w-full sm:w-36">
           <SelectValue placeholder="Status" />
         </SelectTrigger>
         <SelectContent>
@@ -90,7 +90,7 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
         value={searchParams.get("sortBy") ?? "order"}
         onValueChange={(v) => setParam("sortBy", v)}
       >
-        <SelectTrigger className="w-36">
+        <SelectTrigger className="w-full sm:w-36">
           <SelectValue placeholder="Sort by" />
         </SelectTrigger>
         <SelectContent>
@@ -104,7 +104,7 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
       <Input
         type="text"
         placeholder="Filter by label..."
-        className="w-40"
+        className="w-full sm:w-40"
         defaultValue={searchParams.get("labels") ?? ""}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
