@@ -30,33 +30,25 @@ export default async function OverviewPage({
   if (params.priority) filter.priority = { $in: params.priority.split(",") };
   if (params.labels) filter.labels = { $in: params.labels.split(",") };
 
-  if (params.completed === "true") {
-    filter.completedAt = { $ne: null };
-  } else if (params.completed !== "all") {
-    filter.completedAt = null;
-  }
+  if (params.completed === "true") filter.completedAt = { $ne: null };
+  else if (params.completed !== "all") filter.completedAt = null;
 
   if (params.dueDateFrom || params.dueDateTo) {
     const dateFilter: Record<string, Date> = {};
-    if (params.dueDateFrom)
-      dateFilter.$gte = startOfDay(new Date(params.dueDateFrom));
-    if (params.dueDateTo)
-      dateFilter.$lte = endOfDay(new Date(params.dueDateTo));
+    if (params.dueDateFrom) dateFilter.$gte = startOfDay(new Date(params.dueDateFrom));
+    if (params.dueDateTo) dateFilter.$lte = endOfDay(new Date(params.dueDateTo));
     filter.dueDate = dateFilter;
   }
 
   let sort: Record<string, SortOrder> = { order: 1 };
   const sortOrder: SortOrder = params.sortOrder === "desc" ? -1 : 1;
   if (params.sortBy === "dueDate") sort = { dueDate: sortOrder, order: 1 };
-  else if (params.sortBy === "priority")
-    sort = { priority: sortOrder, order: 1 };
+  else if (params.sortBy === "priority") sort = { priority: sortOrder, order: 1 };
   else if (params.sortBy === "createdAt") sort = { createdAt: sortOrder };
 
   const [tasksRaw, projectsRaw] = await Promise.all([
     Task.find(filter).sort(sort).lean(),
-    Project.find({ userId: session.user.id, archived: false })
-      .sort({ createdAt: -1 })
-      .lean(),
+    Project.find({ userId: session.user.id, archived: false }).sort({ createdAt: -1 }).lean(),
   ]);
 
   const tasks: TaskType[] = JSON.parse(JSON.stringify(tasksRaw));

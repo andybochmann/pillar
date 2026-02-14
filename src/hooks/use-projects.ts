@@ -35,9 +35,7 @@ export function useProjects(): UseProjectsReturn {
     try {
       setLoading(true);
       setError(null);
-      const url = includeArchived
-        ? "/api/projects?includeArchived=true"
-        : "/api/projects";
+      const url = includeArchived ? "/api/projects?includeArchived=true" : "/api/projects";
       const res = await fetch(url);
       if (!res.ok) {
         const data = await res.json();
@@ -45,7 +43,7 @@ export function useProjects(): UseProjectsReturn {
       }
       setProjects(await res.json());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch projects");
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }

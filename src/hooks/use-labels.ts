@@ -33,7 +33,7 @@ export function useLabels(): UseLabelsReturn {
       }
       setLabels(await res.json());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch labels");
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }

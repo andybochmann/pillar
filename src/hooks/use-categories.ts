@@ -37,9 +37,7 @@ export function useCategories(): UseCategoriesReturn {
       }
       setCategories(await res.json());
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch categories",
-      );
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }

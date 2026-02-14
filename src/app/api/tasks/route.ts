@@ -34,6 +34,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const projectId = searchParams.get("projectId");
   const columnId = searchParams.get("columnId");
+  const search = searchParams.get("search");
   const priority = searchParams.get("priority");
   const dueDateFrom = searchParams.get("dueDateFrom");
   const dueDateTo = searchParams.get("dueDateTo");
@@ -43,29 +44,18 @@ export async function GET(request: Request) {
   const sortOrder = searchParams.get("sortOrder") === "desc" ? -1 : 1;
 
   const filter: Record<string, unknown> = { userId: session.user.id };
+
   if (projectId) filter.projectId = projectId;
   if (columnId) filter.columnId = columnId;
-
-  const search = searchParams.get("search");
-  if (search) {
-    filter.title = { $regex: search, $options: "i" };
-  }
-
-  if (priority) {
-    const priorities = priority.split(",");
-    filter.priority = { $in: priorities };
-  }
+  if (search) filter.title = { $regex: search, $options: "i" };
+  if (priority) filter.priority = { $in: priority.split(",") };
+  if (labels) filter.labels = { $in: labels.split(",") };
 
   if (dueDateFrom || dueDateTo) {
     const dateFilter: Record<string, Date> = {};
     if (dueDateFrom) dateFilter.$gte = startOfDay(new Date(dueDateFrom));
     if (dueDateTo) dateFilter.$lte = endOfDay(new Date(dueDateTo));
     filter.dueDate = dateFilter;
-  }
-
-  if (labels) {
-    const labelList = labels.split(",");
-    filter.labels = { $in: labelList };
   }
 
   if (completed === "true") {
@@ -145,20 +135,24 @@ export async function POST(request: Request) {
       userId: session.user.id,
     });
 
-    const task = await Task.create({
+    const taskData = {
       ...result.data,
       userId: session.user.id,
-      dueDate: result.data.dueDate ? new Date(result.data.dueDate) : undefined,
-      recurrence: result.data.recurrence
-        ? {
-            ...result.data.recurrence,
-            endDate: result.data.recurrence.endDate
-              ? new Date(result.data.recurrence.endDate)
-              : undefined,
-          }
-        : undefined,
       order: result.data.order ?? taskCount,
-    });
+    };
+
+    if (result.data.dueDate) {
+      taskData.dueDate = new Date(result.data.dueDate);
+    }
+
+    if (result.data.recurrence?.endDate) {
+      taskData.recurrence = {
+        ...result.data.recurrence,
+        endDate: new Date(result.data.recurrence.endDate),
+      };
+    }
+
+    const task = await Task.create(taskData);
 
     return NextResponse.json(task, { status: 201 });
   } catch {

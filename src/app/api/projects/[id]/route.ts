@@ -4,17 +4,19 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/models/project";
 
-const ColumnSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().min(1).max(50),
-  order: z.number().int().min(0),
-});
-
 const UpdateProjectSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).optional(),
   categoryId: z.string().min(1).optional(),
-  columns: z.array(ColumnSchema).optional(),
+  columns: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        name: z.string().min(1).max(50),
+        order: z.number().int().min(0),
+      }),
+    )
+    .optional(),
   archived: z.boolean().optional(),
 });
 

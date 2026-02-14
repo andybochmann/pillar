@@ -53,7 +53,7 @@ export function useTasks(initialTasks: Task[] = []): UseTasksReturn {
       }
       setTasks(await res.json());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch tasks");
+      setError((err as Error).message);
     } finally {
       setLoading(false);
     }

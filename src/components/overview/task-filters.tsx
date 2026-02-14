@@ -24,11 +24,8 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
   const setParam = useCallback(
     (key: string, value: string | null) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value && value !== "all") {
-        params.set(key, value);
-      } else {
-        params.delete(key);
-      }
+      if (value && value !== "all") params.set(key, value);
+      else params.delete(key);
       router.push(`/overview?${params.toString()}`);
     },
     [router, searchParams],

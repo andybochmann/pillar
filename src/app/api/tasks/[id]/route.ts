@@ -65,22 +65,19 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     await connectDB();
 
     const updateData: Record<string, unknown> = { ...result.data };
+
     if (result.data.dueDate !== undefined) {
-      updateData.dueDate = result.data.dueDate
-        ? new Date(result.data.dueDate)
-        : null;
+      updateData.dueDate = result.data.dueDate ? new Date(result.data.dueDate) : null;
     }
+
     if (result.data.completedAt !== undefined) {
-      updateData.completedAt = result.data.completedAt
-        ? new Date(result.data.completedAt)
-        : null;
+      updateData.completedAt = result.data.completedAt ? new Date(result.data.completedAt) : null;
     }
-    if (result.data.recurrence) {
+
+    if (result.data.recurrence?.endDate) {
       updateData.recurrence = {
         ...result.data.recurrence,
-        endDate: result.data.recurrence.endDate
-          ? new Date(result.data.recurrence.endDate)
-          : undefined,
+        endDate: new Date(result.data.recurrence.endDate),
       };
     }
 

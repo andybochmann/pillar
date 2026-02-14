@@ -82,37 +82,28 @@ export function KanbanBoard({
   const labelColors = new Map(allLabels.map((l) => [l.name, l.color]));
 
   const filteredTasks = useMemo(() => {
-    const hasFilters =
-      filters.priorities.length > 0 ||
-      filters.labels.length > 0 ||
-      filters.dueDateRange !== null;
+    const hasFilters = filters.priorities.length > 0 || filters.labels.length > 0 || filters.dueDateRange !== null;
     if (!hasFilters) return tasks;
 
     return tasks.filter((t) => {
-      if (
-        filters.priorities.length > 0 &&
-        !filters.priorities.includes(t.priority)
-      )
-        return false;
-      if (
-        filters.labels.length > 0 &&
-        !filters.labels.some((l) => t.labels.includes(l))
-      )
-        return false;
-      if (filters.dueDateRange && t.dueDate) {
+      if (filters.priorities.length > 0 && !filters.priorities.includes(t.priority)) return false;
+      if (filters.labels.length > 0 && !filters.labels.some((l) => t.labels.includes(l))) return false;
+
+      if (filters.dueDateRange) {
+        if (!t.dueDate) return false;
+
         const due = new Date(t.dueDate);
         const now = new Date();
+
         if (filters.dueDateRange === "overdue") {
           if (!isBefore(due, startOfDay(now))) return false;
         } else if (filters.dueDateRange === "today") {
           if (!isToday(due)) return false;
         } else if (filters.dueDateRange === "week") {
-          if (isBefore(due, startOfDay(now)) || !isBefore(due, endOfWeek(now)))
-            return false;
+          if (isBefore(due, startOfDay(now)) || !isBefore(due, endOfWeek(now))) return false;
         }
-      } else if (filters.dueDateRange && !t.dueDate) {
-        return false;
       }
+
       return true;
     });
   }, [tasks, filters]);
@@ -150,11 +141,7 @@ export function KanbanBoard({
     if (!activeTaskItem) return;
 
     const overTask = tasks.find((t) => t._id === overId);
-    const targetColumnId = overTask
-      ? overTask.columnId
-      : sortedColumns.find((c) => c.id === overId)
-        ? overId
-        : null;
+    const targetColumnId = overTask ? overTask.columnId : sortedColumns.find((c) => c.id === overId) ? overId : null;
 
     if (!targetColumnId) return;
 
@@ -234,7 +221,7 @@ export function KanbanBoard({
       await createTask({ title, projectId, columnId });
       toast.success("Task created");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to create task");
+      toast.error((err as Error).message);
       throw err;
     }
   }

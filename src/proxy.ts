@@ -4,7 +4,7 @@ import { NextRequest } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
-export async function proxy(request: NextRequest) {
+export function proxy(request: NextRequest) {
   return auth(request as unknown as Parameters<typeof auth>[0]);
 }
 
