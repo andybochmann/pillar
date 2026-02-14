@@ -25,6 +25,7 @@ const mockTask: Task = {
   dueDate: "2026-03-15T00:00:00.000Z",
   order: 0,
   labels: ["bug", "urgent"],
+  subtasks: [],
   createdAt: "",
   updatedAt: "",
 };
@@ -134,5 +135,101 @@ describe("TaskSheet", () => {
     expect(
       screen.getByRole("button", { name: "Manage labels" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders subtasks section", () => {
+    render(<TaskSheet {...defaultProps} />);
+    expect(screen.getByLabelText("New subtask title")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add subtask" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders existing subtasks", () => {
+    const taskWithSubs: Task = {
+      ...mockTask,
+      subtasks: [
+        { _id: "s1", title: "Write tests", completed: false },
+        { _id: "s2", title: "Fix bug", completed: true },
+      ],
+    };
+    render(<TaskSheet {...defaultProps} task={taskWithSubs} />);
+    expect(screen.getByText("Write tests")).toBeInTheDocument();
+    expect(screen.getByText("Fix bug")).toBeInTheDocument();
+    expect(screen.getByText("1 of 2 completed")).toBeInTheDocument();
+  });
+
+  it("adds a subtask", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onUpdate = vi.fn().mockResolvedValue({});
+    render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+    const input = screen.getByLabelText("New subtask title");
+    await user.type(input, "New subtask");
+    await user.click(screen.getByRole("button", { name: "Add subtask" }));
+
+    expect(screen.getByText("New subtask")).toBeInTheDocument();
+
+    vi.advanceTimersByTime(600);
+    expect(onUpdate).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        subtasks: expect.arrayContaining([
+          expect.objectContaining({ title: "New subtask", completed: false }),
+        ]),
+      }),
+    );
+  });
+
+  it("toggles a subtask", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onUpdate = vi.fn().mockResolvedValue({});
+    const taskWithSub: Task = {
+      ...mockTask,
+      subtasks: [{ _id: "s1", title: "Do thing", completed: false }],
+    };
+    render(<TaskSheet {...defaultProps} task={taskWithSub} onUpdate={onUpdate} />);
+
+    await user.click(screen.getByRole("checkbox", { name: "Toggle Do thing" }));
+
+    vi.advanceTimersByTime(600);
+    expect(onUpdate).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        subtasks: [expect.objectContaining({ _id: "s1", completed: true })],
+      }),
+    );
+  });
+
+  it("deletes a subtask", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onUpdate = vi.fn().mockResolvedValue({});
+    const taskWithSub: Task = {
+      ...mockTask,
+      subtasks: [{ _id: "s1", title: "Remove me", completed: false }],
+    };
+    render(<TaskSheet {...defaultProps} task={taskWithSub} onUpdate={onUpdate} />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Delete Remove me" }),
+    );
+
+    expect(screen.queryByText("Remove me")).not.toBeInTheDocument();
+
+    vi.advanceTimersByTime(600);
+    expect(onUpdate).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({ subtasks: [] }),
+    );
+  });
+
+  it("adds a subtask on Enter key", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<TaskSheet {...defaultProps} />);
+
+    const input = screen.getByLabelText("New subtask title");
+    await user.type(input, "Enter task{Enter}");
+
+    expect(screen.getByText("Enter task")).toBeInTheDocument();
   });
 });

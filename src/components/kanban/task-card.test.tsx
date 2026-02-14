@@ -30,6 +30,7 @@ describe("TaskCard", () => {
     priority: "high" as const,
     order: 0,
     labels: [],
+    subtasks: [],
   };
 
   it("renders task title", () => {
@@ -71,6 +72,43 @@ describe("TaskCard", () => {
     const pastDate = new Date("2025-01-15T12:00:00Z").toISOString();
     render(<TaskCard task={{ ...baseTask, dueDate: pastDate }} />);
     expect(screen.getByText("Jan 15")).toBeInTheDocument();
+  });
+
+  it("renders subtask progress indicator", () => {
+    render(
+      <TaskCard
+        task={{
+          ...baseTask,
+          subtasks: [
+            { _id: "s1", title: "A", completed: true },
+            { _id: "s2", title: "B", completed: false },
+            { _id: "s3", title: "C", completed: false },
+          ],
+        }}
+      />,
+    );
+    expect(screen.getByText("1/3")).toBeInTheDocument();
+  });
+
+  it("does not render subtask indicator when no subtasks", () => {
+    render(<TaskCard task={baseTask} />);
+    expect(screen.queryByText(/\/\d+/)).not.toBeInTheDocument();
+  });
+
+  it("renders green styling when all subtasks complete", () => {
+    render(
+      <TaskCard
+        task={{
+          ...baseTask,
+          subtasks: [
+            { _id: "s1", title: "A", completed: true },
+            { _id: "s2", title: "B", completed: true },
+          ],
+        }}
+      />,
+    );
+    const indicator = screen.getByText("2/2");
+    expect(indicator.closest("span")?.className).toContain("text-green-600");
   });
 
   it("applies overlay styling when isOverlay is true", () => {

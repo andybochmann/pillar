@@ -22,9 +22,12 @@ import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
 import { LabelPicker } from "@/components/tasks/label-picker";
+import { Checkbox } from "@/components/ui/checkbox";
+import { X, Plus } from "lucide-react";
 import { toast } from "sonner";
 import type {
   Task,
+  Subtask,
   Column,
   Priority,
   Recurrence,
@@ -109,6 +112,8 @@ function TaskSheetForm({
     interval: task.recurrence?.interval ?? 1,
     endDate: task.recurrence?.endDate,
   });
+  const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks ?? []);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
@@ -180,6 +185,37 @@ function TaskSheetForm({
   async function handleCreateLabel(data: { name: string; color: string }) {
     if (onCreateLabel) {
       await onCreateLabel(data);
+    }
+  }
+
+  function handleToggleSubtask(id: string) {
+    const updated = subtasks.map((s) =>
+      s._id === id ? { ...s, completed: !s.completed } : s,
+    );
+    setSubtasks(updated);
+    saveField({ subtasks: updated });
+  }
+
+  function handleAddSubtask() {
+    const trimmed = newSubtaskTitle.trim();
+    if (!trimmed) return;
+    const tempId = `temp-${Date.now()}`;
+    const updated = [...subtasks, { _id: tempId, title: trimmed, completed: false }];
+    setSubtasks(updated);
+    setNewSubtaskTitle("");
+    saveField({ subtasks: updated });
+  }
+
+  function handleDeleteSubtask(id: string) {
+    const updated = subtasks.filter((s) => s._id !== id);
+    setSubtasks(updated);
+    saveField({ subtasks: updated });
+  }
+
+  function handleSubtaskKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddSubtask();
     }
   }
 
@@ -292,6 +328,70 @@ function TaskSheetForm({
               onToggle={handleToggleLabel}
               onCreate={handleCreateLabel}
             />
+          </div>
+          <Separator />
+
+          {/* Subtasks */}
+          <div className="space-y-2">
+            <Label>Subtasks</Label>
+            {subtasks.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {subtasks.filter((s) => s.completed).length} of{" "}
+                {subtasks.length} completed
+              </p>
+            )}
+            <div className="space-y-1">
+              {subtasks.map((subtask) => (
+                <div
+                  key={subtask._id}
+                  className="group flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-muted"
+                >
+                  <Checkbox
+                    checked={subtask.completed}
+                    onCheckedChange={() => handleToggleSubtask(subtask._id)}
+                    aria-label={`Toggle ${subtask.title}`}
+                  />
+                  <span
+                    className={
+                      subtask.completed
+                        ? "flex-1 text-sm line-through text-muted-foreground"
+                        : "flex-1 text-sm"
+                    }
+                  >
+                    {subtask.title}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                    onClick={() => handleDeleteSubtask(subtask._id)}
+                    aria-label={`Delete ${subtask.title}`}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Input
+                placeholder="Add a subtask…"
+                value={newSubtaskTitle}
+                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                onKeyDown={handleSubtaskKeyDown}
+                aria-label="New subtask title"
+                className="h-8 text-sm"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 shrink-0"
+                onClick={handleAddSubtask}
+                disabled={!newSubtaskTitle.trim()}
+                aria-label="Add subtask"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 

@@ -83,6 +83,7 @@ interface CreateTaskInput {
   };
   order?: number;
   labels?: string[];
+  subtasks?: { title: string; completed?: boolean }[];
 }
 
 export async function createTestTask(
@@ -99,6 +100,7 @@ export async function createTestTask(
     recurrence: overrides.recurrence,
     order: overrides.order ?? 0,
     labels: overrides.labels ?? [],
+    subtasks: overrides.subtasks ?? [],
   });
 }
 

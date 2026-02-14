@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check } from "lucide-react";
+import { Check, ListChecks } from "lucide-react";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
 import type { Task, Priority } from "@/types";
 
@@ -183,6 +183,24 @@ export function TaskCard({
               {dueDateStyle.label}
             </span>
           )}
+          {task.subtasks?.length > 0 && (() => {
+            const completed = task.subtasks.filter((s) => s.completed).length;
+            const total = task.subtasks.length;
+            const allDone = completed === total;
+            return (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium",
+                  allDone
+                    ? "text-green-600 bg-green-50"
+                    : "text-muted-foreground bg-muted",
+                )}
+              >
+                <ListChecks className="h-3 w-3" />
+                {completed}/{total}
+              </span>
+            );
+          })()}
           {task.labels.map((label) => {
             const color = labelColors?.get(label);
             return (

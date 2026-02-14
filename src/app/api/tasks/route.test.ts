@@ -340,6 +340,29 @@ describe("POST /api/tasks", () => {
     expect(res.status).toBe(400);
   });
 
+  it("creates a task with subtasks", async () => {
+    await setupFixtures();
+    const res = await POST(
+      createRequest({
+        title: "Task with subtasks",
+        projectId: projectId.toString(),
+        columnId: "todo",
+        subtasks: [
+          { title: "Step 1" },
+          { title: "Step 2", completed: true },
+        ],
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.subtasks).toHaveLength(2);
+    expect(data.subtasks[0].title).toBe("Step 1");
+    expect(data.subtasks[0].completed).toBe(false);
+    expect(data.subtasks[1].title).toBe("Step 2");
+    expect(data.subtasks[1].completed).toBe(true);
+  });
+
   it("auto-increments order", async () => {
     await setupFixtures();
     await createTestTask({ projectId, userId, columnId: "todo", order: 0 });

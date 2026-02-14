@@ -21,6 +21,16 @@ const UpdateTaskSchema = z.object({
     .optional(),
   order: z.number().int().min(0).optional(),
   labels: z.array(z.string().max(50)).optional(),
+  subtasks: z
+    .array(
+      z.object({
+        _id: z.string().optional(),
+        title: z.string().min(1).max(200),
+        completed: z.boolean(),
+      }),
+    )
+    .max(50)
+    .optional(),
   completedAt: z.string().datetime().nullable().optional(),
 });
 
@@ -132,6 +142,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
             recurrence: task.recurrence,
             order: taskCount,
             labels: task.labels,
+            subtasks: task.subtasks.map((s) => ({
+              title: s.title,
+              completed: false,
+            })),
           });
         }
       }

@@ -12,6 +12,7 @@ const mockTasks = [
     priority: "high" as const,
     order: 0,
     labels: [],
+    subtasks: [],
     createdAt: "",
     updatedAt: "",
   },
@@ -24,6 +25,7 @@ const mockTasks = [
     priority: "medium" as const,
     order: 1,
     labels: ["testing"],
+    subtasks: [],
     createdAt: "",
     updatedAt: "",
   },
@@ -156,6 +158,27 @@ describe("useTasks", () => {
         }),
       ),
     ).rejects.toThrow("Title is required");
+  });
+
+  it("updates subtasks on a task", async () => {
+    const updatedSubtasks = [
+      { _id: "s1", title: "Do thing", completed: true },
+    ];
+    const updated = { ...mockTasks[0], subtasks: updatedSubtasks };
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => updated,
+    } as Response);
+
+    const { result } = renderHook(() => useTasks(mockTasks));
+
+    await act(async () => {
+      await result.current.updateTask("task-1", {
+        subtasks: updatedSubtasks,
+      });
+    });
+
+    expect(result.current.tasks[0].subtasks).toEqual(updatedSubtasks);
   });
 
   it("allows direct setTasks for optimistic updates", () => {

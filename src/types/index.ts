@@ -51,6 +51,12 @@ export interface Label {
   updatedAt: string;
 }
 
+export interface Subtask {
+  _id: string;
+  title: string;
+  completed: boolean;
+}
+
 export interface Task {
   _id: string;
   title: string;
@@ -63,6 +69,7 @@ export interface Task {
   recurrence?: Recurrence;
   order: number;
   labels: string[];
+  subtasks: Subtask[];
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;

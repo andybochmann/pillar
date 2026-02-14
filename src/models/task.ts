@@ -14,6 +14,12 @@ export interface IRecurrence {
   endDate?: Date;
 }
 
+export interface ISubtask {
+  _id: mongoose.Types.ObjectId;
+  title: string;
+  completed: boolean;
+}
+
 export interface ITask extends Document {
   _id: mongoose.Types.ObjectId;
   title: string;
@@ -26,6 +32,7 @@ export interface ITask extends Document {
   recurrence: IRecurrence;
   order: number;
   labels: string[];
+  subtasks: ISubtask[];
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +49,14 @@ const RecurrenceSchema = new Schema<IRecurrence>(
     endDate: { type: Date },
   },
   { _id: false },
+);
+
+const SubtaskSchema = new Schema<ISubtask>(
+  {
+    title: { type: String, required: true, trim: true, maxlength: 200 },
+    completed: { type: Boolean, default: false },
+  },
+  { _id: true },
 );
 
 const TaskSchema = new Schema<ITask>(
@@ -73,6 +88,7 @@ const TaskSchema = new Schema<ITask>(
     },
     order: { type: Number, required: true, default: 0 },
     labels: { type: [String], default: [] },
+    subtasks: { type: [SubtaskSchema], default: [] },
     completedAt: { type: Date },
   },
   { timestamps: true },

@@ -30,6 +30,7 @@ interface UseTasksReturn {
         | "recurrence"
         | "order"
         | "labels"
+        | "subtasks"
         | "completedAt"
       >
     >,

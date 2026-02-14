@@ -23,6 +23,15 @@ const CreateTaskSchema = z.object({
     .optional(),
   order: z.number().int().min(0).optional(),
   labels: z.array(z.string().max(50)).optional(),
+  subtasks: z
+    .array(
+      z.object({
+        title: z.string().min(1).max(200),
+        completed: z.boolean().optional(),
+      }),
+    )
+    .max(50)
+    .optional(),
 });
 
 export async function GET(request: Request) {

@@ -139,6 +139,49 @@ describe("Task Model", () => {
     expect(task.recurrence.endDate).toEqual(endDate);
   });
 
+  it("creates task with subtasks", async () => {
+    const task = await Task.create({
+      title: "With subtasks",
+      projectId,
+      userId,
+      columnId: "todo",
+      subtasks: [
+        { title: "Step 1", completed: false },
+        { title: "Step 2", completed: true },
+      ],
+    });
+
+    expect(task.subtasks).toHaveLength(2);
+    expect(task.subtasks[0].title).toBe("Step 1");
+    expect(task.subtasks[0].completed).toBe(false);
+    expect(task.subtasks[0]._id).toBeDefined();
+    expect(task.subtasks[1].title).toBe("Step 2");
+    expect(task.subtasks[1].completed).toBe(true);
+  });
+
+  it("defaults subtasks to empty array", async () => {
+    const task = await Task.create({
+      title: "No subtasks",
+      projectId,
+      userId,
+      columnId: "todo",
+    });
+
+    expect(task.subtasks).toEqual([]);
+  });
+
+  it("validates subtask title is required", async () => {
+    await expect(
+      Task.create({
+        title: "Bad subtask",
+        projectId,
+        userId,
+        columnId: "todo",
+        subtasks: [{ completed: false }],
+      }),
+    ).rejects.toThrow(/title.*required/i);
+  });
+
   it("queries tasks sorted by priority and order", async () => {
     await Task.create([
       {
