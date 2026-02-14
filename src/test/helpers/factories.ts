@@ -1,0 +1,102 @@
+import mongoose from "mongoose";
+import { User, type IUser } from "@/models/user";
+import { Category, type ICategory } from "@/models/category";
+import { Project, type IProject } from "@/models/project";
+import { Task, type ITask } from "@/models/task";
+import { hash } from "bcryptjs";
+
+interface CreateUserInput {
+  name?: string;
+  email?: string;
+  password?: string;
+  image?: string;
+}
+
+export async function createTestUser(
+  overrides: CreateUserInput = {},
+): Promise<IUser> {
+  const passwordHash = await hash(overrides.password ?? "TestPass123!", 10);
+  return User.create({
+    name: overrides.name ?? "Test User",
+    email:
+      overrides.email ?? `test-${new mongoose.Types.ObjectId()}@example.com`,
+    passwordHash,
+    image: overrides.image,
+  });
+}
+
+interface CreateCategoryInput {
+  name?: string;
+  color?: string;
+  icon?: string;
+  userId: mongoose.Types.ObjectId;
+  order?: number;
+}
+
+export async function createTestCategory(
+  overrides: CreateCategoryInput,
+): Promise<ICategory> {
+  return Category.create({
+    name: overrides.name ?? "Test Category",
+    color: overrides.color ?? "#6366f1",
+    icon: overrides.icon,
+    userId: overrides.userId,
+    order: overrides.order ?? 0,
+  });
+}
+
+interface CreateProjectInput {
+  name?: string;
+  description?: string;
+  categoryId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+  columns?: { id: string; name: string; order: number }[];
+  archived?: boolean;
+}
+
+export async function createTestProject(
+  overrides: CreateProjectInput,
+): Promise<IProject> {
+  return Project.create({
+    name: overrides.name ?? "Test Project",
+    description: overrides.description,
+    categoryId: overrides.categoryId,
+    userId: overrides.userId,
+    columns: overrides.columns,
+    archived: overrides.archived ?? false,
+  });
+}
+
+interface CreateTaskInput {
+  title?: string;
+  description?: string;
+  projectId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+  columnId?: string;
+  priority?: "urgent" | "high" | "medium" | "low";
+  dueDate?: Date;
+  recurrence?: {
+    frequency: "daily" | "weekly" | "monthly" | "yearly" | "none";
+    interval?: number;
+    endDate?: Date;
+  };
+  order?: number;
+  labels?: string[];
+}
+
+export async function createTestTask(
+  overrides: CreateTaskInput,
+): Promise<ITask> {
+  return Task.create({
+    title: overrides.title ?? "Test Task",
+    description: overrides.description,
+    projectId: overrides.projectId,
+    userId: overrides.userId,
+    columnId: overrides.columnId ?? "todo",
+    priority: overrides.priority ?? "medium",
+    dueDate: overrides.dueDate,
+    recurrence: overrides.recurrence,
+    order: overrides.order ?? 0,
+    labels: overrides.labels ?? [],
+  });
+}
