@@ -3,6 +3,8 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Category } from "@/models/category";
+import { Project } from "@/models/project";
+import { Task } from "@/models/task";
 
 const UpdateCategorySchema = z.object({
   name: z.string().min(1).max(50).optional(),
@@ -95,6 +97,12 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   if (!category) {
     return NextResponse.json({ error: "Category not found" }, { status: 404 });
   }
+
+  // Cascade: delete projects and their tasks in this category
+  const projects = await Project.find({ categoryId: id, userId: session.user.id });
+  const projectIds = projects.map((p) => p._id);
+  await Task.deleteMany({ projectId: { $in: projectIds }, userId: session.user.id });
+  await Project.deleteMany({ categoryId: id, userId: session.user.id });
 
   return NextResponse.json({ success: true });
 }

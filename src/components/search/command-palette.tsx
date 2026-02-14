@@ -43,6 +43,12 @@ export function CommandPalette() {
   const router = useRouter();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
   // Keyboard shortcut: / opens the palette (only when not in an input)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
+import { Project } from "@/models/project";
 import { addDays, addWeeks, addMonths, addYears } from "date-fns";
 
 const UpdateTaskSchema = z.object({
@@ -74,10 +75,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       updateData.completedAt = result.data.completedAt ? new Date(result.data.completedAt) : null;
     }
 
-    if (result.data.recurrence?.endDate) {
+    if (result.data.recurrence) {
       updateData.recurrence = {
         ...result.data.recurrence,
-        endDate: new Date(result.data.recurrence.endDate),
+        endDate: result.data.recurrence.endDate
+          ? new Date(result.data.recurrence.endDate)
+          : null,
       };
     }
 
@@ -100,33 +103,37 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       const nextDueDate = getNextDueDate(
         task.dueDate,
         task.recurrence.frequency,
-        task.recurrence.interval,
+        task.recurrence.interval ?? 1,
       );
 
       const shouldCreate =
         !task.recurrence.endDate || nextDueDate <= task.recurrence.endDate;
 
       if (shouldCreate) {
-        // Find the first column (assumed to be the "to do" column)
-        const firstColumnId = "todo";
-        const taskCount = await Task.countDocuments({
-          projectId: task.projectId,
-          columnId: firstColumnId,
-          userId: session.user.id,
-        });
+        const project = await Project.findById(task.projectId);
+        const firstColumn = project?.columns
+          ?.sort((a: { order: number }, b: { order: number }) => a.order - b.order)[0];
 
-        await Task.create({
-          title: task.title,
-          description: task.description,
-          projectId: task.projectId,
-          userId: task.userId,
-          columnId: firstColumnId,
-          priority: task.priority,
-          dueDate: nextDueDate,
-          recurrence: task.recurrence,
-          order: taskCount,
-          labels: task.labels,
-        });
+        if (firstColumn) {
+          const taskCount = await Task.countDocuments({
+            projectId: task.projectId,
+            columnId: firstColumn.id,
+            userId: session.user.id,
+          });
+
+          await Task.create({
+            title: task.title,
+            description: task.description,
+            projectId: task.projectId,
+            userId: task.userId,
+            columnId: firstColumn.id,
+            priority: task.priority,
+            dueDate: nextDueDate,
+            recurrence: task.recurrence,
+            order: taskCount,
+            labels: task.labels,
+          });
+        }
       }
     }
 

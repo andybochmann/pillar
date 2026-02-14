@@ -3,6 +3,10 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/user";
+import { Task } from "@/models/task";
+import { Project } from "@/models/project";
+import { Category } from "@/models/category";
+import { Label } from "@/models/label";
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -81,6 +85,13 @@ export async function DELETE() {
   if (!deleted) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
+
+  await Promise.all([
+    Task.deleteMany({ userId: session.user.id }),
+    Project.deleteMany({ userId: session.user.id }),
+    Category.deleteMany({ userId: session.user.id }),
+    Label.deleteMany({ userId: session.user.id }),
+  ]);
 
   return NextResponse.json({ message: "Account deleted" });
 }

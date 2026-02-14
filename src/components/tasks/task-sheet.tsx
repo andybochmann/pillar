@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -112,6 +112,12 @@ function TaskSheetForm({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const saveField = useCallback(
     (data: Partial<Task>) => {

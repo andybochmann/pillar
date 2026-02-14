@@ -190,13 +190,14 @@ export function KanbanBoard({
 
       // Persist to API
       try {
-        await fetch("/api/tasks/reorder", {
+        const res = await fetch("/api/tasks/reorder", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             tasks: updates.map((t) => ({ id: t._id, order: t.order })),
           }),
         });
+        if (!res.ok) throw new Error("Failed to reorder");
       } catch {
         // Revert on failure
         const res = await fetch(`/api/tasks?projectId=${projectId}`);
@@ -253,42 +254,57 @@ export function KanbanBoard({
 
   async function handleBulkMove(columnId: string) {
     const ids = [...selectedIds];
-    await fetch("/api/tasks/bulk", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskIds: ids, action: "move", columnId }),
-    });
-    setTasks((prev) =>
-      prev.map((t) => (ids.includes(t._id) ? { ...t, columnId } : t)),
-    );
-    setSelectedIds(new Set());
-    toast.success(`Moved ${ids.length} tasks`);
+    try {
+      const res = await fetch("/api/tasks/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: ids, action: "move", columnId }),
+      });
+      if (!res.ok) throw new Error("Failed to move tasks");
+      setTasks((prev) =>
+        prev.map((t) => (ids.includes(t._id) ? { ...t, columnId } : t)),
+      );
+      setSelectedIds(new Set());
+      toast.success(`Moved ${ids.length} tasks`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   }
 
   async function handleBulkPriority(priority: Priority) {
     const ids = [...selectedIds];
-    await fetch("/api/tasks/bulk", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskIds: ids, action: "priority", priority }),
-    });
-    setTasks((prev) =>
-      prev.map((t) => (ids.includes(t._id) ? { ...t, priority } : t)),
-    );
-    setSelectedIds(new Set());
-    toast.success(`Updated ${ids.length} tasks`);
+    try {
+      const res = await fetch("/api/tasks/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: ids, action: "priority", priority }),
+      });
+      if (!res.ok) throw new Error("Failed to update priority");
+      setTasks((prev) =>
+        prev.map((t) => (ids.includes(t._id) ? { ...t, priority } : t)),
+      );
+      setSelectedIds(new Set());
+      toast.success(`Updated ${ids.length} tasks`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   }
 
   async function handleBulkDelete() {
     const ids = [...selectedIds];
-    await fetch("/api/tasks/bulk", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskIds: ids, action: "delete" }),
-    });
-    setTasks((prev) => prev.filter((t) => !ids.includes(t._id)));
-    setSelectedIds(new Set());
-    toast.success(`Deleted ${ids.length} tasks`);
+    try {
+      const res = await fetch("/api/tasks/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: ids, action: "delete" }),
+      });
+      if (!res.ok) throw new Error("Failed to delete tasks");
+      setTasks((prev) => prev.filter((t) => !ids.includes(t._id)));
+      setSelectedIds(new Set());
+      toast.success(`Deleted ${ids.length} tasks`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
   }
 
   return (

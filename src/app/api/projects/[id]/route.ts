@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/models/project";
+import { Task } from "@/models/task";
 
 const UpdateProjectSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -98,6 +99,9 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   if (!project) {
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
+
+  // Cascade: delete all tasks in this project
+  await Task.deleteMany({ projectId: id, userId: session.user.id });
 
   return NextResponse.json({ success: true });
 }

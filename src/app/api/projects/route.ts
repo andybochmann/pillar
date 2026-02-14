@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/models/project";
+import { Category } from "@/models/category";
 
 const CreateProjectSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -56,6 +57,18 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
+
+    const category = await Category.findOne({
+      _id: result.data.categoryId,
+      userId: session.user.id,
+    });
+    if (!category) {
+      return NextResponse.json(
+        { error: "Category not found" },
+        { status: 404 },
+      );
+    }
+
     const project = await Project.create({
       ...result.data,
       userId: session.user.id,

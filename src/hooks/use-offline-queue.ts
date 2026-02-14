@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useOnlineStatus } from "./use-online-status";
 import { replayQueue } from "@/lib/sync";
 import { getQueueCount } from "@/lib/offline-queue";
@@ -10,6 +10,7 @@ export function useOfflineQueue() {
   const { isOnline } = useOnlineStatus();
   const [queueCount, setQueueCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
+  const syncingRef = useRef(false);
 
   const refreshCount = useCallback(async () => {
     const count = await getQueueCount();
@@ -17,6 +18,8 @@ export function useOfflineQueue() {
   }, []);
 
   const syncNow = useCallback(async () => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
     setSyncing(true);
     try {
       const result = await replayQueue();
@@ -28,16 +31,17 @@ export function useOfflineQueue() {
       }
       await refreshCount();
     } finally {
+      syncingRef.current = false;
       setSyncing(false);
     }
   }, [refreshCount]);
 
   // Auto-sync when coming back online
   useEffect(() => {
-    if (isOnline && queueCount > 0 && !syncing) {
+    if (isOnline && queueCount > 0 && !syncingRef.current) {
       syncNow();
     }
-  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOnline, queueCount, syncNow]);
 
   // Refresh count on mount and when online status changes
   useEffect(() => {

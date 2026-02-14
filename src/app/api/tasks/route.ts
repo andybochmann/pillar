@@ -4,6 +4,7 @@ import mongoose, { type SortOrder } from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
+import { Project } from "@/models/project";
 import { startOfDay, endOfDay } from "date-fns";
 
 const CreateTaskSchema = z.object({
@@ -47,7 +48,10 @@ export async function GET(request: Request) {
 
   if (projectId) filter.projectId = projectId;
   if (columnId) filter.columnId = columnId;
-  if (search) filter.title = { $regex: search, $options: "i" };
+  if (search) {
+    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    filter.title = { $regex: escaped, $options: "i" };
+  }
   if (priority) filter.priority = { $in: priority.split(",") };
   if (labels) filter.labels = { $in: labels.split(",") };
 
@@ -129,13 +133,24 @@ export async function POST(request: Request) {
 
     await connectDB();
 
+    const project = await Project.findOne({
+      _id: result.data.projectId,
+      userId: session.user.id,
+    });
+    if (!project) {
+      return NextResponse.json(
+        { error: "Project not found" },
+        { status: 404 },
+      );
+    }
+
     const taskCount = await Task.countDocuments({
       projectId: result.data.projectId,
       columnId: result.data.columnId,
       userId: session.user.id,
     });
 
-    const taskData = {
+    const taskData: Record<string, unknown> = {
       ...result.data,
       userId: session.user.id,
       order: result.data.order ?? taskCount,
