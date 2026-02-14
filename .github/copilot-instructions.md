@@ -1,5 +1,7 @@
 # Pillar — Copilot Instructions
 
+> **Keep in sync**: This file (`.github/copilot-instructions.md`) and `CLAUDE.md` in the project root must always be updated together. Different developers use different AI tools (Claude Code, GitHub Copilot, etc.), so both files must reflect the same conventions and rules.
+
 ## Project Summary
 
 Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. It supports multiple users, project categories, configurable Kanban columns, recurring tasks, calendar views, and offline PWA mode.
@@ -21,6 +23,7 @@ pnpm dev              # Dev server (Turbopack) at localhost:3000
 pnpm build            # Production build (output: standalone)
 pnpm test             # Vitest unit/integration tests (48 files, 320+ tests)
 pnpm test:watch       # Tests in watch mode
+pnpm test:coverage    # Tests with coverage report
 pnpm test:e2e         # Playwright E2E tests (requires running dev server)
 pnpm lint             # ESLint
 docker compose up -d  # Full stack in Docker (app + MongoDB)
@@ -63,6 +66,18 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 - Model re-registration guard: `mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema)`
 
 ## Testing
+
+### TDD Workflow (Mandatory for All New Features)
+
+All new features and bug fixes **must** follow test-driven development:
+
+1. **Red**: Write tests first — confirm they fail
+2. **Green**: Implement the minimum code to make tests pass
+3. **Refactor**: Clean up while keeping tests green
+4. A feature is **NOT done** until all its tests pass
+5. After completing a feature, **always**:
+   - Run the full test suite (`pnpm test`) to verify nothing is broken
+   - Review the implementation for clarity and maintainability
 
 ### Setup
 
@@ -119,3 +134,16 @@ import { GET, POST } from "./route";
 ## Test Credentials (Dev/E2E)
 
 - **Email**: `test@pillar.dev` / **Password**: `TestPassword123!` / **Name**: `Test User`
+
+## What NOT to Do
+
+- Don't mock Mongoose methods — use mongodb-memory-server instead
+- Don't use Pages Router patterns (getServerSideProps, etc.)
+- Don't add `"use client"` to server components
+- Don't install packages if shadcn already provides the component
+- Don't use `any` type — use `unknown` and narrow, or define proper types
+- Don't create files without tests
+- Don't use `middleware.ts` — it's `src/proxy.ts` in Next.js 16
+- Don't use `{ new: true }` with Mongoose — use `{ returnDocument: "after" }`
+- Don't use raw `fetch()` for mutations in hooks — use `offlineFetch()`
+- Don't share Zod schemas across route files — define them per-route

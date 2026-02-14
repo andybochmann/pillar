@@ -1,5 +1,7 @@
 # Pillar — Task Management App
 
+> **Keep in sync**: This file (`CLAUDE.md`) and `.github/copilot-instructions.md` must always be updated together. Different developers use different AI tools (Claude Code, GitHub Copilot, etc.), so both files must reflect the same conventions and rules.
+
 ## Project Overview
 
 Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project categories, configurable Kanban columns, recurring tasks, calendar views, and offline PWA mode. Deployed via Docker Compose.
@@ -82,10 +84,17 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 
 ## Testing
 
-### TDD Workflow
+### TDD Workflow (Mandatory for All New Features)
 
-1. Write tests first → confirm they fail (red) → implement (green) → refactor
-2. A feature is NOT done until all its tests pass
+All new features and bug fixes **must** follow test-driven development:
+
+1. **Red**: Write tests first — confirm they fail
+2. **Green**: Implement the minimum code to make tests pass
+3. **Refactor**: Clean up while keeping tests green
+4. A feature is **NOT done** until all its tests pass
+5. After completing a feature, **always**:
+   - Run the full test suite (`pnpm test`) to verify nothing is broken
+   - Run the **code-simplifier agent** to review and optimize the implementation for clarity and maintainability
 
 ### Setup
 
