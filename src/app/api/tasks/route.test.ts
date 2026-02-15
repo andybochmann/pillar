@@ -121,19 +121,19 @@ describe("GET /api/tasks", () => {
       projectId,
       userId,
       title: "Past",
-      dueDate: new Date("2025-01-01"),
+      dueDate: new Date(2025, 0, 1),
     });
     await createTestTask({
       projectId,
       userId,
       title: "InRange",
-      dueDate: new Date("2025-06-15"),
+      dueDate: new Date(2025, 5, 15),
     });
     await createTestTask({
       projectId,
       userId,
       title: "Future",
-      dueDate: new Date("2026-01-01"),
+      dueDate: new Date(2026, 0, 1),
     });
 
     const res = await GET(

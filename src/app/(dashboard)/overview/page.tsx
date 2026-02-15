@@ -8,6 +8,7 @@ import { Label } from "@/models/label";
 import { TaskFilters } from "@/components/overview/task-filters";
 import { TaskList } from "@/components/overview/task-list";
 import { startOfDay, endOfDay } from "date-fns";
+import { parseLocalDate } from "@/lib/date-utils";
 import type { SortOrder } from "mongoose";
 import type { Task as TaskType, Project as ProjectType, Label as LabelType } from "@/types";
 
@@ -36,8 +37,8 @@ export default async function OverviewPage({
 
   if (params.dueDateFrom || params.dueDateTo) {
     const dateFilter: Record<string, Date> = {};
-    if (params.dueDateFrom) dateFilter.$gte = startOfDay(new Date(params.dueDateFrom));
-    if (params.dueDateTo) dateFilter.$lte = endOfDay(new Date(params.dueDateTo));
+    if (params.dueDateFrom) dateFilter.$gte = startOfDay(parseLocalDate(params.dueDateFrom));
+    if (params.dueDateTo) dateFilter.$lte = endOfDay(parseLocalDate(params.dueDateTo));
     filter.dueDate = dateFilter;
   }
 

@@ -6,6 +6,7 @@ import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { startOfDay, endOfDay } from "date-fns";
+import { parseLocalDate } from "@/lib/date-utils";
 
 const CreateTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -69,8 +70,8 @@ export async function GET(request: Request) {
 
   if (dueDateFrom || dueDateTo) {
     const dateFilter: Record<string, Date> = {};
-    if (dueDateFrom) dateFilter.$gte = startOfDay(new Date(dueDateFrom));
-    if (dueDateTo) dateFilter.$lte = endOfDay(new Date(dueDateTo));
+    if (dueDateFrom) dateFilter.$gte = startOfDay(parseLocalDate(dueDateFrom));
+    if (dueDateTo) dateFilter.$lte = endOfDay(parseLocalDate(dueDateTo));
     filter.dueDate = dateFilter;
   }
 
@@ -81,7 +82,7 @@ export async function GET(request: Request) {
   }
 
   if (sortBy === "priority") {
-    const aggFilter = {
+    const aggFilter: Record<string, unknown> = {
       ...filter,
       userId: new mongoose.Types.ObjectId(session.user.id),
     };
