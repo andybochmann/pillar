@@ -1,4 +1,5 @@
 import { addToQueue } from "./offline-queue";
+import { getSessionId } from "./session-id";
 
 export async function offlineFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
   const method = (init?.method ?? "GET").toUpperCase();
@@ -6,10 +7,15 @@ export async function offlineFetch(input: string | URL | Request, init?: Request
 
   if (method === "GET") return fetch(input, init);
 
+  // Inject session ID header for mutations
+  const headers = new Headers(init?.headers);
+  headers.set("X-Session-Id", getSessionId());
+  const mutationInit: RequestInit = { ...init, headers };
+
   // Mutations: try the real fetch first if online
   if (navigator.onLine) {
     try {
-      const response = await fetch(input, init);
+      const response = await fetch(input, mutationInit);
       return response;
     } catch {
       // Network failed despite navigator.onLine — queue it

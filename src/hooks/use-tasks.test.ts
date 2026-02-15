@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import type { SyncEvent } from "@/lib/event-bus";
 import { useTasks } from "./use-tasks";
 
 const mockTasks = [
@@ -13,6 +14,7 @@ const mockTasks = [
     order: 0,
     labels: [],
     subtasks: [],
+    statusHistory: [],
     createdAt: "",
     updatedAt: "",
   },
@@ -26,6 +28,7 @@ const mockTasks = [
     order: 1,
     labels: ["lbl-testing"],
     subtasks: [],
+    statusHistory: [],
     createdAt: "",
     updatedAt: "",
   },
@@ -191,5 +194,176 @@ describe("useTasks", () => {
     });
 
     expect(result.current.tasks[0].columnId).toBe("done");
+  });
+
+  describe("sync subscription", () => {
+    function emitSync(detail: Partial<SyncEvent>) {
+      window.dispatchEvent(
+        new CustomEvent("pillar:sync", { detail }),
+      );
+    }
+
+    it("adds a task on created event matching projectId", () => {
+      const { result } = renderHook(() =>
+        useTasks(mockTasks, "proj-1"),
+      );
+
+      const newTask = {
+        _id: "task-new",
+        title: "Synced task",
+        projectId: "proj-1",
+        userId: "u1",
+        columnId: "todo",
+        priority: "low",
+        order: 5,
+        labels: [],
+        subtasks: [],
+        statusHistory: [],
+        createdAt: "",
+        updatedAt: "",
+      };
+
+      act(() => {
+        emitSync({
+          entity: "task",
+          action: "created",
+          entityId: "task-new",
+          projectId: "proj-1",
+          data: newTask,
+        });
+      });
+
+      expect(result.current.tasks).toHaveLength(3);
+      expect(result.current.tasks[2]._id).toBe("task-new");
+    });
+
+    it("does not add a task for a different projectId", () => {
+      const { result } = renderHook(() =>
+        useTasks(mockTasks, "proj-1"),
+      );
+
+      act(() => {
+        emitSync({
+          entity: "task",
+          action: "created",
+          entityId: "task-other",
+          projectId: "proj-2",
+          data: { _id: "task-other", projectId: "proj-2" },
+        });
+      });
+
+      expect(result.current.tasks).toHaveLength(2);
+    });
+
+    it("updates a task on updated event", () => {
+      const { result } = renderHook(() =>
+        useTasks(mockTasks, "proj-1"),
+      );
+
+      act(() => {
+        emitSync({
+          entity: "task",
+          action: "updated",
+          entityId: "task-1",
+          projectId: "proj-1",
+          data: { ...mockTasks[0], title: "Updated via sync" },
+        });
+      });
+
+      expect(result.current.tasks[0].title).toBe("Updated via sync");
+    });
+
+    it("removes a task on deleted event", () => {
+      const { result } = renderHook(() =>
+        useTasks(mockTasks, "proj-1"),
+      );
+
+      act(() => {
+        emitSync({
+          entity: "task",
+          action: "deleted",
+          entityId: "task-1",
+          projectId: "proj-1",
+        });
+      });
+
+      expect(result.current.tasks).toHaveLength(1);
+      expect(result.current.tasks[0]._id).toBe("task-2");
+    });
+
+    it("does not add duplicate tasks", () => {
+      const { result } = renderHook(() =>
+        useTasks(mockTasks, "proj-1"),
+      );
+
+      act(() => {
+        emitSync({
+          entity: "task",
+          action: "created",
+          entityId: "task-1",
+          projectId: "proj-1",
+          data: mockTasks[0],
+        });
+      });
+
+      expect(result.current.tasks).toHaveLength(2);
+    });
+
+    it("refetches on reordered event", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => mockTasks,
+      } as Response);
+
+      const { result } = renderHook(() =>
+        useTasks(mockTasks, "proj-1"),
+      );
+
+      await act(async () => {
+        emitSync({
+          entity: "task",
+          action: "reordered",
+          entityId: "",
+        });
+      });
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/tasks?projectId=proj-1",
+      );
+    });
+
+    it("refetches on pillar:reconnected event", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => mockTasks,
+      } as Response);
+
+      renderHook(() => useTasks(mockTasks, "proj-1"));
+
+      await act(async () => {
+        window.dispatchEvent(new CustomEvent("pillar:reconnected"));
+      });
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/tasks?projectId=proj-1",
+      );
+    });
+
+    it("refetches on pillar:sync-complete event", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => mockTasks,
+      } as Response);
+
+      renderHook(() => useTasks(mockTasks, "proj-1"));
+
+      await act(async () => {
+        window.dispatchEvent(new CustomEvent("pillar:sync-complete"));
+      });
+
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/tasks?projectId=proj-1",
+      );
+    });
   });
 });

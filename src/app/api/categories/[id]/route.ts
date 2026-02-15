@@ -3,6 +3,7 @@ import { z } from "zod";
 import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { emitSyncEvent } from "@/lib/event-bus";
 import { Category } from "@/models/category";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
@@ -73,6 +74,16 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       );
     }
 
+    emitSyncEvent({
+      entity: "category",
+      action: "updated",
+      userId: session.user.id,
+      sessionId: request.headers.get("X-Session-Id") ?? "",
+      entityId: id,
+      data: category.toJSON(),
+      timestamp: Date.now(),
+    });
+
     return NextResponse.json(category);
   } catch {
     return NextResponse.json(
@@ -82,7 +93,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: RouteParams) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -124,6 +135,17 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
     );
 
     await dbSession.commitTransaction();
+
+    const sessionId = request.headers.get("X-Session-Id") ?? "";
+    emitSyncEvent({
+      entity: "category",
+      action: "deleted",
+      userId: session.user.id,
+      sessionId,
+      entityId: id,
+      timestamp: Date.now(),
+    });
+
     return NextResponse.json({ success: true });
   } catch {
     await dbSession.abortTransaction();

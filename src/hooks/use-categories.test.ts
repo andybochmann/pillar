@@ -171,4 +171,68 @@ describe("useCategories", () => {
 
     expect(result.current.categories).toHaveLength(1);
   });
+
+  describe("sync subscription", () => {
+    function emitSync(detail: Record<string, unknown>) {
+      window.dispatchEvent(new CustomEvent("pillar:sync", { detail }));
+    }
+
+    it("adds a category on created event", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockCategories,
+      } as Response);
+
+      const { result } = renderHook(() => useCategories());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        emitSync({
+          entity: "category",
+          action: "created",
+          entityId: "cat-new",
+          data: { _id: "cat-new", name: "New", color: "#000000", order: 2, userId: "u1", createdAt: "", updatedAt: "" },
+        });
+      });
+
+      expect(result.current.categories).toHaveLength(3);
+    });
+
+    it("updates a category on updated event", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockCategories,
+      } as Response);
+
+      const { result } = renderHook(() => useCategories());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        emitSync({
+          entity: "category",
+          action: "updated",
+          entityId: "cat-1",
+          data: { ...mockCategories[0], name: "Synced" },
+        });
+      });
+
+      expect(result.current.categories[0].name).toBe("Synced");
+    });
+
+    it("removes a category on deleted event", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockCategories,
+      } as Response);
+
+      const { result } = renderHook(() => useCategories());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        emitSync({ entity: "category", action: "deleted", entityId: "cat-1" });
+      });
+
+      expect(result.current.categories).toHaveLength(1);
+    });
+  });
 });

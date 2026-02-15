@@ -97,4 +97,37 @@ describe("useOfflineQueue", () => {
 
     expect(fetchSpy).toHaveBeenCalled();
   });
+
+  it("dispatches pillar:sync-complete after successful sync", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "queued" },
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+
+    const { result } = renderHook(() => useOfflineQueue());
+
+    await act(async () => {
+      await result.current.syncNow();
+    });
+
+    const syncCompleteEvents = dispatchSpy.mock.calls.filter(
+      (call) => (call[0] as Event).type === "pillar:sync-complete",
+    );
+    expect(syncCompleteEvents).toHaveLength(1);
+
+    dispatchSpy.mockRestore();
+  });
 });

@@ -172,4 +172,71 @@ describe("useLabels", () => {
 
     expect(result.current.labels).toHaveLength(1);
   });
+
+  describe("sync subscription", () => {
+    function emitSync(detail: Record<string, unknown>) {
+      window.dispatchEvent(new CustomEvent("pillar:sync", { detail }));
+    }
+
+    it("adds a label on created event and maintains sort", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockLabels,
+      } as Response);
+
+      const { result } = renderHook(() => useLabels());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        emitSync({
+          entity: "label",
+          action: "created",
+          entityId: "lbl-new",
+          data: { _id: "lbl-new", name: "Chore", color: "#a855f7", userId: "u1", createdAt: "", updatedAt: "" },
+        });
+      });
+
+      expect(result.current.labels).toHaveLength(3);
+      // Sorted: Bug, Chore, Feature
+      expect(result.current.labels[1].name).toBe("Chore");
+    });
+
+    it("updates a label on updated event and maintains sort", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockLabels,
+      } as Response);
+
+      const { result } = renderHook(() => useLabels());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        emitSync({
+          entity: "label",
+          action: "updated",
+          entityId: "lbl-1",
+          data: { ...mockLabels[0], name: "Zzz Last" },
+        });
+      });
+
+      // Zzz Last should sort after Feature
+      expect(result.current.labels[1].name).toBe("Zzz Last");
+    });
+
+    it("removes a label on deleted event", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockLabels,
+      } as Response);
+
+      const { result } = renderHook(() => useLabels());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        emitSync({ entity: "label", action: "deleted", entityId: "lbl-1" });
+      });
+
+      expect(result.current.labels).toHaveLength(1);
+    });
+  });
 });

@@ -2,7 +2,10 @@
 
 import { useState, useCallback } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
+import { useSyncSubscription } from "./use-sync-subscription";
+import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { Task } from "@/types";
+import type { SyncEvent } from "@/lib/event-bus";
 
 interface UseTasksReturn {
   tasks: Task[];
@@ -38,16 +41,16 @@ interface UseTasksReturn {
   deleteTask: (id: string) => Promise<void>;
 }
 
-export function useTasks(initialTasks: Task[] = []): UseTasksReturn {
+export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTasksReturn {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchTasks = useCallback(async (projectId: string) => {
+  const fetchTasks = useCallback(async (pid: string) => {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch(`/api/tasks?projectId=${projectId}`);
+      const res = await fetch(`/api/tasks?projectId=${pid}`);
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || "Failed to fetch tasks");
@@ -126,6 +129,38 @@ export function useTasks(initialTasks: Task[] = []): UseTasksReturn {
     }
     setTasks((prev) => prev.filter((t) => t._id !== id));
   }, []);
+
+  // Real-time sync subscription
+  useSyncSubscription("task", useCallback((event: SyncEvent) => {
+    const data = event.data as Task | undefined;
+
+    switch (event.action) {
+      case "created":
+        if (projectId && event.projectId !== projectId) return;
+        if (!data) return;
+        setTasks((prev) => {
+          if (prev.some((t) => t._id === data._id)) return prev;
+          return [...prev, data];
+        });
+        break;
+      case "updated":
+        if (!data) return;
+        setTasks((prev) => prev.map((t) => (t._id === event.entityId ? data : t)));
+        break;
+      case "deleted":
+        setTasks((prev) => prev.filter((t) => t._id !== event.entityId));
+        break;
+      case "reordered":
+        if (projectId) fetchTasks(projectId);
+        break;
+    }
+  }, [projectId, fetchTasks]));
+
+  useRefetchOnReconnect(
+    useCallback(() => {
+      if (projectId) fetchTasks(projectId);
+    }, [projectId, fetchTasks])
+  );
 
   return {
     tasks,

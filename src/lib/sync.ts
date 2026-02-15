@@ -1,4 +1,5 @@
 import { getAllQueued, removeFromQueue } from "./offline-queue";
+import { getSessionId } from "./session-id";
 import type { SyncResult } from "@/types";
 
 const MAX_RETRIES = 3;
@@ -7,7 +8,13 @@ const BASE_DELAY_MS = 1000;
 async function replayOne(method: string, url: string, body?: unknown): Promise<boolean> {
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
-      const init: RequestInit = { method, headers: { "Content-Type": "application/json" } };
+      const init: RequestInit = {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Id": getSessionId(),
+        },
+      };
       if (body !== undefined) init.body = JSON.stringify(body);
 
       const res = await fetch(url, init);

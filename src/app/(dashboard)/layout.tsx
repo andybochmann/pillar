@@ -4,6 +4,7 @@ import { KeyboardShortcutsDialog } from "@/components/layout/keyboard-shortcuts"
 import { Toaster } from "@/components/ui/sonner";
 import { SwRegistrar } from "@/components/layout/sw-registrar";
 import { OfflineBanner } from "@/components/layout/offline-banner";
+import { RealtimeProvider } from "@/components/layout/realtime-provider";
 
 export default function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default function DashboardLayout({
         Skip to content
       </a>
       <OfflineBanner />
+      <RealtimeProvider />
       <DashboardShell>{children}</DashboardShell>
       <CommandPalette />
       <KeyboardShortcutsDialog />

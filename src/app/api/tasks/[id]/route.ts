@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { addDays, addWeeks, addMonths, addYears } from "date-fns";
@@ -121,6 +122,19 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
+    const sessionId = request.headers.get("X-Session-Id") ?? "";
+
+    emitSyncEvent({
+      entity: "task",
+      action: "updated",
+      userId: session.user.id,
+      sessionId,
+      entityId: task._id.toString(),
+      projectId: task.projectId.toString(),
+      data: task.toJSON(),
+      timestamp: Date.now(),
+    });
+
     // If task is being completed and has recurrence, create the next occurrence
     if (
       result.data.completedAt &&
@@ -148,7 +162,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
             userId: session.user.id,
           });
 
-          await Task.create({
+          const newTask = await Task.create({
             title: task.title,
             description: task.description,
             projectId: task.projectId,
@@ -167,6 +181,17 @@ export async function PATCH(request: Request, { params }: RouteParams) {
               { columnId: firstColumn.id, timestamp: new Date() },
             ],
           });
+
+          emitSyncEvent({
+            entity: "task",
+            action: "created",
+            userId: session.user.id,
+            sessionId,
+            entityId: newTask._id.toString(),
+            projectId: task.projectId.toString(),
+            data: newTask.toJSON(),
+            timestamp: Date.now(),
+          });
         }
       }
     }
@@ -180,7 +205,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(_request: Request, { params }: RouteParams) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -196,6 +221,16 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   if (!task) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
+
+  emitSyncEvent({
+    entity: "task",
+    action: "deleted",
+    userId: session.user.id,
+    sessionId: request.headers.get("X-Session-Id") ?? "",
+    entityId: id,
+    projectId: task.projectId.toString(),
+    timestamp: Date.now(),
+  });
 
   return NextResponse.json({ success: true });
 }

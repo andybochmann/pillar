@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { emitSyncEvent } from "@/lib/event-bus";
 import { Category } from "@/models/category";
 
 const CreateCategorySchema = z.object({
@@ -52,6 +53,16 @@ export async function POST(request: Request) {
       ...result.data,
       userId: session.user.id,
       order: result.data.order ?? count,
+    });
+
+    emitSyncEvent({
+      entity: "category",
+      action: "created",
+      userId: session.user.id,
+      sessionId: request.headers.get("X-Session-Id") ?? "",
+      entityId: category._id.toString(),
+      data: category.toJSON(),
+      timestamp: Date.now(),
     });
 
     return NextResponse.json(category, { status: 201 });

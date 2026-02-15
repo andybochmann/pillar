@@ -2,7 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
+import { useSyncSubscription } from "./use-sync-subscription";
+import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { Label } from "@/types";
+import type { SyncEvent } from "@/lib/event-bus";
+
+const sortByName = (a: Label, b: Label) => a.name.localeCompare(b.name);
 
 interface UseLabelsReturn {
   labels: Label[];
@@ -55,9 +60,7 @@ export function useLabels(): UseLabelsReturn {
         throw new Error(body.error || "Failed to create label");
       }
       const created: Label = await res.json();
-      setLabels((prev) =>
-        [...prev, created].sort((a, b) => a.name.localeCompare(b.name)),
-      );
+      setLabels((prev) => [...prev, created].sort(sortByName));
       return created;
     },
     [],
@@ -78,7 +81,7 @@ export function useLabels(): UseLabelsReturn {
       setLabels((prev) =>
         prev
           .map((l) => (l._id === id ? updated : l))
-          .sort((a, b) => a.name.localeCompare(b.name)),
+          .sort(sortByName),
       );
       return updated;
     },
@@ -93,6 +96,34 @@ export function useLabels(): UseLabelsReturn {
     }
     setLabels((prev) => prev.filter((l) => l._id !== id));
   }, []);
+
+  // Real-time sync subscription
+  useSyncSubscription("label", useCallback((event: SyncEvent) => {
+    const data = event.data as Label | undefined;
+
+    switch (event.action) {
+      case "created":
+        if (!data) return;
+        setLabels((prev) => {
+          if (prev.some((l) => l._id === data._id)) return prev;
+          return [...prev, data].sort(sortByName);
+        });
+        break;
+      case "updated":
+        if (!data) return;
+        setLabels((prev) =>
+          prev
+            .map((l) => (l._id === event.entityId ? data : l))
+            .sort(sortByName),
+        );
+        break;
+      case "deleted":
+        setLabels((prev) => prev.filter((l) => l._id !== event.entityId));
+        break;
+    }
+  }, []));
+
+  useRefetchOnReconnect(fetchLabels);
 
   return {
     labels,

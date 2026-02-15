@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { emitSyncEvent } from "@/lib/event-bus";
 import { Label } from "@/models/label";
 
 const CreateLabelSchema = z.object({
@@ -57,6 +58,16 @@ export async function POST(request: Request) {
     const label = await Label.create({
       ...result.data,
       userId: session.user.id,
+    });
+
+    emitSyncEvent({
+      entity: "label",
+      action: "created",
+      userId: session.user.id,
+      sessionId: request.headers.get("X-Session-Id") ?? "",
+      entityId: label._id.toString(),
+      data: label.toJSON(),
+      timestamp: Date.now(),
     });
 
     return NextResponse.json(label, { status: 201 });

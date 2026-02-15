@@ -1,4 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("./session-id", () => ({
+  getSessionId: vi.fn(() => "test-session-id"),
+}));
+
 import { replayQueue } from "./sync";
 import { addToQueue, clearQueue, getAllQueued } from "./offline-queue";
 
@@ -96,5 +101,25 @@ describe("sync", () => {
   it("returns zero counts when queue is empty", async () => {
     const result = await replayQueue();
     expect(result).toEqual({ total: 0, succeeded: 0, failed: 0 });
+  });
+
+  it("includes X-Session-Id header in replayed requests", async () => {
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "Test" },
+    });
+
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(JSON.stringify({}), { status: 200 }),
+      );
+
+    await replayQueue();
+
+    const calledInit = fetchSpy.mock.calls[0][1] as RequestInit;
+    const headers = calledInit.headers as Record<string, string>;
+    expect(headers["X-Session-Id"]).toBe("test-session-id");
   });
 });

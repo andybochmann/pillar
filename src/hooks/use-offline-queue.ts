@@ -25,6 +25,7 @@ export function useOfflineQueue() {
       const result = await replayQueue();
       if (result.succeeded > 0) {
         toast.success(`${result.succeeded} change${result.succeeded === 1 ? "" : "s"} synced`);
+        window.dispatchEvent(new CustomEvent("pillar:sync-complete"));
       }
       if (result.failed > 0) {
         toast.error(`${result.failed} change${result.failed === 1 ? "" : "s"} failed to sync`);

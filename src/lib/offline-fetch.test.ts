@@ -1,4 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("./session-id", () => ({
+  getSessionId: vi.fn(() => "test-session-id"),
+}));
+
 import { offlineFetch } from "./offline-fetch";
 import { clearQueue, getAllQueued } from "./offline-queue";
 
@@ -104,5 +109,39 @@ describe("offlineFetch", () => {
     const queued = await getAllQueued();
     expect(queued).toHaveLength(1);
     expect(queued[0].method).toBe("DELETE");
+  });
+
+  it("injects X-Session-Id header on mutations", async () => {
+    Object.defineProperty(navigator, "onLine", {
+      value: true,
+      writable: true,
+      configurable: true,
+    });
+    const mockResponse = new Response(JSON.stringify({ _id: "real-id" }), {
+      status: 200,
+    });
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse);
+
+    await offlineFetch("/api/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Test" }),
+    });
+
+    const calledInit = fetchSpy.mock.calls[0][1] as RequestInit;
+    const headers = new Headers(calledInit.headers);
+    expect(headers.get("X-Session-Id")).toBe("test-session-id");
+  });
+
+  it("does not inject X-Session-Id on GET requests", async () => {
+    const mockResponse = new Response(JSON.stringify([]), { status: 200 });
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(mockResponse);
+
+    await offlineFetch("/api/tasks?projectId=123");
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      "/api/tasks?projectId=123",
+      undefined,
+    );
   });
 });

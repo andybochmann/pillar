@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { emitSyncEvent } from "@/lib/event-bus";
 import { Project } from "@/models/project";
 import { Category } from "@/models/category";
 
@@ -72,6 +73,16 @@ export async function POST(request: Request) {
     const project = await Project.create({
       ...result.data,
       userId: session.user.id,
+    });
+
+    emitSyncEvent({
+      entity: "project",
+      action: "created",
+      userId: session.user.id,
+      sessionId: request.headers.get("X-Session-Id") ?? "",
+      entityId: project._id.toString(),
+      data: project.toJSON(),
+      timestamp: Date.now(),
     });
 
     return NextResponse.json(project, { status: 201 });

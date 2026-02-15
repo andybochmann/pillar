@@ -143,4 +143,122 @@ describe("useProjects", () => {
       ),
     ).rejects.toThrow("Name is required");
   });
+
+  describe("sync subscription", () => {
+    function emitSync(detail: Record<string, unknown>) {
+      window.dispatchEvent(
+        new CustomEvent("pillar:sync", { detail }),
+      );
+    }
+
+    it("adds a project on created event", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockProjects,
+      } as Response);
+
+      const { result } = renderHook(() => useProjects());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      const newProj = {
+        _id: "proj-new",
+        name: "New Project",
+        categoryId: "cat-1",
+        userId: "u1",
+        columns: [],
+        archived: false,
+        createdAt: "",
+        updatedAt: "",
+      };
+
+      act(() => {
+        emitSync({
+          entity: "project",
+          action: "created",
+          entityId: "proj-new",
+          data: newProj,
+        });
+      });
+
+      expect(result.current.projects).toHaveLength(2);
+    });
+
+    it("updates a project on updated event", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockProjects,
+      } as Response);
+
+      const { result } = renderHook(() => useProjects());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        emitSync({
+          entity: "project",
+          action: "updated",
+          entityId: "proj-1",
+          data: { ...mockProjects[0], name: "Synced Name" },
+        });
+      });
+
+      expect(result.current.projects[0].name).toBe("Synced Name");
+    });
+
+    it("removes a project on deleted event", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockProjects,
+      } as Response);
+
+      const { result } = renderHook(() => useProjects());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        emitSync({
+          entity: "project",
+          action: "deleted",
+          entityId: "proj-1",
+        });
+      });
+
+      expect(result.current.projects).toHaveLength(0);
+    });
+
+    it("does not add duplicate projects", async () => {
+      vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockProjects,
+      } as Response);
+
+      const { result } = renderHook(() => useProjects());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      act(() => {
+        emitSync({
+          entity: "project",
+          action: "created",
+          entityId: "proj-1",
+          data: mockProjects[0],
+        });
+      });
+
+      expect(result.current.projects).toHaveLength(1);
+    });
+
+    it("refetches on pillar:reconnected", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValue({
+        ok: true,
+        json: async () => mockProjects,
+      } as Response);
+
+      renderHook(() => useProjects());
+      await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+
+      await act(async () => {
+        window.dispatchEvent(new CustomEvent("pillar:reconnected"));
+      });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+    });
+  });
 });

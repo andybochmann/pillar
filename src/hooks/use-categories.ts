@@ -2,7 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
+import { useSyncSubscription } from "./use-sync-subscription";
+import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { Category } from "@/types";
+import type { SyncEvent } from "@/lib/event-bus";
 
 interface UseCategoriesReturn {
   categories: Category[];
@@ -96,6 +99,30 @@ export function useCategories(): UseCategoriesReturn {
     }
     setCategories((prev) => prev.filter((c) => c._id !== id));
   }, []);
+
+  // Real-time sync subscription
+  useSyncSubscription("category", useCallback((event: SyncEvent) => {
+    const data = event.data as Category | undefined;
+
+    switch (event.action) {
+      case "created":
+        if (!data) return;
+        setCategories((prev) => {
+          if (prev.some((c) => c._id === data._id)) return prev;
+          return [...prev, data];
+        });
+        break;
+      case "updated":
+        if (!data) return;
+        setCategories((prev) => prev.map((c) => (c._id === event.entityId ? data : c)));
+        break;
+      case "deleted":
+        setCategories((prev) => prev.filter((c) => c._id !== event.entityId));
+        break;
+    }
+  }, []));
+
+  useRefetchOnReconnect(fetchCategories);
 
   return {
     categories,

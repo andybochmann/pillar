@@ -3,6 +3,7 @@ import { z } from "zod";
 import mongoose, { type SortOrder } from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { startOfDay, endOfDay } from "date-fns";
@@ -180,6 +181,17 @@ export async function POST(request: Request) {
     }
 
     const task = await Task.create(taskData);
+
+    emitSyncEvent({
+      entity: "task",
+      action: "created",
+      userId: session.user.id,
+      sessionId: request.headers.get("X-Session-Id") ?? "",
+      entityId: task._id.toString(),
+      projectId: result.data.projectId,
+      data: task.toJSON(),
+      timestamp: Date.now(),
+    });
 
     return NextResponse.json(task, { status: 201 });
   } catch {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 
 const ReorderSchema = z.object({
@@ -57,6 +58,15 @@ export async function PATCH(request: Request) {
     }));
 
     await Task.bulkWrite(bulkOps);
+
+    emitSyncEvent({
+      entity: "task",
+      action: "reordered",
+      userId: session.user.id,
+      sessionId: request.headers.get("X-Session-Id") ?? "",
+      entityId: "",
+      timestamp: Date.now(),
+    });
 
     return NextResponse.json({ success: true });
   } catch {

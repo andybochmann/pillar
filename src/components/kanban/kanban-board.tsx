@@ -44,7 +44,7 @@ export function KanbanBoard({
   initialTasks,
 }: KanbanBoardProps) {
   const { tasks, setTasks, createTask, updateTask, deleteTask } =
-    useTasks(initialTasks);
+    useTasks(initialTasks, projectId);
   const { labels: allLabels, createLabel } = useLabels();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
