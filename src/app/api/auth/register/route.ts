@@ -27,12 +27,12 @@ export async function POST(request: Request) {
 
     await connectDB();
 
+    // Always hash password for timing normalization (prevents timing attacks)
+    const passwordHash = await hash(result.data.password, 12);
+
     const existingUser = await User.findOne({
       email: result.data.email.toLowerCase(),
     });
-
-    // Always hash password for timing normalization (prevents timing attacks)
-    const passwordHash = await hash(result.data.password, 12);
 
     if (existingUser) {
       return NextResponse.json(
