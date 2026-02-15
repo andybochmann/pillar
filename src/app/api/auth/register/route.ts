@@ -32,8 +32,8 @@ export async function POST(request: Request) {
     });
     if (existingUser) {
       return NextResponse.json(
-        { error: "Email already registered" },
-        { status: 409 },
+        { error: "Invalid registration data" },
+        { status: 400 },
       );
     }
 
