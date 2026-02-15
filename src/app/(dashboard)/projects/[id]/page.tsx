@@ -68,7 +68,7 @@ export default async function ProjectPage({ params }: PageProps) {
     priority: t.priority,
     dueDate: t.dueDate?.toISOString(),
     order: t.order,
-    labels: t.labels,
+    labels: t.labels.map((l) => l.toString()),
     subtasks: (t.subtasks ?? []).map((s) => ({
       _id: s._id.toString(),
       title: s.title,
@@ -81,6 +81,10 @@ export default async function ProjectPage({ params }: PageProps) {
           endDate: t.recurrence.endDate?.toISOString(),
         }
       : undefined,
+    statusHistory: (t.statusHistory ?? []).map((h) => ({
+      columnId: h.columnId,
+      timestamp: h.timestamp.toISOString(),
+    })),
     completedAt: t.completedAt?.toISOString(),
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),

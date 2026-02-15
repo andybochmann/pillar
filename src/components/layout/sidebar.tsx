@@ -319,7 +319,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+            className="w-full cursor-pointer justify-start gap-3 text-muted-foreground hover:text-foreground"
             onClick={() => signOut({ callbackUrl: "/login" })}
           >
             <LogOut className="h-4 w-4" />
@@ -329,7 +329,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="mx-auto flex h-9 w-9 text-muted-foreground hover:text-foreground"
+            className="mx-auto flex h-9 w-9 cursor-pointer text-muted-foreground hover:text-foreground"
             onClick={() => signOut({ callbackUrl: "/login" })}
             title="Sign out"
           >

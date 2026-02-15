@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -55,7 +56,7 @@ export default function LoginPage() {
         <CardTitle className="text-2xl font-bold">Welcome to Pillar</CardTitle>
         <CardDescription>Sign in to manage your tasks</CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="space-y-6">
         <CardContent className="space-y-4">
           {error && (
             <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
@@ -83,6 +84,12 @@ export default function LoginPage() {
               required
               autoComplete="current-password"
             />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="rememberMe" name="rememberMe" />
+            <Label htmlFor="rememberMe" className="text-sm font-normal cursor-pointer">
+              Remember me
+            </Label>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
