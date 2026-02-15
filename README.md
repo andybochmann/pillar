@@ -33,7 +33,7 @@ A Kanban-based task management app built with Next.js, TypeScript, and MongoDB. 
 
 ```bash
 # Clone the repository
-git clone https://github.com/andy-bochmann/pillar.git
+git clone https://github.com/andybochmann/pillar.git
 cd pillar
 
 # Install dependencies
