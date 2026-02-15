@@ -117,8 +117,8 @@ describe("TaskCard", () => {
         }}
       />,
     );
-    const indicator = screen.getByText("2/2");
-    expect(indicator.closest("span")?.className).toContain("text-green-600");
+    const badge = screen.getByTestId("subtask-badge");
+    expect(badge.className).toContain("text-green-600");
   });
 
   it("applies overlay styling when isOverlay is true", () => {

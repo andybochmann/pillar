@@ -212,18 +212,31 @@ export function TaskCard({
             const completed = task.subtasks.filter((s) => s.completed).length;
             const total = task.subtasks.length;
             const allDone = completed === total;
+            const percentage = (completed / total) * 100;
             const badge = (
               <span
+                data-testid="subtask-badge"
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium",
+                  "inline-flex flex-col gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium",
                   allDone
                     ? "text-green-600 bg-green-50"
                     : "text-muted-foreground bg-muted",
                   onSubtaskToggle && "cursor-pointer",
                 )}
               >
-                <ListChecks className="h-3 w-3" />
-                {completed}/{total}
+                <span className="inline-flex items-center gap-1">
+                  <ListChecks className="h-3 w-3" />
+                  {completed}/{total}
+                </span>
+                <div className="w-full h-1 bg-background rounded-full overflow-hidden">
+                  <div
+                    className={cn(
+                      "h-full transition-all",
+                      allDone ? "bg-green-600" : "bg-primary",
+                    )}
+                    style={{ width: `${percentage}%` }}
+                  />
+                </div>
               </span>
             );
             if (!onSubtaskToggle) return badge;
