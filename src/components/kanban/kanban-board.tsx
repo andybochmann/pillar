@@ -264,6 +264,19 @@ export function KanbanBoard({
     }
   }
 
+  async function handleSubtaskToggle(taskId: string, subtaskId: string) {
+    const task = tasks.find((t) => t._id === taskId);
+    if (!task) return;
+    const updatedSubtasks = task.subtasks.map((s) =>
+      s._id === subtaskId ? { ...s, completed: !s.completed } : s,
+    );
+    try {
+      await updateTask(taskId, { subtasks: updatedSubtasks });
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
   async function handleTaskUpdate(id: string, data: Partial<Task>) {
     const updated = await updateTask(id, data);
     setSelectedTask(updated);
@@ -408,6 +421,7 @@ export function KanbanBoard({
                 currentUserId={readOnly ? undefined : currentUserId}
                 onStartTracking={readOnly ? undefined : handleStartTracking}
                 onStopTracking={readOnly ? undefined : handleStopTracking}
+                onSubtaskToggle={readOnly ? undefined : handleSubtaskToggle}
               />
             </SortableContext>
           ))}

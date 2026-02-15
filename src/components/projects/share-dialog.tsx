@@ -221,7 +221,7 @@ export function ShareDialog({
                       <Button
                         variant="ghost"
                         size={isOwner ? "icon" : "sm"}
-                        className={isOwner ? "h-7 w-7 opacity-0 group-hover:opacity-100" : "h-7 text-xs opacity-0 group-hover:opacity-100"}
+                        className={isOwner ? "h-7 w-7" : "h-7 text-xs"}
                         onClick={() => handleRemoveMember(member._id, member.userName ?? "member", !isOwner)}
                         aria-label={isOwner ? `Remove ${member.userName}` : "Leave project"}
                       >

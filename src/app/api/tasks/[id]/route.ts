@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
@@ -85,6 +86,16 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     await connectDB();
 
     const updateData: Record<string, unknown> = { ...result.data };
+
+    // Strip invalid _id values (e.g. "temp-*") so Mongoose generates real ObjectIds
+    if (result.data.subtasks) {
+      updateData.subtasks = result.data.subtasks.map(({ _id, ...rest }) => {
+        if (_id && mongoose.Types.ObjectId.isValid(_id)) {
+          return { _id, ...rest };
+        }
+        return rest;
+      });
+    }
 
     if (result.data.dueDate !== undefined) {
       updateData.dueDate = result.data.dueDate ? new Date(result.data.dueDate) : null;

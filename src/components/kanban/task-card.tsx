@@ -10,12 +10,17 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, ListChecks } from "lucide-react";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
 import { TimeTrackingButton } from "@/components/tasks/time-tracking-button";
-import type { Task, Priority } from "@/types";
+import type { Task, Subtask, Priority } from "@/types";
 
 interface TaskCardProps {
   task: Task;
@@ -30,6 +35,7 @@ interface TaskCardProps {
   currentUserId?: string;
   onStartTracking?: (taskId: string) => void;
   onStopTracking?: (taskId: string) => void;
+  onSubtaskToggle?: (taskId: string, subtaskId: string) => void;
 }
 
 const priorities: Priority[] = ["urgent", "high", "medium", "low"];
@@ -84,6 +90,7 @@ export function TaskCard({
   currentUserId,
   onStartTracking,
   onStopTracking,
+  onSubtaskToggle,
 }: TaskCardProps) {
   const {
     attributes,
@@ -117,14 +124,14 @@ export function TaskCard({
       {...listeners}
       onClick={onClick}
       className={cn(
-        "group/card cursor-grab active:cursor-grabbing",
+        "group/card cursor-grab active:cursor-grabbing py-0 gap-0",
         isDragging && "opacity-50",
         isOverlay && "shadow-lg rotate-2",
         onClick && "cursor-pointer hover:ring-1 hover:ring-primary/20",
         selected && "ring-2 ring-primary",
       )}
     >
-      <CardContent className="p-3 space-y-2">
+      <CardContent className="px-3 py-2 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2">
             {onSelect && (
@@ -205,18 +212,56 @@ export function TaskCard({
             const completed = task.subtasks.filter((s) => s.completed).length;
             const total = task.subtasks.length;
             const allDone = completed === total;
-            return (
+            const badge = (
               <span
                 className={cn(
                   "inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium",
                   allDone
                     ? "text-green-600 bg-green-50"
                     : "text-muted-foreground bg-muted",
+                  onSubtaskToggle && "cursor-pointer",
                 )}
               >
                 <ListChecks className="h-3 w-3" />
                 {completed}/{total}
               </span>
+            );
+            if (!onSubtaskToggle) return badge;
+            return (
+              <Popover>
+                <PopoverTrigger asChild onClick={(e) => e.stopPropagation()}>
+                  {badge}
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  className="w-64 p-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="space-y-1">
+                    {task.subtasks.map((subtask: Subtask) => (
+                      <label
+                        key={subtask._id}
+                        className="flex items-center gap-2 rounded-md px-2 py-1 hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={subtask.completed}
+                          onCheckedChange={() =>
+                            onSubtaskToggle(task._id, subtask._id)
+                          }
+                        />
+                        <span
+                          className={cn(
+                            "text-sm",
+                            subtask.completed && "line-through text-muted-foreground",
+                          )}
+                        >
+                          {subtask.title}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </PopoverContent>
+              </Popover>
             );
           })()}
           {currentUserId && onStartTracking && onStopTracking && (

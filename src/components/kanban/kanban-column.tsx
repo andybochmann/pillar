@@ -26,6 +26,7 @@ interface KanbanColumnProps {
   currentUserId?: string;
   onStartTracking?: (taskId: string) => void;
   onStopTracking?: (taskId: string) => void;
+  onSubtaskToggle?: (taskId: string, subtaskId: string) => void;
 }
 
 export function KanbanColumn({
@@ -45,6 +46,7 @@ export function KanbanColumn({
   currentUserId,
   onStartTracking,
   onStopTracking,
+  onSubtaskToggle,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [localShowForm, setLocalShowForm] = useState(false);
@@ -102,6 +104,7 @@ export function KanbanColumn({
             currentUserId={currentUserId}
             onStartTracking={onStartTracking}
             onStopTracking={onStopTracking}
+            onSubtaskToggle={onSubtaskToggle}
           />
         ))}
         {tasks.length === 0 && !showForm && (

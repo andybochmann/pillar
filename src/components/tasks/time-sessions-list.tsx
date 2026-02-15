@@ -136,7 +136,7 @@ function SessionRow({
       <Button
         variant="ghost"
         size="icon"
-        className="h-5 w-5 opacity-0 group-hover:opacity-100"
+        className="h-5 w-5"
         onClick={onDelete}
         aria-label="Delete session"
       >

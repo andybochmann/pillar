@@ -393,7 +393,7 @@ function TaskSheetForm({
           <Separator />
 
           {/* Priority & Column */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="task-priority">Priority</Label>
               <Select value={priority} onValueChange={handlePriorityChange}>
@@ -451,7 +451,7 @@ function TaskSheetForm({
           )}
 
           {/* Due Date & Recurrence */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label htmlFor="task-due-date">Due Date</Label>
               <Input
@@ -517,7 +517,7 @@ function TaskSheetForm({
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                    className="h-6 w-6"
                     onClick={() => handleDeleteSubtask(subtask._id)}
                     aria-label={`Delete ${subtask.title}`}
                   >

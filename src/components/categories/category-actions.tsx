@@ -52,7 +52,7 @@ export function CategoryActions({
           <Button
             variant="ghost"
             size="icon"
-            className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 hover:opacity-100"
+            className="h-5 w-5 shrink-0 text-muted-foreground hover:text-foreground"
             aria-label={`Actions for ${category.name}`}
           >
             <MoreHorizontal className="h-3.5 w-3.5" />

@@ -1,12 +1,13 @@
 import type { TimeSession } from "@/types";
 
 export function formatDuration(ms: number): string {
-  const totalMinutes = Math.floor(ms / 60_000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
+  const totalSeconds = Math.floor(ms / 1_000);
+  const hours = Math.floor(totalSeconds / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
 
-  if (hours === 0) return `${minutes}m`;
-  return `${hours}h ${minutes}m`;
+  if (hours === 0) return `${minutes}m ${seconds}s`;
+  return `${hours}h ${minutes}m ${seconds}s`;
 }
 
 export function computeSessionDuration(session: TimeSession): number {

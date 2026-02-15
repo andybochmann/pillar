@@ -83,7 +83,7 @@ export function TimeTrackingButton({
       className={cn(
         "inline-flex items-center rounded-md px-1 py-0.5 text-xs",
         "text-muted-foreground hover:text-foreground hover:bg-muted",
-        "transition-colors opacity-0 group-hover/card:opacity-100",
+        "transition-colors",
       )}
       aria-label="Start tracking time"
     >

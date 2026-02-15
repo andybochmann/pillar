@@ -8,27 +8,35 @@ import type { TimeSession } from "@/types";
 
 describe("formatDuration", () => {
   it("formats zero milliseconds", () => {
-    expect(formatDuration(0)).toBe("0m");
+    expect(formatDuration(0)).toBe("0m 0s");
   });
 
   it("formats seconds only (under a minute)", () => {
-    expect(formatDuration(45_000)).toBe("0m");
+    expect(formatDuration(45_000)).toBe("0m 45s");
   });
 
   it("formats minutes only", () => {
-    expect(formatDuration(5 * 60_000)).toBe("5m");
+    expect(formatDuration(5 * 60_000)).toBe("5m 0s");
+  });
+
+  it("formats minutes and seconds", () => {
+    expect(formatDuration(5 * 60_000 + 12_000)).toBe("5m 12s");
   });
 
   it("formats hours and minutes", () => {
-    expect(formatDuration(2 * 3600_000 + 30 * 60_000)).toBe("2h 30m");
+    expect(formatDuration(2 * 3600_000 + 30 * 60_000)).toBe("2h 30m 0s");
+  });
+
+  it("formats hours, minutes, and seconds", () => {
+    expect(formatDuration(2 * 3600_000 + 30 * 60_000 + 45_000)).toBe("2h 30m 45s");
   });
 
   it("formats hours only (no remaining minutes)", () => {
-    expect(formatDuration(3 * 3600_000)).toBe("3h 0m");
+    expect(formatDuration(3 * 3600_000)).toBe("3h 0m 0s");
   });
 
   it("formats large durations", () => {
-    expect(formatDuration(48 * 3600_000 + 15 * 60_000)).toBe("48h 15m");
+    expect(formatDuration(48 * 3600_000 + 15 * 60_000)).toBe("48h 15m 0s");
   });
 });
 
