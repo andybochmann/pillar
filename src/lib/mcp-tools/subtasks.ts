@@ -7,6 +7,18 @@ import {
   requireProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
+import type {
+  LeanSubtask,
+  SerializedSubtask,
+} from "@/lib/mcp-tools/types";
+
+function serializeSubtask(subtask: LeanSubtask): SerializedSubtask {
+  return {
+    _id: subtask._id.toString(),
+    title: subtask.title,
+    completed: subtask.completed,
+  };
+}
 
 function errorResponse(message: string) {
   return {
@@ -61,11 +73,7 @@ export function registerSubtaskTools(server: McpServer) {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify({
-              _id: newSubtask._id.toString(),
-              title: newSubtask.title,
-              completed: newSubtask.completed,
-            }),
+            text: JSON.stringify(serializeSubtask(newSubtask)),
           },
         ],
       };
@@ -121,15 +129,13 @@ export function registerSubtaskTools(server: McpServer) {
       const sub = task.subtasks.find(
         (s) => s._id.toString() === subtaskId,
       );
+      if (!sub) return errorResponse("Subtask not found");
+
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify({
-              _id: sub?._id.toString(),
-              title: sub?.title,
-              completed: sub?.completed,
-            }),
+            text: JSON.stringify(serializeSubtask(sub)),
           },
         ],
       };
