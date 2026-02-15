@@ -123,7 +123,7 @@ function DayDetailContent({
   }
 
   return (
-    <div className="space-y-4 py-4">
+    <div className="space-y-4 px-4 py-4">
       {tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground">No tasks on this date</p>
       ) : (

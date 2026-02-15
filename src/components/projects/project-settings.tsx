@@ -76,7 +76,7 @@ export function ProjectSettings({
             <SheetTitle>Project Settings</SheetTitle>
           </SheetHeader>
 
-          <div className="space-y-6 py-4">
+          <div className="space-y-6 px-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="project-name">Name</Label>
               <Input
