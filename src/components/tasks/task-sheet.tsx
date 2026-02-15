@@ -104,6 +104,22 @@ export function TaskSheet({
 
 const PRIORITIES: Priority[] = ["urgent", "high", "medium", "low"];
 
+const priorityConfig = {
+  urgent: {
+    label: "Urgent",
+    className: "bg-red-500 text-white hover:bg-red-600",
+  },
+  high: {
+    label: "High",
+    className: "bg-orange-500 text-white hover:bg-orange-600",
+  },
+  medium: {
+    label: "Medium",
+    className: "bg-blue-500 text-white hover:bg-blue-600",
+  },
+  low: { label: "Low", className: "bg-gray-400 text-white hover:bg-gray-500" },
+};
+
 interface TaskSheetFormProps {
   task: Task;
   columns: Column[];
