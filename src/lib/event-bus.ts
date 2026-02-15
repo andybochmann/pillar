@@ -12,6 +12,17 @@ export interface SyncEvent {
   timestamp: number;
 }
 
+export interface NotificationEvent {
+  type: "due-soon" | "overdue" | "reminder" | "daily-summary";
+  notificationId: string;
+  userId: string;
+  taskId: string;
+  title: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+  timestamp: number;
+}
+
 declare global {
   var syncEventBus: EventEmitter | undefined;
 }
@@ -23,4 +34,8 @@ syncEventBus.setMaxListeners(200);
 
 export function emitSyncEvent(event: SyncEvent): void {
   syncEventBus.emit("sync", event);
+}
+
+export function emitNotificationEvent(event: NotificationEvent): void {
+  syncEventBus.emit("notification", event);
 }
