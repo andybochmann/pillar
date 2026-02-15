@@ -4,7 +4,12 @@ import {
   teardownTestDB,
   clearTestDB,
 } from "@/test/helpers/db";
-import { createTestUser } from "@/test/helpers/factories";
+import {
+  createTestUser,
+  createTestCategory,
+  createTestProject,
+  createTestProjectMember,
+} from "@/test/helpers/factories";
 
 const session = vi.hoisted(() => ({
   user: { id: "000000000000000000000000", name: "Test User", email: "test@example.com" },
@@ -34,11 +39,17 @@ describe("GET /api/users/search", () => {
     await clearTestDB();
   });
 
-  it("returns matching users by email", async () => {
+  it("returns matching users who share projects", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
-    await createTestUser({ email: "alice@test.com", name: "Alice" });
-    await createTestUser({ email: "bob@test.com", name: "Bob" });
+    const alice = await createTestUser({ email: "alice@test.com", name: "Alice" });
+    const bob = await createTestUser({ email: "bob@test.com", name: "Bob" });
+
+    // Create a project with both current user and alice
+    const category = await createTestCategory({ userId: currentUser._id });
+    const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
+    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
+    await createTestProjectMember({ projectId: project._id, userId: alice._id, invitedBy: currentUser._id, role: "editor" });
 
     const res = await GET(
       new Request("http://localhost/api/users/search?email=alice"),
@@ -52,9 +63,33 @@ describe("GET /api/users/search", () => {
     expect(data[0]).not.toHaveProperty("passwordHash");
   });
 
+  it("excludes users not in shared projects", async () => {
+    const currentUser = await createTestUser({ email: "me@test.com" });
+    session.user.id = currentUser._id.toString();
+    const alice = await createTestUser({ email: "alice@test.com", name: "Alice" });
+    const bob = await createTestUser({ email: "bob@test.com", name: "Bob" });
+
+    // Create a project with only current user
+    const category = await createTestCategory({ userId: currentUser._id });
+    const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
+    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
+
+    const res = await GET(
+      new Request("http://localhost/api/users/search?email=alice"),
+    );
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveLength(0);
+  });
+
   it("excludes current user from results", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
+
+    const category = await createTestCategory({ userId: currentUser._id });
+    const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
+    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
 
     const res = await GET(
       new Request("http://localhost/api/users/search?email=me@test"),
@@ -91,12 +126,31 @@ describe("GET /api/users/search", () => {
     expect(data).toHaveLength(0);
   });
 
+  it("returns empty when user has no project memberships", async () => {
+    const currentUser = await createTestUser({ email: "me@test.com" });
+    session.user.id = currentUser._id.toString();
+    await createTestUser({ email: "alice@test.com", name: "Alice" });
+
+    const res = await GET(
+      new Request("http://localhost/api/users/search?email=alice"),
+    );
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveLength(0);
+  });
+
   it("limits results to 10", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
 
+    const category = await createTestCategory({ userId: currentUser._id });
+    const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
+    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
+
     for (let i = 0; i < 15; i++) {
-      await createTestUser({ email: `user${i}@search.com` });
+      const user = await createTestUser({ email: `user${i}@search.com` });
+      await createTestProjectMember({ projectId: project._id, userId: user._id, invitedBy: currentUser._id, role: "editor" });
     }
 
     const res = await GET(
@@ -111,7 +165,12 @@ describe("GET /api/users/search", () => {
   it("is case-insensitive", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
-    await createTestUser({ email: "Alice@Test.com", name: "Alice" });
+    const alice = await createTestUser({ email: "Alice@Test.com", name: "Alice" });
+
+    const category = await createTestCategory({ userId: currentUser._id });
+    const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
+    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
+    await createTestProjectMember({ projectId: project._id, userId: alice._id, invitedBy: currentUser._id, role: "editor" });
 
     const res = await GET(
       new Request("http://localhost/api/users/search?email=alice"),
