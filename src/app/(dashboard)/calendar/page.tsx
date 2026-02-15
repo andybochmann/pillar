@@ -11,7 +11,11 @@ import {
   endOfWeek,
   parse,
 } from "date-fns";
-import type { Task as TaskType, Project as ProjectType } from "@/types";
+import type {
+  Task as TaskType,
+  Project as ProjectType,
+  CalendarViewType,
+} from "@/types";
 
 interface CalendarPageProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -26,6 +30,14 @@ export default async function CalendarPage({
   await connectDB();
 
   const params = await searchParams;
+
+  // Parse view type from URL or use month as default
+  const viewParam = params.view;
+  const validViews: CalendarViewType[] = ["month", "week", "day"];
+  const viewType: CalendarViewType =
+    viewParam && validViews.includes(viewParam as CalendarViewType)
+      ? (viewParam as CalendarViewType)
+      : "month";
 
   // Parse month from URL or use current month
   let currentMonth: Date;
@@ -67,6 +79,7 @@ export default async function CalendarPage({
         initialTasks={tasks}
         projects={projects}
         currentMonth={currentMonth}
+        initialViewType={viewType}
       />
     </div>
   );

@@ -1,29 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarView } from "./calendar-view";
 import { DayDetail } from "./day-detail";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useTasks } from "@/hooks/use-tasks";
 import { toast } from "sonner";
 import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
-import type { Task, Project } from "@/types";
+import type { Task, Project, CalendarViewType } from "@/types";
 
 interface CalendarPageClientProps {
   initialTasks: Task[];
   projects: Project[];
   currentMonth: Date;
+  initialViewType?: CalendarViewType;
 }
 
 export function CalendarPageClient({
   initialTasks,
   projects,
   currentMonth,
+  initialViewType = "month",
 }: CalendarPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { tasks, setTasks, updateTask, deleteTask } = useTasks(initialTasks);
 
+  const [viewType, setViewType] = useState<CalendarViewType>(initialViewType);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -127,6 +131,13 @@ export function CalendarPageClient({
     const created: Task = await res.json();
     setTasks((prev) => [...prev, created]);
     toast.success("Task created");
+  }
+
+  function handleViewTypeChange(newViewType: CalendarViewType) {
+    setViewType(newViewType);
+    const params = new URLSearchParams(searchParams);
+    params.set("view", newViewType);
+    router.push(`/calendar?${params.toString()}`);
   }
 
   return (
