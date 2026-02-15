@@ -123,3 +123,46 @@ async function networkFirstNavigation(request) {
     return caches.match("/offline.html");
   }
 }
+
+// Push: handle push notifications
+self.addEventListener("push", (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || "Pillar Notification";
+  const options = {
+    body: data.message || data.body || "",
+    icon: data.icon || "/icons/icon-192x192.png",
+    badge: data.badge || "/icons/icon-192x192.png",
+    tag: data.tag || `notification-${Date.now()}`,
+    data: {
+      taskId: data.taskId,
+      notificationId: data.notificationId,
+      url: data.url || "/",
+    },
+    requireInteraction: data.requireInteraction || false,
+    actions: data.actions || [],
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Notification click: navigate to task or notification center
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || "/";
+
+  event.waitUntil(
+    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Focus existing window if available
+      for (const client of clientList) {
+        if (client.url === urlToOpen && "focus" in client) {
+          return client.focus();
+        }
+      }
+      // Open new window if no matching client
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    }),
+  );
+});
