@@ -5,6 +5,8 @@ import {
   DndContext,
   DragOverlay,
   closestCorners,
+  pointerWithin,
+  type CollisionDetection,
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
@@ -139,6 +141,14 @@ export function KanbanBoard({
     }),
     useSensor(KeyboardSensor),
   );
+
+  // pointerWithin detects empty columns reliably (pointer is inside the container rect),
+  // closestCorners handles precise task-to-task reordering as fallback
+  const collisionDetection: CollisionDetection = useCallback((args) => {
+    const pointerCollisions = pointerWithin(args);
+    if (pointerCollisions.length > 0) return pointerCollisions;
+    return closestCorners(args);
+  }, []);
 
   const getColumnTasks = useCallback(
     (columnId: string) =>
@@ -388,7 +398,7 @@ export function KanbanBoard({
       <DndContext
         id="kanban-dnd"
         sensors={readOnly ? [] : sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={collisionDetection}
         onDragStart={readOnly ? undefined : handleDragStart}
         onDragOver={readOnly ? undefined : handleDragOver}
         onDragEnd={readOnly ? undefined : handleDragEnd}

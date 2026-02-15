@@ -89,7 +89,7 @@ export function KanbanColumn({
       </div>
 
       {/* Task list */}
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto">
+      <div className="flex min-h-[120px] flex-1 flex-col gap-2 overflow-y-auto">
         {tasks.map((task) => (
           <TaskCard
             key={task._id}

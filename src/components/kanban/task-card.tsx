@@ -124,27 +124,16 @@ export function TaskCard({
       {...listeners}
       onClick={onClick}
       className={cn(
-        "group/card cursor-grab active:cursor-grabbing py-0 gap-0",
+        "group/card cursor-grab active:cursor-grabbing py-0 gap-0 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 hover:border-primary/30",
         isDragging && "opacity-50",
         isOverlay && "shadow-lg rotate-2",
-        onClick && "cursor-pointer hover:ring-1 hover:ring-primary/20",
+        onClick && "cursor-pointer",
         selected && "ring-2 ring-primary",
       )}
     >
       <CardContent className="px-3 py-2 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2">
-            {onSelect && (
-              <Checkbox
-                checked={selected}
-                onCheckedChange={() => onSelect(task._id)}
-                onClick={(e) => e.stopPropagation()}
-                aria-label={`Select ${task.title}`}
-                className="mt-0.5"
-              />
-            )}
-            <p className="text-sm font-medium leading-snug">{task.title}</p>
-          </div>
+          <p className="text-sm font-medium leading-snug">{task.title}</p>
           {task.recurrence?.frequency &&
             task.recurrence.frequency !== "none" && (
               <span
@@ -310,18 +299,30 @@ export function TaskCard({
               </Badge>
             );
           })}
-          {task.assigneeId && memberNames && (() => {
-            const assigneeName = memberNames.get(task.assigneeId!);
-            if (!assigneeName) return null;
-            return (
-              <span
-                className="ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary"
-                title={assigneeName}
-              >
-                {assigneeName.charAt(0).toUpperCase()}
-              </span>
-            );
-          })()}
+          {(task.assigneeId || onSelect) && (
+            <span className="ml-auto inline-flex items-center gap-1.5">
+              {task.assigneeId && memberNames && (() => {
+                const assigneeName = memberNames.get(task.assigneeId!);
+                if (!assigneeName) return null;
+                return (
+                  <span
+                    className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary"
+                    title={assigneeName}
+                  >
+                    {assigneeName.charAt(0).toUpperCase()}
+                  </span>
+                );
+              })()}
+              {onSelect && (
+                <Checkbox
+                  checked={selected}
+                  onCheckedChange={() => onSelect(task._id)}
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Select ${task.title}`}
+                />
+              )}
+            </span>
+          )}
         </div>
       </CardContent>
     </Card>
