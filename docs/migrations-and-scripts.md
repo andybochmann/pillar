@@ -44,14 +44,14 @@ All migration scripts check for existing records before creating new ones. Runni
 
 ### Development (Local MongoDB)
 
-Run migrations using `pnpm tsx`:
+Run migrations using `pnpm dlx tsx`:
 
 ```bash
 # With default MongoDB URI (mongodb://localhost:27017/pillar)
-pnpm tsx scripts/migrate-project-members.ts
+pnpm dlx tsx scripts/migrate-project-members.ts
 
 # With custom MongoDB URI
-MONGODB_URI=mongodb://localhost:27017/my-pillar-db pnpm tsx scripts/migrate-project-members.ts
+MONGODB_URI=mongodb://localhost:27017/my-pillar-db pnpm dlx tsx scripts/migrate-project-members.ts
 ```
 
 The script will output:
@@ -72,10 +72,10 @@ For the development Docker Compose stack (started with `docker compose up -d`):
 docker compose exec app sh
 
 # Run the migration inside the container
-node -r tsx scripts/migrate-project-members.ts
+node --experimental-strip-types scripts/migrate-project-members.ts
 
 # Or run directly from host (if app container is running)
-docker compose exec app node -r tsx scripts/migrate-project-members.ts
+docker compose exec app node --experimental-strip-types scripts/migrate-project-members.ts
 ```
 
 The `MONGODB_URI` environment variable is already set in the container (`mongodb://mongo:27017/pillar`), so no additional configuration is needed.
@@ -89,7 +89,7 @@ For the production Docker Compose stack (using `docker-compose.production.yml`):
 docker compose -f docker-compose.production.yml exec app sh
 
 # Run the migration inside the container
-node -r tsx scripts/migrate-project-members.ts
+node --experimental-strip-types scripts/migrate-project-members.ts
 ```
 
 ### Standalone Production (Custom MongoDB)
@@ -98,14 +98,14 @@ If you're running Pillar outside Docker with a custom MongoDB setup:
 
 ```bash
 # Set your MongoDB URI and run the migration
-MONGODB_URI=mongodb://your-mongo-host:27017/pillar pnpm tsx scripts/migrate-project-members.ts
+MONGODB_URI=mongodb://your-mongo-host:27017/pillar pnpm dlx tsx scripts/migrate-project-members.ts
 ```
 
 For MongoDB Atlas or other cloud providers, use your connection string:
 
 ```bash
 MONGODB_URI="mongodb+srv://user:password@cluster.mongodb.net/pillar?retryWrites=true&w=majority" \
-  pnpm tsx scripts/migrate-project-members.ts
+  pnpm dlx tsx scripts/migrate-project-members.ts
 ```
 
 ## Migration Script Details
@@ -132,7 +132,7 @@ export async function migrateProjectMembers(
 ): Promise<{ processed: number; created: number; skipped: number }>
 ```
 
-The function can be imported and called programmatically from tests or other scripts. When run directly via `pnpm tsx`, it executes the migration and then disconnects from MongoDB.
+The function can be imported and called programmatically from tests or other scripts. When run directly via `pnpm dlx tsx`, it executes the migration and then disconnects from MongoDB.
 
 **Safety Features**:
 
@@ -177,15 +177,15 @@ Choose the method that matches your deployment:
 
 ```bash
 # Local development
-pnpm tsx scripts/migrate-project-members.ts
+pnpm dlx tsx scripts/migrate-project-members.ts
 
 # Docker (start only the database)
 docker compose up -d mongo
-docker compose run --rm app node -r tsx scripts/migrate-project-members.ts
+docker compose run --rm app node --experimental-strip-types scripts/migrate-project-members.ts
 docker compose down
 
 # Custom MongoDB URI
-MONGODB_URI="your-connection-string" pnpm tsx scripts/migrate-project-members.ts
+MONGODB_URI="your-connection-string" pnpm dlx tsx scripts/migrate-project-members.ts
 ```
 
 ### Step 4: Verify the Migration
