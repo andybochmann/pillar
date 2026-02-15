@@ -13,3 +13,5 @@ playwright.config.ts
 coverage
 .env*
 README.md
+DOCKER_README.md
+docker-compose.production.yml

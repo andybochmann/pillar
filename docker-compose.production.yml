@@ -1,0 +1,53 @@
+# Pillar — Production Docker Compose (Portainer-ready)
+#
+# Pulls pre-built image from Docker Hub instead of building locally.
+# MongoDB is internal-only (no exposed port).
+#
+# Usage:
+#   1. Set AUTH_SECRET:  export AUTH_SECRET=$(openssl rand -base64 32)
+#   2. Set AUTH_URL:     export AUTH_URL=https://pillar.example.com
+#   3. Run:              docker compose -f docker-compose.production.yml up -d
+
+services:
+  app:
+    image: andybochmann/pillar:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017/pillar
+      - AUTH_SECRET=${AUTH_SECRET:?Set AUTH_SECRET with: export AUTH_SECRET=$$(openssl rand -base64 32)}
+      - AUTH_URL=${AUTH_URL:-http://localhost:3000}
+      - AUTH_TRUST_HOST=true
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  mongo:
+    image: mongo:7
+    volumes:
+      - mongo-data:/data/db
+    restart: unless-stopped
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  mongo-data:
