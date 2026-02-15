@@ -30,6 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InstallPromptCard } from "./install-prompt-card";
+import { ApiTokensCard } from "./api-tokens-card";
 
 interface Profile {
   id: string;
@@ -252,6 +253,9 @@ export function SettingsClient({ profile }: SettingsClientProps) {
 
       {/* Install app */}
       <InstallPromptCard />
+
+      {/* API Tokens */}
+      <ApiTokensCard />
 
       {/* Danger zone */}
       <Card className="border-destructive">

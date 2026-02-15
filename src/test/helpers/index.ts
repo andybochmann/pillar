@@ -8,4 +8,5 @@ export {
   createTestTask,
   createTestLabel,
   createTestProjectMember,
+  createTestAccessToken,
 } from "./factories";

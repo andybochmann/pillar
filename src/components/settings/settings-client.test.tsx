@@ -20,10 +20,44 @@ const mockProfile = {
   createdAt: new Date().toISOString(),
 };
 
+function mockFetchResponses(
+  responses: Record<string, unknown> = {},
+) {
+  const mockFn = vi.fn((url: string | URL | Request, init?: RequestInit) => {
+    const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+
+    // Always return empty array for token fetches
+    if (urlStr.includes("/api/settings/tokens")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve([]),
+      } as Response);
+    }
+
+    // Check for matching response by URL pattern
+    for (const [pattern, data] of Object.entries(responses)) {
+      if (urlStr.includes(pattern) && init?.method) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(data),
+        } as Response);
+      }
+    }
+
+    return Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve({}),
+    } as Response);
+  }) as unknown as typeof fetch;
+
+  global.fetch = mockFn;
+  return mockFn;
+}
+
 describe("SettingsClient", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    global.fetch = vi.fn();
+    mockFetchResponses();
   });
 
   it("renders profile, password, and danger sections", () => {
@@ -41,9 +75,8 @@ describe("SettingsClient", () => {
   });
 
   it("saves profile name", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ name: "New Name" }),
+    const mockFn = mockFetchResponses({
+      "/api/settings/profile": { name: "New Name" },
     });
 
     render(<SettingsClient profile={mockProfile} />);
@@ -52,7 +85,7 @@ describe("SettingsClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFn).toHaveBeenCalledWith(
         "/api/settings/profile",
         expect.objectContaining({ method: "PATCH" }),
       );
@@ -74,9 +107,8 @@ describe("SettingsClient", () => {
   });
 
   it("calls password change API", async () => {
-    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve({ message: "Password updated" }),
+    const mockFn = mockFetchResponses({
+      "/api/settings/password": { message: "Password updated" },
     });
 
     render(<SettingsClient profile={mockProfile} />);
@@ -92,7 +124,7 @@ describe("SettingsClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Change password" }));
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith(
+      expect(mockFn).toHaveBeenCalledWith(
         "/api/settings/password",
         expect.objectContaining({ method: "PATCH" }),
       );

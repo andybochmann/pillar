@@ -9,7 +9,12 @@ import {
   type IProjectMember,
   type ProjectRole,
 } from "@/models/project-member";
+import {
+  AccessToken,
+  type IAccessToken,
+} from "@/models/access-token";
 import { hash } from "bcryptjs";
+import { generateToken, hashToken } from "@/lib/mcp-auth";
 
 interface CreateUserInput {
   name?: string;
@@ -151,4 +156,24 @@ export async function createTestProjectMember(
     role: overrides.role ?? "editor",
     invitedBy: overrides.invitedBy,
   });
+}
+
+interface CreateAccessTokenInput {
+  userId: mongoose.Types.ObjectId;
+  name?: string;
+  expiresAt?: Date | null;
+}
+
+export async function createTestAccessToken(
+  overrides: CreateAccessTokenInput,
+): Promise<{ token: IAccessToken; rawToken: string }> {
+  const raw = generateToken();
+  const token = await AccessToken.create({
+    userId: overrides.userId,
+    name: overrides.name ?? "Test Token",
+    tokenHash: hashToken(raw),
+    tokenPrefix: raw.slice(0, 8),
+    expiresAt: overrides.expiresAt ?? null,
+  });
+  return { token, rawToken: raw };
 }
