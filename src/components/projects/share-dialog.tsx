@@ -24,6 +24,7 @@ import { UserPlus, X, Crown, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useProjectMembers } from "@/hooks/use-project-members";
 import { useUserSearch } from "@/hooks/use-user-search";
+import { useBackButton } from "@/hooks/use-back-button";
 import type { ProjectRole } from "@/types";
 
 interface ShareDialogProps {
@@ -41,6 +42,8 @@ export function ShareDialog({
   open,
   onOpenChange,
 }: ShareDialogProps) {
+  useBackButton("share-dialog", open, () => onOpenChange(false));
+
   const {
     members,
     loading: membersLoading,

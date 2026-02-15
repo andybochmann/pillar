@@ -29,6 +29,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { X, Plus, Sparkles, Square, Play } from "lucide-react";
 import { toast } from "sonner";
 import { TimeSessionsList } from "@/components/tasks/time-sessions-list";
+import { useBackButton } from "@/hooks/use-back-button";
 import type {
   Task,
   Subtask,
@@ -70,6 +71,8 @@ export function TaskSheet({
   onStopTracking,
   onDeleteSession,
 }: TaskSheetProps) {
+  useBackButton("task-sheet", open, () => onOpenChange(false));
+
   if (!task) return null;
 
   return (

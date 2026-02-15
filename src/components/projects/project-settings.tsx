@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
 import { Users } from "lucide-react";
 import { ViewTypeSelector } from "@/components/shared/view-type-selector";
+import { useBackButton } from "@/hooks/use-back-button";
 import type { Project, Column, Task } from "@/types";
 
 interface ProjectSettingsProps {
@@ -39,6 +40,8 @@ export function ProjectSettings({
   onUpdate,
   onDelete,
 }: ProjectSettingsProps) {
+  useBackButton("project-settings", open, () => onOpenChange(false));
+
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);

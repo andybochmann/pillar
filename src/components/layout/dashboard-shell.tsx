@@ -1,12 +1,33 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { useBackButton } from "@/hooks/use-back-button";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navClosedAtRef = useRef(0);
+
+  const handleMobileClose = useCallback(() => {
+    setMobileOpen(false);
+    navClosedAtRef.current = Date.now();
+  }, []);
+
+  useBackButton("mobile-nav", mobileOpen, handleMobileClose);
+
+  // Listen for pillar:back-empty — open nav on mobile if not recently closed
+  useEffect(() => {
+    function onBackEmpty() {
+      if (window.innerWidth >= 768) return;
+      if (Date.now() - navClosedAtRef.current < 500) return;
+      setMobileOpen(true);
+    }
+
+    window.addEventListener("pillar:back-empty", onBackEmpty);
+    return () => window.removeEventListener("pillar:back-empty", onBackEmpty);
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden">

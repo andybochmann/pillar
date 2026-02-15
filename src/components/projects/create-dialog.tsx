@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ViewTypeSelector } from "@/components/shared/view-type-selector";
+import { useBackButton } from "@/hooks/use-back-button";
 import type { Category, ViewType } from "@/types";
 
 interface CreateProjectDialogProps {
@@ -44,6 +45,8 @@ export function CreateProjectDialog({
   defaultCategoryId,
   onCreate,
 }: CreateProjectDialogProps) {
+  useBackButton("create-project", open, () => onOpenChange(false));
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState(defaultCategoryId ?? "");

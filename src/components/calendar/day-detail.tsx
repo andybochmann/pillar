@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { useBackButton } from "@/hooks/use-back-button";
 import type { Task, Project } from "@/types";
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
@@ -51,6 +52,8 @@ export function DayDetail({
   onTaskClick,
   onCreateTask,
 }: DayDetailProps) {
+  useBackButton("day-detail", open, () => onOpenChange(false));
+
   if (!date) return null;
 
   return (

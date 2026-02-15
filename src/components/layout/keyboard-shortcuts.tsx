@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useBackButton } from "@/hooks/use-back-button";
 
 const shortcuts = [
   { key: "/", description: "Open search" },
@@ -18,6 +19,8 @@ const shortcuts = [
 
 export function KeyboardShortcutsDialog() {
   const [open, setOpen] = useState(false);
+
+  useBackButton("keyboard-shortcuts", open, () => setOpen(false));
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {

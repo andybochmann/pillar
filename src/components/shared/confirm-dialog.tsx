@@ -10,6 +10,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { useBackButton } from "@/hooks/use-back-button";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -30,6 +31,8 @@ export function ConfirmDialog({
   variant = "default",
   onConfirm,
 }: ConfirmDialogProps) {
+  useBackButton("confirm-dialog", open, () => onOpenChange(false));
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>

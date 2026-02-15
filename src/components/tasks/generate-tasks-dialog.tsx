@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useGenerateTasks } from "@/hooks/use-generate-tasks";
+import { useBackButton } from "@/hooks/use-back-button";
 import { DraftTaskItem } from "./draft-task-item";
 import type { Task } from "@/types";
 
@@ -31,6 +32,8 @@ export function GenerateTasksDialog({
   projectId,
   onTasksAdded,
 }: GenerateTasksDialogProps) {
+  useBackButton("generate-tasks", open, () => onOpenChange(false));
+
   const [count, setCount] = useState<number>(8);
   const [context, setContext] = useState("");
   const {

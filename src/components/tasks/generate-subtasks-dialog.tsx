@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Sparkles, Loader2 } from "lucide-react";
+import { useBackButton } from "@/hooks/use-back-button";
 import { useGenerateSubtasks } from "@/hooks/use-generate-subtasks";
 
 const COUNT_OPTIONS = [3, 5, 8, 10] as const;
@@ -39,6 +40,8 @@ export function GenerateSubtasksDialog({
   maxSubtasks,
   onSubtasksAdded,
 }: GenerateSubtasksDialogProps) {
+  useBackButton("generate-subtasks", open, () => onOpenChange(false));
+
   const remainingSlots = maxSubtasks - existingSubtasks.length;
   const countOptions = COUNT_OPTIONS.filter((n) => n <= remainingSlots);
   const [count, setCount] = useState<number>(5);

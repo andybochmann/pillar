@@ -18,6 +18,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { useBackButton } from "@/hooks/use-back-button";
 
 interface SearchResult {
   _id: string;
@@ -42,6 +43,8 @@ export function CommandPalette() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+
+  useBackButton("command-palette", open, () => setOpen(false));
 
   useEffect(() => {
     return () => {

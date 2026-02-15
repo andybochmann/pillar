@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useBackButton } from "@/hooks/use-back-button";
 import { PRESET_COLORS } from "./preset-colors";
 
 interface CreateCategoryDialogProps {
@@ -30,6 +31,8 @@ export function CreateCategoryDialog({
   onOpenChange,
   onCreate,
 }: CreateCategoryDialogProps) {
+  useBackButton("create-category", open, () => onOpenChange(false));
+
   const [name, setName] = useState("");
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [submitting, setSubmitting] = useState(false);

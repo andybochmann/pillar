@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useBackButton } from "@/hooks/use-back-button";
 import { PRESET_COLORS } from "./preset-colors";
 import type { Category } from "@/types";
 
@@ -32,6 +33,8 @@ export function EditCategoryDialog({
   category,
   onSave,
 }: EditCategoryDialogProps) {
+  useBackButton("edit-category", open, () => onOpenChange(false));
+
   const [name, setName] = useState(category.name);
   const [color, setColor] = useState(category.color);
   const [submitting, setSubmitting] = useState(false);

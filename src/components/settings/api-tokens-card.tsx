@@ -19,6 +19,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useBackButton } from "@/hooks/use-back-button";
 import { useApiTokens } from "@/hooks/use-api-tokens";
 import type { AccessToken } from "@/types";
 
@@ -31,6 +32,8 @@ export function ApiTokensCard() {
   const [tokenName, setTokenName] = useState("");
   const [creating, setCreating] = useState(false);
   const [newToken, setNewToken] = useState<string | null>(null);
+
+  useBackButton("new-token", !!newToken, () => setNewToken(null));
 
   useEffect(() => {
     fetchTokens();
