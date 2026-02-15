@@ -96,6 +96,15 @@ describe("CalendarPageClient", () => {
     expect(screen.getByText(/Feb \d+ - Feb \d+, 2026/)).toBeInTheDocument();
   });
 
+  it("renders day view when view type is day", () => {
+    mockSearchParams.set("view", "day");
+    render(<CalendarPageClient {...defaultProps} initialViewType="day" />);
+    // Day view should show the full date
+    expect(
+      screen.getByText("Sunday, February 15, 2026"),
+    ).toBeInTheDocument();
+  });
+
   it("handles invalid view type gracefully", () => {
     mockSearchParams.set("view", "invalid");
     render(<CalendarPageClient {...defaultProps} />);

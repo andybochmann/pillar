@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarView } from "./calendar-view";
 import { CalendarWeekView } from "./calendar-week-view";
+import { CalendarDayView } from "./calendar-day-view";
 import { DayDetail } from "./day-detail";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useTasks } from "@/hooks/use-tasks";
@@ -161,6 +162,15 @@ export function CalendarPageClient({
           onViewTypeChange={handleViewTypeChange}
           onTaskClick={handleTaskClick}
           onDateClick={handleDateClick}
+          onTaskReschedule={handleTaskReschedule}
+        />
+      ) : viewType === "day" ? (
+        <CalendarDayView
+          tasks={tasks}
+          currentDay={currentMonth}
+          viewType={viewType}
+          onViewTypeChange={handleViewTypeChange}
+          onTaskClick={handleTaskClick}
           onTaskReschedule={handleTaskReschedule}
         />
       ) : null}
