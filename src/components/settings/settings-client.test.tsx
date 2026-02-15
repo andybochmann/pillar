@@ -34,6 +34,24 @@ function mockFetchResponses(
       } as Response);
     }
 
+    // Return default notification preferences for GET requests
+    if (urlStr.includes("/api/notifications/preferences") && !init?.method || init?.method === "GET") {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          browserPushEnabled: false,
+          inAppEnabled: true,
+          emailDigestEnabled: false,
+          emailDigestFrequency: "none",
+          reminderTimings: [1440, 60, 15],
+          quietHoursEnabled: false,
+          quietHoursStart: "22:00",
+          quietHoursEnd: "08:00",
+          overdueSummaryEnabled: false,
+        }),
+      } as Response);
+    }
+
     // Check for matching response by URL pattern
     for (const [pattern, data] of Object.entries(responses)) {
       if (urlStr.includes(pattern) && init?.method) {

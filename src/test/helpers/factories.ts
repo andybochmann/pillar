@@ -102,6 +102,7 @@ interface CreateTaskInput {
     userId: mongoose.Types.ObjectId;
   }[];
   statusHistory?: { columnId: string; timestamp: Date }[];
+  completedAt?: Date;
 }
 
 export async function createTestTask(
@@ -121,6 +122,7 @@ export async function createTestTask(
     subtasks: overrides.subtasks ?? [],
     timeSessions: overrides.timeSessions ?? [],
     statusHistory: overrides.statusHistory ?? [],
+    completedAt: overrides.completedAt,
   });
 }
 
