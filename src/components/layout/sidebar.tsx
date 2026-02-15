@@ -23,6 +23,12 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn, getViewIcon } from "@/lib/utils";
 import { CreateCategoryDialog } from "@/components/categories/create-dialog";
 import { CreateProjectDialog } from "@/components/projects/create-dialog";
@@ -332,31 +338,38 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </>
           ) : (
             /* Collapsed state — icon-only nav */
-            <div className="flex flex-col items-center gap-1">
-              {navItems.map((item) => {
-                const isActive =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
-                const Icon = item.icon;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onNavigate}
-                    className={cn(
-                      "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
-                      isActive
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                    )}
-                    title={item.label}
-                  >
-                    <Icon className="h-4 w-4" />
-                  </Link>
-                );
-              })}
-            </div>
+            <TooltipProvider>
+              <div className="flex flex-col items-center gap-1">
+                {navItems.map((item) => {
+                  const isActive =
+                    item.href === "/"
+                      ? pathname === "/"
+                      : pathname.startsWith(item.href);
+                  const Icon = item.icon;
+                  return (
+                    <Tooltip key={item.href}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          href={item.href}
+                          onClick={onNavigate}
+                          className={cn(
+                            "flex h-9 w-9 items-center justify-center rounded-lg transition-colors",
+                            isActive
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                          )}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" sideOffset={8}>
+                        {item.label}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </div>
+            </TooltipProvider>
           )}
         </nav>
       </ScrollArea>
@@ -374,15 +387,23 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             Sign out
           </Button>
         ) : (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="mx-auto flex h-9 w-9 cursor-pointer text-muted-foreground hover:text-foreground"
-            onClick={() => signOut({ callbackUrl: "/login" })}
-            title="Sign out"
-          >
-            <LogOut className="h-4 w-4" />
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mx-auto flex h-9 w-9 cursor-pointer text-muted-foreground hover:text-foreground"
+                  onClick={() => signOut({ callbackUrl: "/login" })}
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={8}>
+                Sign out
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         )}
       </div>
 
