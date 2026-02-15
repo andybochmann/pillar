@@ -175,3 +175,28 @@ export interface Notification {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface PushSubscription {
+  endpoint: string;
+  keys: {
+    p256dh: string;
+    auth: string;
+  };
+}
+
+export interface NotificationPreference {
+  id: string;
+  userId: string;
+  enableBrowserPush: boolean;
+  enableInAppNotifications: boolean;
+  reminderTimings: number[];
+  enableEmailDigest: boolean;
+  emailDigestFrequency: "daily" | "weekly" | "none";
+  quietHoursEnabled: boolean;
+  quietHoursStart: string;
+  quietHoursEnd: string;
+  enableOverdueSummary: boolean;
+  pushSubscription?: PushSubscription;
+  createdAt: string;
+  updatedAt: string;
+}
