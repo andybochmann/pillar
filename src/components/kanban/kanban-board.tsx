@@ -8,7 +8,9 @@ import {
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -20,11 +22,7 @@ import {
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { TaskSheet } from "@/components/tasks/task-sheet";
-import {
-  BoardFilterBar,
-  EMPTY_FILTERS,
-  type BoardFilters,
-} from "./board-filter-bar";
+import type { BoardFilters } from "./board-filter-bar";
 import { BulkActionsBar } from "./bulk-actions-bar";
 import { useTasks } from "@/hooks/use-tasks";
 import { useLabels } from "@/hooks/use-labels";
@@ -41,6 +39,7 @@ interface KanbanBoardProps {
   readOnly?: boolean;
   currentUserId?: string;
   onTasksChange?: (tasks: Task[]) => void;
+  filters: BoardFilters;
 }
 
 export function KanbanBoard({
@@ -51,6 +50,7 @@ export function KanbanBoard({
   readOnly,
   currentUserId,
   onTasksChange,
+  filters,
 }: KanbanBoardProps) {
   const { tasks, setTasks, createTask, updateTask, deleteTask } =
     useTasks(initialTasks, projectId);
@@ -58,7 +58,6 @@ export function KanbanBoard({
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [newTaskColumnId, setNewTaskColumnId] = useState<string | null>(null);
   const [dndAnnouncement, setDndAnnouncement] = useState("");
@@ -132,9 +131,13 @@ export function KanbanBoard({
   }, [tasks, filters]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
+    useSensor(MouseSensor, {
       activationConstraint: { distance: 5 },
     }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
+    }),
+    useSensor(KeyboardSensor),
   );
 
   const getColumnTasks = useCallback(
@@ -372,11 +375,6 @@ export function KanbanBoard({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <BoardFilterBar
-        filters={filters}
-        onChange={setFilters}
-        allLabels={allLabels}
-      />
       {!readOnly && (
         <BulkActionsBar
           selectedCount={selectedIds.size}

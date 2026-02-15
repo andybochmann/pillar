@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { KanbanBoard } from "@/components/kanban";
+import { KanbanBoard, BoardFilterBar, EMPTY_FILTERS, type BoardFilters } from "@/components/kanban";
 import { ListView } from "@/components/list/list-view";
 import { ProjectSettings } from "@/components/projects/project-settings";
 import { GenerateTasksDialog } from "@/components/tasks/generate-tasks-dialog";
+import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
 import { Users, Sparkles } from "lucide-react";
 import type { Project, Task, ProjectMember as ProjectMemberType, Column } from "@/types";
@@ -44,6 +45,8 @@ export function ProjectView({
   const [liveTasks, setLiveTasks] = useState<Task[]>(initialTasks);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
+  const { labels: allLabels } = useLabels();
 
   useEffect(() => {
     let cancelled = false;
@@ -111,19 +114,19 @@ export function ProjectView({
 
   return (
     <div className="flex h-full flex-col gap-4">
-      <div className="flex items-start justify-between">
-        <div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           {categoryName && (
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               {categoryName}
             </p>
           )}
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">
+            <h1 className="truncate text-2xl font-bold tracking-tight">
               {currentProject.name}
             </h1>
             {currentProject.memberCount && currentProject.memberCount > 1 && (
-              <Badge variant="secondary" className="gap-1 text-xs">
+              <Badge variant="secondary" className="shrink-0 gap-1 text-xs">
                 <Users className="h-3 w-3" />
                 {currentProject.memberCount}
               </Badge>
@@ -145,7 +148,14 @@ export function ProjectView({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {currentProject.viewType !== "list" && (
+            <BoardFilterBar
+              filters={filters}
+              onChange={setFilters}
+              allLabels={allLabels}
+            />
+          )}
           {aiEnabled && !readOnly && (
             <Button
               variant="outline"
@@ -187,6 +197,7 @@ export function ProjectView({
           readOnly={readOnly}
           currentUserId={currentUserId}
           onTasksChange={setLiveTasks}
+          filters={filters}
         />
       )}
 
