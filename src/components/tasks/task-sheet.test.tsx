@@ -294,11 +294,38 @@ describe("TaskSheet", () => {
       });
     });
 
-    it("generates subtasks when button is clicked", async () => {
+    it("opens generate subtasks dialog when button is clicked", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+      mockFetch.mockResolvedValue(
+        new Response(JSON.stringify({ enabled: true }), { status: 200 }),
+      );
+
+      render(<TaskSheet {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Generate subtasks/i }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(
+        screen.getByRole("button", { name: /Generate subtasks/i }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Generate Subtasks")).toBeInTheDocument();
+        expect(
+          screen.getByText(/Use AI to generate subtasks/),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("adds generated subtasks to task via dialog flow", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
       const onUpdate = vi.fn().mockResolvedValue({});
 
-      // First call: status check, second call: generate
+      // First call: status check, second call: generate subtasks
       mockFetch
         .mockResolvedValueOnce(
           new Response(JSON.stringify({ enabled: true }), { status: 200 }),
@@ -320,56 +347,31 @@ describe("TaskSheet", () => {
         ).toBeInTheDocument();
       });
 
+      // Open the dialog
       await user.click(
         screen.getByRole("button", { name: /Generate subtasks/i }),
       );
 
-      await waitFor(() => {
-        expect(screen.getByText("Write tests")).toBeInTheDocument();
-        expect(screen.getByText("Implement feature")).toBeInTheDocument();
-      });
-
-      vi.advanceTimersByTime(600);
-      expect(onUpdate).toHaveBeenCalledWith(
-        "task-1",
-        expect.objectContaining({
-          subtasks: expect.arrayContaining([
-            expect.objectContaining({ title: "Write tests" }),
-            expect.objectContaining({ title: "Implement feature" }),
-          ]),
-        }),
-      );
-    });
-
-    it("shows error toast when generation fails", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const { toast } = await import("sonner");
-
-      mockFetch
-        .mockResolvedValueOnce(
-          new Response(JSON.stringify({ enabled: true }), { status: 200 }),
-        )
-        .mockResolvedValueOnce(
-          new Response(
-            JSON.stringify({ error: "Failed to generate" }),
-            { status: 500 },
-          ),
-        );
-
-      render(<TaskSheet {...defaultProps} />);
-
+      // Click generate in the dialog
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: /Generate subtasks/i }),
+          screen.getByText(/Generate \d+ Subtasks/),
         ).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: /Generate subtasks/i }),
-      );
+      await user.click(screen.getByText(/Generate \d+ Subtasks/));
 
+      // Wait for drafts to appear and click Add
       await waitFor(() => {
-        expect(toast.error).toHaveBeenCalledWith("Failed to generate subtasks");
+        expect(screen.getByText("Add 2 Subtasks")).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByText("Add 2 Subtasks"));
+
+      // Verify subtasks were added
+      await waitFor(() => {
+        expect(screen.getByText("Write tests")).toBeInTheDocument();
+        expect(screen.getByText("Implement feature")).toBeInTheDocument();
       });
     });
 

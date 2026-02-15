@@ -24,8 +24,9 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
 import { StatusHistory } from "@/components/tasks/status-history";
 import { LabelPicker } from "@/components/tasks/label-picker";
+import { GenerateSubtasksDialog } from "@/components/tasks/generate-subtasks-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Plus, Sparkles, Loader2, Square, Play } from "lucide-react";
+import { X, Plus, Sparkles, Square, Play } from "lucide-react";
 import { toast } from "sonner";
 import { TimeSessionsList } from "@/components/tasks/time-sessions-list";
 import type {
@@ -149,7 +150,7 @@ function TaskSheetForm({
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -309,44 +310,18 @@ function TaskSheetForm({
     }
   }
 
-  async function handleGenerateSubtasks() {
+  function handleSubtasksAdded(titles: string[]) {
     const MAX_SUBTASKS = 50;
-    const REQUESTED_COUNT = 5;
-    const remainingSlots = MAX_SUBTASKS - subtasks.length;
-    const maxCount = Math.min(REQUESTED_COUNT, remainingSlots);
+    const newSubtasks: Subtask[] = titles.map((title, i) => ({
+      _id: `temp-${Date.now()}-${i}`,
+      title,
+      completed: false,
+    }));
 
-    setGenerating(true);
-    try {
-      const res = await fetch("/api/ai/generate-subtasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: task.title,
-          description: task.description,
-          priority: task.priority,
-          existingSubtasks: subtasks.map((s) => s.title),
-          maxCount,
-        }),
-      });
-
-      if (!res.ok) throw new Error("Generation failed");
-
-      const data = (await res.json()) as { subtasks: string[] };
-      const newSubtasks: Subtask[] = data.subtasks.map((title, i) => ({
-        _id: `temp-${Date.now()}-${i}`,
-        title,
-        completed: false,
-      }));
-
-      const updated = [...subtasks, ...newSubtasks].slice(0, MAX_SUBTASKS);
-      setSubtasks(updated);
-      await onUpdate(task._id, { subtasks: updated });
-      toast.success(`Added ${newSubtasks.length} subtasks`);
-    } catch {
-      toast.error("Failed to generate subtasks");
-    } finally {
-      setGenerating(false);
-    }
+    const updated = [...subtasks, ...newSubtasks].slice(0, MAX_SUBTASKS);
+    setSubtasks(updated);
+    onUpdate(task._id, { subtasks: updated });
+    toast.success(`Added ${newSubtasks.length} subtasks`);
   }
 
   async function handleDelete() {
@@ -530,14 +505,10 @@ function TaskSheetForm({
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={handleGenerateSubtasks}
-                disabled={generating || subtasks.length >= 50}
+                onClick={() => setGenerateDialogOpen(true)}
+                disabled={subtasks.length >= 50}
               >
-                {generating ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="mr-2 h-4 w-4" />
-                )}
+                <Sparkles className="mr-2 h-4 w-4" />
                 Generate subtasks
               </Button>
             )}
@@ -654,6 +625,16 @@ function TaskSheetForm({
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={handleDelete}
+      />
+      <GenerateSubtasksDialog
+        open={generateDialogOpen}
+        onOpenChange={setGenerateDialogOpen}
+        taskTitle={task.title}
+        taskDescription={task.description}
+        taskPriority={task.priority}
+        existingSubtasks={subtasks.map((s) => s.title)}
+        maxSubtasks={50}
+        onSubtasksAdded={handleSubtasksAdded}
       />
     </>
   );

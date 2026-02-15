@@ -119,6 +119,12 @@ export interface TaskDraft {
   selected: boolean;
 }
 
+export interface SubtaskDraft {
+  id: string;
+  title: string;
+  selected: boolean;
+}
+
 export interface QueuedMutation {
   id: string;
   method: "POST" | "PATCH" | "DELETE";

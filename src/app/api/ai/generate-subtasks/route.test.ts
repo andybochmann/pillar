@@ -145,6 +145,25 @@ describe("POST /api/ai/generate-subtasks", () => {
     );
   });
 
+  it("includes context in the prompt when provided", async () => {
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      object: { subtasks: ["Step 1"] },
+    } as never);
+
+    await POST(
+      makeRequest({
+        title: "Build login",
+        context: "Using NextAuth with Google provider",
+      }),
+    );
+
+    expect(generateObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining("Using NextAuth with Google provider"),
+      }),
+    );
+  });
+
   it("returns 500 when AI generation fails", async () => {
     vi.mocked(generateObject).mockRejectedValueOnce(new Error("API error"));
 

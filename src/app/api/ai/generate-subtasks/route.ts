@@ -10,6 +10,7 @@ const RequestSchema = z.object({
   priority: z.string().optional(),
   existingSubtasks: z.array(z.string()).optional(),
   maxCount: z.number().int().min(1).max(50).optional(),
+  context: z.string().max(2000).optional(),
 });
 
 const SubtasksSchema = z.object({
@@ -45,18 +46,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const { title, description, priority, existingSubtasks, maxCount } =
+  const { title, description, priority, existingSubtasks, maxCount, context } =
     result.data;
   const count = maxCount ?? 5;
 
-  const parts = [
-    `Break down this task into ${count} actionable subtasks.`,
-    "",
-    `Task: ${title}`,
-  ];
+  const parts = [`Break down this task into ${count} actionable subtasks.`, ""];
 
+  parts.push(`Task: ${title}`);
   if (description) parts.push(`Description: ${description}`);
   if (priority) parts.push(`Priority: ${priority}`);
+  if (context) parts.push(`Additional context: ${context}`);
 
   if (existingSubtasks?.length) {
     parts.push(
