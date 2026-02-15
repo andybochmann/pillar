@@ -28,7 +28,7 @@ export function CalendarPageClient({
   projects,
   currentMonth,
   initialViewType = "month",
-  filters = EMPTY_FILTERS,
+  filters: initialFilters = EMPTY_FILTERS,
 }: CalendarPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -40,6 +40,7 @@ export function CalendarPageClient({
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskSheetOpen, setTaskSheetOpen] = useState(false);
+  const [filters, setFilters] = useState<CalendarFilters>(initialFilters);
 
   // Get columns for the selected task's project
   const selectedProject = selectedTask
@@ -80,6 +81,25 @@ export function CalendarPageClient({
       return true;
     });
   }, [tasks, filters]);
+
+  const assignees = useMemo(() => {
+    const uniqueAssignees = new Map<
+      string,
+      { _id: string; name: string; email: string }
+    >();
+    for (const task of tasks) {
+      if (task.assigneeId && task.assigneeName) {
+        if (!uniqueAssignees.has(task.assigneeId)) {
+          uniqueAssignees.set(task.assigneeId, {
+            _id: task.assigneeId,
+            name: task.assigneeName,
+            email: "",
+          });
+        }
+      }
+    }
+    return Array.from(uniqueAssignees.values());
+  }, [tasks]);
 
   function getTasksForDate(date: Date): Task[] {
     const key = format(date, "yyyy-MM-dd");
@@ -183,6 +203,10 @@ export function CalendarPageClient({
     router.push(`/calendar?${params.toString()}`);
   }
 
+  function handleFiltersChange(newFilters: CalendarFilters) {
+    setFilters(newFilters);
+  }
+
   return (
     <>
       {viewType === "month" ? (
@@ -191,7 +215,11 @@ export function CalendarPageClient({
           labels={labels}
           currentMonth={currentMonth}
           viewType={viewType}
+          filters={filters}
+          projects={projects}
+          assignees={assignees}
           onViewTypeChange={handleViewTypeChange}
+          onFiltersChange={handleFiltersChange}
           onTaskClick={handleTaskClick}
           onDateClick={handleDateClick}
           onTaskReschedule={handleTaskReschedule}
@@ -202,7 +230,11 @@ export function CalendarPageClient({
           labels={labels}
           currentWeek={currentMonth}
           viewType={viewType}
+          filters={filters}
+          projects={projects}
+          assignees={assignees}
           onViewTypeChange={handleViewTypeChange}
+          onFiltersChange={handleFiltersChange}
           onTaskClick={handleTaskClick}
           onDateClick={handleDateClick}
           onTaskReschedule={handleTaskReschedule}
@@ -213,7 +245,11 @@ export function CalendarPageClient({
           labels={labels}
           currentDay={currentMonth}
           viewType={viewType}
+          filters={filters}
+          projects={projects}
+          assignees={assignees}
           onViewTypeChange={handleViewTypeChange}
+          onFiltersChange={handleFiltersChange}
           onTaskClick={handleTaskClick}
           onTaskReschedule={handleTaskReschedule}
         />

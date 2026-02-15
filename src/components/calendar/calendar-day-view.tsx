@@ -17,9 +17,14 @@ import { addDays, subDays, format, isToday } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { CalendarViewToggle } from "./calendar-view-toggle";
 import { TaskHoverCard } from "./task-hover-card";
+import {
+  CalendarFilterBar,
+  type CalendarFilters,
+  type Assignee,
+} from "./calendar-filter-bar";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Task, CalendarViewType, Label } from "@/types";
+import type { Task, CalendarViewType, Label, Project } from "@/types";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -35,7 +40,11 @@ interface CalendarDayViewProps {
   labels: Label[];
   currentDay: Date;
   viewType: CalendarViewType;
+  filters: CalendarFilters;
+  projects: Project[];
+  assignees: Assignee[];
   onViewTypeChange: (viewType: CalendarViewType) => void;
+  onFiltersChange: (filters: CalendarFilters) => void;
   onTaskClick: (task: Task) => void;
   onTaskReschedule: (taskId: string, newDate: Date) => Promise<void>;
 }
@@ -45,7 +54,11 @@ export function CalendarDayView({
   labels,
   currentDay,
   viewType,
+  filters,
+  projects,
+  assignees,
   onViewTypeChange,
+  onFiltersChange,
   onTaskClick,
   onTaskReschedule,
 }: CalendarDayViewProps) {
@@ -161,6 +174,15 @@ export function CalendarDayView({
 
   return (
     <div className="space-y-4">
+      {/* Filter bar */}
+      <CalendarFilterBar
+        filters={filters}
+        onChange={onFiltersChange}
+        projects={projects}
+        labels={labels}
+        assignees={assignees}
+      />
+
       {/* Day navigation */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">

@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { CalendarView } from "./calendar-view";
-import type { Task } from "@/types";
+import { EMPTY_FILTERS } from "./calendar-filter-bar";
+import type { Task, Project, Label } from "@/types";
 
 // Mock next/navigation
 const mockPush = vi.fn();
@@ -56,11 +57,32 @@ beforeEach(() => {
 });
 
 describe("CalendarView", () => {
+  const mockProjects: Project[] = [
+    {
+      _id: "proj-1",
+      name: "Test Project",
+      userId: "u1",
+      categoryId: "cat-1",
+      columns: [{ id: "todo", name: "To Do", order: 0 }],
+      viewType: "board" as const,
+      archived: false,
+      createdAt: "",
+      updatedAt: "",
+    },
+  ];
+
+  const mockLabels: Label[] = [];
+
   const defaultProps = {
     tasks: mockTasks,
+    labels: mockLabels,
     currentMonth: new Date(2026, 1, 1), // February 2026
     viewType: "month" as const,
+    filters: EMPTY_FILTERS,
+    projects: mockProjects,
+    assignees: [],
     onViewTypeChange: vi.fn(),
+    onFiltersChange: vi.fn(),
     onTaskClick: vi.fn(),
     onDateClick: vi.fn(),
     onTaskReschedule: vi.fn().mockResolvedValue(undefined),

@@ -22,8 +22,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { CalendarDay } from "./calendar-day";
 import { CalendarViewToggle } from "./calendar-view-toggle";
+import {
+  CalendarFilterBar,
+  type CalendarFilters,
+  type Assignee,
+} from "./calendar-filter-bar";
 import { toast } from "sonner";
-import type { Task, CalendarViewType, Label } from "@/types";
+import type { Task, CalendarViewType, Label, Project } from "@/types";
 
 const WEEKDAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -32,7 +37,11 @@ interface CalendarWeekViewProps {
   labels: Label[];
   currentWeek: Date;
   viewType: CalendarViewType;
+  filters: CalendarFilters;
+  projects: Project[];
+  assignees: Assignee[];
   onViewTypeChange: (viewType: CalendarViewType) => void;
+  onFiltersChange: (filters: CalendarFilters) => void;
   onTaskClick: (task: Task) => void;
   onDateClick: (date: Date) => void;
   onTaskReschedule: (taskId: string, newDate: Date) => Promise<void>;
@@ -43,7 +52,11 @@ export function CalendarWeekView({
   labels,
   currentWeek,
   viewType,
+  filters,
+  projects,
+  assignees,
   onViewTypeChange,
+  onFiltersChange,
   onTaskClick,
   onDateClick,
   onTaskReschedule,
@@ -125,6 +138,15 @@ export function CalendarWeekView({
 
   return (
     <div className="space-y-4">
+      {/* Filter bar */}
+      <CalendarFilterBar
+        filters={filters}
+        onChange={onFiltersChange}
+        projects={projects}
+        labels={labels}
+        assignees={assignees}
+      />
+
       {/* Week navigation */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">
