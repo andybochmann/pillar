@@ -26,6 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn, getViewIcon } from "@/lib/utils";
 import { CreateCategoryDialog } from "@/components/categories/create-dialog";
 import { CreateProjectDialog } from "@/components/projects/create-dialog";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useCategories } from "@/hooks/use-categories";
 import { useProjects } from "@/hooks/use-projects";
 import { useTaskCounts } from "@/hooks/use-task-counts";
@@ -113,19 +114,25 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             <span className="text-lg font-bold tracking-tight">Pillar</span>
           </Link>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="h-8 w-8 text-muted-foreground hover:text-foreground"
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronLeft className="h-4 w-4" />
-          )}
-        </Button>
+        <div className="flex items-center gap-1">
+          <NotificationBell
+            iconSize={16}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          >
+            {collapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Navigation */}
