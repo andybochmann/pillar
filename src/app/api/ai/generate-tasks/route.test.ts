@@ -43,7 +43,6 @@ vi.mock("@/lib/ai", () => ({
 
 vi.mock("ai", () => ({
   generateObject: vi.fn(),
-  jsonSchema: vi.fn((schema: unknown) => schema),
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -175,13 +174,12 @@ describe("POST /api/ai/generate-tasks", () => {
             title: "Set up product catalog",
             description: "Create product listing page",
             priority: "high",
-            columnId: "todo",
             subtasks: ["Design schema", "Build API"],
           },
           {
             title: "Implement checkout flow",
+            description: "Build the checkout process",
             priority: "medium",
-            columnId: "in-progress",
             subtasks: [],
           },
         ],
@@ -198,7 +196,7 @@ describe("POST /api/ai/generate-tasks", () => {
     expect(data.tasks[0].title).toBe("Set up product catalog");
     expect(data.tasks[0].columnId).toBe("todo");
     expect(data.tasks[0].subtasks).toEqual(["Design schema", "Build API"]);
-    expect(data.tasks[1].columnId).toBe("in-progress");
+    expect(data.tasks[1].columnId).toBe("todo");
   });
 
   it("includes existing task titles in prompt for dedup", async () => {
@@ -222,32 +220,17 @@ describe("POST /api/ai/generate-tasks", () => {
     );
   });
 
-  it("includes column IDs in prompt", async () => {
-    const { project } = await setupFixtures();
-
-    vi.mocked(generateObject).mockResolvedValueOnce({
-      object: { tasks: [] },
-    } as never);
-
-    await POST(makeRequest({ projectId: project._id.toString() }));
-
-    expect(generateObject).toHaveBeenCalledWith(
-      expect.objectContaining({
-        prompt: expect.stringContaining('"todo"'),
-      }),
-    );
-  });
-
-  it("falls back to first column for invalid columnId", async () => {
+  it("always assigns first column to generated tasks", async () => {
     const { project } = await setupFixtures();
 
     vi.mocked(generateObject).mockResolvedValueOnce({
       object: {
         tasks: [
           {
-            title: "Task with bad column",
+            title: "Generated task",
+            description: "A task",
             priority: "medium",
-            columnId: "nonexistent",
+            subtasks: [],
           },
         ],
       },
@@ -259,6 +242,27 @@ describe("POST /api/ai/generate-tasks", () => {
     const data = await res.json();
 
     expect(data.tasks[0].columnId).toBe("todo");
+  });
+
+  it("includes context in prompt when provided", async () => {
+    const { project } = await setupFixtures();
+
+    vi.mocked(generateObject).mockResolvedValueOnce({
+      object: { tasks: [] },
+    } as never);
+
+    await POST(
+      makeRequest({
+        projectId: project._id.toString(),
+        context: "Focus on payment integration",
+      }),
+    );
+
+    expect(generateObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: expect.stringContaining("Focus on payment integration"),
+      }),
+    );
   });
 
   it("respects maxCount parameter", async () => {

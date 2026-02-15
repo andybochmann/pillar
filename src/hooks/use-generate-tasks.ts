@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { offlineFetch } from "@/lib/offline-fetch";
 import { toast } from "sonner";
 import type { Task, TaskDraft } from "@/types";
 
@@ -9,7 +8,7 @@ interface UseGenerateTasksReturn {
   drafts: TaskDraft[];
   generating: boolean;
   adding: boolean;
-  generateTasks: (projectId: string, maxCount?: number) => Promise<void>;
+  generateTasks: (projectId: string, maxCount?: number, context?: string) => Promise<void>;
   addSelectedTasks: (projectId: string) => Promise<Task[]>;
   toggleDraft: (id: string) => void;
   toggleAll: (selected: boolean) => void;
@@ -23,11 +22,12 @@ export function useGenerateTasks(): UseGenerateTasksReturn {
   const [adding, setAdding] = useState(false);
 
   const generateTasks = useCallback(
-    async (projectId: string, maxCount?: number) => {
+    async (projectId: string, maxCount?: number, context?: string) => {
       try {
         setGenerating(true);
         const body: Record<string, unknown> = { projectId };
         if (maxCount) body.maxCount = maxCount;
+        if (context) body.context = context;
 
         const res = await fetch("/api/ai/generate-tasks", {
           method: "POST",
@@ -65,7 +65,7 @@ export function useGenerateTasks(): UseGenerateTasksReturn {
 
       try {
         setAdding(true);
-        const res = await offlineFetch("/api/tasks/bulk-create", {
+        const res = await fetch("/api/tasks/bulk-create", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -88,6 +88,14 @@ export function useGenerateTasks(): UseGenerateTasksReturn {
         const data = await res.json();
         toast.success(`Added ${data.tasks.length} tasks`);
         setDrafts([]);
+
+        // Notify useTasks instances to add the created tasks to state
+        window.dispatchEvent(
+          new CustomEvent("pillar:tasks-created", {
+            detail: { tasks: data.tasks, projectId },
+          }),
+        );
+
         return data.tasks;
       } catch (err) {
         toast.error((err as Error).message);

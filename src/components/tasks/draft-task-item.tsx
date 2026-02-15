@@ -2,7 +2,6 @@
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -11,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ListChecks } from "lucide-react";
-import type { TaskDraft, Column, Priority } from "@/types";
+import type { TaskDraft, Priority } from "@/types";
 
 const PRIORITY_COLORS: Record<Priority, string> = {
   urgent: "text-red-600",
@@ -22,19 +21,15 @@ const PRIORITY_COLORS: Record<Priority, string> = {
 
 interface DraftTaskItemProps {
   draft: TaskDraft;
-  columns: Column[];
   onToggle: (id: string) => void;
   onUpdate: (id: string, data: Partial<TaskDraft>) => void;
 }
 
 export function DraftTaskItem({
   draft,
-  columns,
   onToggle,
   onUpdate,
 }: DraftTaskItemProps) {
-  const column = columns.find((c) => c.id === draft.columnId);
-
   return (
     <div
       className="flex items-start gap-3 rounded-md border p-3"
@@ -72,35 +67,29 @@ export function DraftTaskItem({
         )}
       </div>
 
-      <div className="flex items-center gap-2">
-        <Select
-          value={draft.priority}
-          onValueChange={(value) =>
-            onUpdate(draft.id, { priority: value as Priority })
-          }
+      <Select
+        value={draft.priority}
+        onValueChange={(value) =>
+          onUpdate(draft.id, { priority: value as Priority })
+        }
+      >
+        <SelectTrigger
+          size="sm"
+          className="h-7 w-24 text-xs"
+          aria-label="Priority"
         >
-          <SelectTrigger
-            size="sm"
-            className="h-7 w-24 text-xs"
-            aria-label="Priority"
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {(["urgent", "high", "medium", "low"] as Priority[]).map((p) => (
-              <SelectItem key={p} value={p}>
-                <span className={PRIORITY_COLORS[p]}>
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </span>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Badge variant="outline" className="text-xs whitespace-nowrap">
-          {column?.name ?? draft.columnId}
-        </Badge>
-      </div>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {(["urgent", "high", "medium", "low"] as Priority[]).map((p) => (
+            <SelectItem key={p} value={p}>
+              <span className={PRIORITY_COLORS[p]}>
+                {p.charAt(0).toUpperCase() + p.slice(1)}
+              </span>
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

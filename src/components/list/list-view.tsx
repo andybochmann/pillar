@@ -162,9 +162,8 @@ export function ListView({
 
   const handleTaskUpdate = useCallback(
     async (id: string, data: Partial<Task>) => {
-      await updateTask(id, data);
-      // Update selectedTask if it's the one being edited
-      setSelectedTask((prev) => (prev?._id === id ? { ...prev, ...data } : prev));
+      const updated = await updateTask(id, data);
+      setSelectedTask(updated);
     },
     [updateTask],
   );

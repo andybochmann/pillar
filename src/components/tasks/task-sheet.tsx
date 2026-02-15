@@ -340,7 +340,7 @@ function TaskSheetForm({
 
       const updated = [...subtasks, ...newSubtasks].slice(0, MAX_SUBTASKS);
       setSubtasks(updated);
-      saveField({ subtasks: updated });
+      await onUpdate(task._id, { subtasks: updated });
       toast.success(`Added ${newSubtasks.length} subtasks`);
     } catch {
       toast.error("Failed to generate subtasks");

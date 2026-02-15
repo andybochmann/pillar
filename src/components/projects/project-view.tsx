@@ -215,7 +215,6 @@ export function ProjectView({
           open={generateDialogOpen}
           onOpenChange={setGenerateDialogOpen}
           projectId={currentProject._id}
-          columns={currentProject.columns}
           onTasksAdded={() => setGenerateDialogOpen(false)}
         />
       )}

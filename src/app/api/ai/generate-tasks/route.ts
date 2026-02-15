@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generateObject, jsonSchema } from "ai";
+import { generateObject } from "ai";
 import { auth } from "@/lib/auth";
 import { isAIEnabled, isAIAllowedForUser, getAIModel } from "@/lib/ai";
 import { connectDB } from "@/lib/db";
@@ -11,46 +11,19 @@ import { requireProjectRole } from "@/lib/project-access";
 const RequestSchema = z.object({
   projectId: z.string().min(1, "Project ID is required"),
   maxCount: z.number().int().min(1).max(20).optional(),
+  context: z.string().max(2000).optional(),
 });
 
-const TASKS_SCHEMA = jsonSchema({
-  type: "object" as const,
-  properties: {
-    tasks: {
-      type: "array" as const,
-      items: {
-        type: "object" as const,
-        properties: {
-          title: { type: "string" as const },
-          description: { type: "string" as const },
-          priority: {
-            type: "string" as const,
-            enum: ["urgent", "high", "medium", "low"],
-          },
-          columnId: { type: "string" as const },
-          subtasks: {
-            type: "array" as const,
-            items: { type: "string" as const },
-          },
-        },
-        required: ["title", "priority", "columnId"],
-      },
-    },
-  },
-  required: ["tasks"],
+const TasksSchema = z.object({
+  tasks: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string(),
+      priority: z.enum(["urgent", "high", "medium", "low"]),
+      subtasks: z.array(z.string()),
+    }),
+  ),
 });
-
-interface GeneratedTask {
-  title: string;
-  description?: string;
-  priority: string;
-  columnId: string;
-  subtasks?: string[];
-}
-
-interface TasksResponse {
-  tasks: GeneratedTask[];
-}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -81,7 +54,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { projectId, maxCount } = result.data;
+  const { projectId, maxCount, context } = result.data;
   const count = maxCount ?? 8;
 
   await connectDB();
@@ -125,11 +98,9 @@ export async function POST(request: Request) {
     parts.push(`Description: ${project.description}`);
   }
 
-  parts.push(
-    "",
-    "Available columns (use these exact IDs for columnId):",
-    ...columns.map((c) => `- "${c.id}" = ${c.name}`),
-  );
+  if (context) {
+    parts.push(`Additional context: ${context}`);
+  }
 
   if (existingTitles.length > 0) {
     parts.push(
@@ -146,8 +117,7 @@ export async function POST(request: Request) {
     "- Start each title with an action verb",
     "- Keep titles under 80 characters",
     "- Assign appropriate priorities (urgent, high, medium, low)",
-    `- Distribute tasks across the available columns using their exact IDs`,
-    "- Optionally include 2-4 subtasks per task as short strings",
+    "- Include 2-4 subtasks per task as short strings",
     `- Return exactly ${count} tasks`,
   );
 
@@ -156,23 +126,18 @@ export async function POST(request: Request) {
   try {
     const { object } = await generateObject({
       model: getAIModel(),
-      schema: TASKS_SCHEMA,
+      schema: TasksSchema,
       prompt,
     });
 
-    const response = object as TasksResponse;
-    const validColumnIds = new Set(columns.map((c) => c.id));
-
-    const tasks = response.tasks.map((task) => ({
+    const tasks = object.tasks.map((task) => ({
       ...task,
-      columnId: validColumnIds.has(task.columnId)
-        ? task.columnId
-        : firstColumnId,
-      subtasks: task.subtasks ?? [],
+      columnId: firstColumnId,
     }));
 
     return NextResponse.json({ tasks });
-  } catch {
+  } catch (err) {
+    console.error("AI generate-tasks error:", err);
     return NextResponse.json(
       { error: "Failed to generate tasks" },
       { status: 500 },

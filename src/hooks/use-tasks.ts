@@ -1,11 +1,26 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import { useSyncSubscription } from "./use-sync-subscription";
 import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { Task } from "@/types";
 import type { SyncEvent } from "@/lib/event-bus";
+
+type TaskUpdateFields = Pick<
+  Task,
+  | "title"
+  | "description"
+  | "columnId"
+  | "priority"
+  | "dueDate"
+  | "recurrence"
+  | "order"
+  | "labels"
+  | "subtasks"
+  | "completedAt"
+  | "assigneeId"
+>;
 
 interface UseTasksReturn {
   tasks: Task[];
@@ -23,22 +38,7 @@ interface UseTasksReturn {
   }) => Promise<Task>;
   updateTask: (
     id: string,
-    data: Partial<
-      Pick<
-        Task,
-        | "title"
-        | "description"
-        | "columnId"
-        | "priority"
-        | "dueDate"
-        | "recurrence"
-        | "order"
-        | "labels"
-        | "subtasks"
-        | "completedAt"
-        | "assigneeId"
-      >
-    >,
+    data: Partial<TaskUpdateFields>,
   ) => Promise<Task>;
   deleteTask: (id: string) => Promise<void>;
 }
@@ -93,21 +93,7 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
   const updateTask = useCallback(
     async (
       id: string,
-      data: Partial<
-        Pick<
-          Task,
-          | "title"
-          | "description"
-          | "columnId"
-          | "priority"
-          | "dueDate"
-          | "recurrence"
-          | "order"
-          | "labels"
-          | "completedAt"
-          | "assigneeId"
-        >
-      >,
+      data: Partial<TaskUpdateFields>,
     ) => {
       const res = await offlineFetch(`/api/tasks/${id}`, {
         method: "PATCH",
@@ -159,6 +145,22 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
         break;
     }
   }, [projectId, fetchTasks]));
+
+  // Listen for bulk-created tasks (e.g. from AI generate)
+  useEffect(() => {
+    function handler(e: Event) {
+      const { tasks: newTasks, projectId: eventProjectId } = (e as CustomEvent).detail;
+      if (projectId && eventProjectId !== projectId) return;
+      setTasks((prev) => {
+        const existingIds = new Set(prev.map((t) => t._id));
+        const unique = (newTasks as Task[]).filter((t) => !existingIds.has(t._id));
+        if (unique.length === 0) return prev;
+        return [...prev, ...unique];
+      });
+    }
+    window.addEventListener("pillar:tasks-created", handler);
+    return () => window.removeEventListener("pillar:tasks-created", handler);
+  }, [projectId]);
 
   useRefetchOnReconnect(
     useCallback(() => {

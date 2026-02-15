@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generateObject, jsonSchema } from "ai";
+import { generateObject } from "ai";
 import { auth } from "@/lib/auth";
 import { isAIEnabled, isAIAllowedForUser, getAIModel } from "@/lib/ai";
 
@@ -12,20 +12,9 @@ const RequestSchema = z.object({
   maxCount: z.number().int().min(1).max(50).optional(),
 });
 
-const SUBTASKS_SCHEMA = jsonSchema({
-  type: "object" as const,
-  properties: {
-    subtasks: {
-      type: "array" as const,
-      items: { type: "string" as const },
-    },
-  },
-  required: ["subtasks"],
+const SubtasksSchema = z.object({
+  subtasks: z.array(z.string()),
 });
-
-interface SubtasksResponse {
-  subtasks: string[];
-}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -91,14 +80,15 @@ export async function POST(request: Request) {
   try {
     const { object } = await generateObject({
       model: getAIModel(),
-      schema: SUBTASKS_SCHEMA,
+      schema: SubtasksSchema,
       prompt,
     });
 
     return NextResponse.json({
-      subtasks: (object as SubtasksResponse).subtasks,
+      subtasks: object.subtasks,
     });
-  } catch {
+  } catch (err) {
+    console.error("AI generate-subtasks error:", err);
     return NextResponse.json(
       { error: "Failed to generate subtasks" },
       { status: 500 },

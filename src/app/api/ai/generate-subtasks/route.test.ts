@@ -21,7 +21,6 @@ vi.mock("@/lib/ai", () => ({
 
 vi.mock("ai", () => ({
   generateObject: vi.fn(),
-  jsonSchema: vi.fn((schema: unknown) => schema),
 }));
 
 import { POST } from "./route";

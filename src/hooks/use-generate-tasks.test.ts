@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useGenerateTasks } from "./use-generate-tasks";
 
-vi.mock("@/lib/offline-fetch", () => ({
-  offlineFetch: vi.fn(),
-}));
-
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
@@ -13,7 +9,6 @@ vi.mock("sonner", () => ({
   },
 }));
 
-import { offlineFetch } from "@/lib/offline-fetch";
 import { toast } from "sonner";
 
 function mockFetchResponse(data: unknown, ok = true, status = 200) {
@@ -194,24 +189,31 @@ describe("useGenerateTasks", () => {
     expect(result.current.drafts[0].priority).toBe("high");
   });
 
-  it("adds selected tasks using offlineFetch", async () => {
-    global.fetch = mockFetchResponse({
-      tasks: [
-        { title: "T1", priority: "medium", columnId: "todo", subtasks: [] },
-        { title: "T2", priority: "low", columnId: "done", subtasks: [] },
-      ],
-    });
-
-    vi.mocked(offlineFetch).mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          tasks: [
-            { _id: "1", title: "T1" },
-            { _id: "2", title: "T2" },
-          ],
-        }),
-    } as Response);
+  it("adds selected tasks via fetch", async () => {
+    // First call: generate tasks. Second call: bulk-create.
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            tasks: [
+              { title: "T1", priority: "medium", columnId: "todo", subtasks: [] },
+              { title: "T2", priority: "low", columnId: "done", subtasks: [] },
+            ],
+          }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            tasks: [
+              { _id: "1", title: "T1" },
+              { _id: "2", title: "T2" },
+            ],
+          }),
+      });
+    global.fetch = fetchMock;
 
     const { result } = renderHook(() => useGenerateTasks());
 
@@ -224,7 +226,7 @@ describe("useGenerateTasks", () => {
       created = await result.current.addSelectedTasks("proj-1");
     });
 
-    expect(offlineFetch).toHaveBeenCalledWith(
+    expect(fetchMock).toHaveBeenCalledWith(
       "/api/tasks/bulk-create",
       expect.objectContaining({
         method: "POST",
@@ -236,16 +238,23 @@ describe("useGenerateTasks", () => {
   });
 
   it("shows error toast when adding fails", async () => {
-    global.fetch = mockFetchResponse({
-      tasks: [
-        { title: "T1", priority: "medium", columnId: "todo", subtasks: [] },
-      ],
-    });
-
-    vi.mocked(offlineFetch).mockResolvedValue({
-      ok: false,
-      json: () => Promise.resolve({ error: "Server error" }),
-    } as Response);
+    // First call: generate tasks (ok). Second call: bulk-create (fail).
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            tasks: [
+              { title: "T1", priority: "medium", columnId: "todo", subtasks: [] },
+            ],
+          }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: "Server error" }),
+      });
+    global.fetch = fetchMock;
 
     const { result } = renderHook(() => useGenerateTasks());
 

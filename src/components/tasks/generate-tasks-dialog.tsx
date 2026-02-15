@@ -10,11 +10,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, Loader2 } from "lucide-react";
 import { useGenerateTasks } from "@/hooks/use-generate-tasks";
 import { DraftTaskItem } from "./draft-task-item";
-import type { Column, Task } from "@/types";
+import type { Task } from "@/types";
 
 const COUNT_OPTIONS = [5, 8, 10, 15] as const;
 
@@ -22,7 +22,6 @@ interface GenerateTasksDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   projectId: string;
-  columns: Column[];
   onTasksAdded: (tasks: Task[]) => void;
 }
 
@@ -30,10 +29,10 @@ export function GenerateTasksDialog({
   open,
   onOpenChange,
   projectId,
-  columns,
   onTasksAdded,
 }: GenerateTasksDialogProps) {
   const [count, setCount] = useState<number>(8);
+  const [context, setContext] = useState("");
   const {
     drafts,
     generating,
@@ -49,12 +48,15 @@ export function GenerateTasksDialog({
   const selectedCount = drafts.filter((d) => d.selected).length;
 
   function handleOpenChange(isOpen: boolean) {
-    if (!isOpen) reset();
+    if (!isOpen) {
+      reset();
+      setContext("");
+    }
     onOpenChange(isOpen);
   }
 
   async function handleGenerate() {
-    await generateTasks(projectId, count);
+    await generateTasks(projectId, count, context.trim() || undefined);
   }
 
   async function handleAdd() {
@@ -73,7 +75,7 @@ export function GenerateTasksDialog({
             <Sparkles className="h-5 w-5" />
             Generate Tasks
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-left">
             Use AI to generate tasks for your project. Review and select which
             ones to add.
           </DialogDescription>
@@ -81,6 +83,19 @@ export function GenerateTasksDialog({
 
         {drafts.length === 0 && !generating ? (
           <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">
+                Additional context (optional)
+              </label>
+              <Textarea
+                placeholder="Describe what kind of tasks you need, any specific requirements, technologies, or goals..."
+                value={context}
+                onChange={(e) => setContext(e.target.value)}
+                rows={3}
+                maxLength={2000}
+              />
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">
                 Number of tasks to generate
@@ -142,19 +157,18 @@ export function GenerateTasksDialog({
               </Button>
             </div>
 
-            <ScrollArea className="max-h-[400px]">
-              <div className="space-y-2 pr-3">
+            <div className="max-h-[400px] overflow-y-auto pr-1">
+              <div className="space-y-2">
                 {drafts.map((draft) => (
                   <DraftTaskItem
                     key={draft.id}
                     draft={draft}
-                    columns={columns}
                     onToggle={toggleDraft}
                     onUpdate={updateDraft}
                   />
                 ))}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         )}
 
