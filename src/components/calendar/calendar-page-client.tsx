@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarView } from "./calendar-view";
 import { CalendarWeekView } from "./calendar-week-view";
@@ -12,12 +12,15 @@ import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
 import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
 import type { Task, Project, CalendarViewType } from "@/types";
+import type { CalendarFilters } from "./calendar-filter-bar";
+import { EMPTY_FILTERS } from "./calendar-filter-bar";
 
 interface CalendarPageClientProps {
   initialTasks: Task[];
   projects: Project[];
   currentMonth: Date;
   initialViewType?: CalendarViewType;
+  filters?: CalendarFilters;
 }
 
 export function CalendarPageClient({
@@ -25,6 +28,7 @@ export function CalendarPageClient({
   projects,
   currentMonth,
   initialViewType = "month",
+  filters = EMPTY_FILTERS,
 }: CalendarPageClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -42,9 +46,44 @@ export function CalendarPageClient({
     ? projects.find((p) => p._id === selectedTask.projectId)
     : null;
 
+  const filteredTasks = useMemo(() => {
+    const hasFilters =
+      filters.projects.length > 0 ||
+      filters.priorities.length > 0 ||
+      filters.labels.length > 0 ||
+      filters.assignees.length > 0;
+
+    if (!hasFilters) return tasks;
+
+    return tasks.filter((t) => {
+      if (
+        filters.projects.length > 0 &&
+        !filters.projects.includes(t.projectId)
+      )
+        return false;
+      if (
+        filters.priorities.length > 0 &&
+        !filters.priorities.includes(t.priority)
+      )
+        return false;
+      if (
+        filters.labels.length > 0 &&
+        !filters.labels.some((l) => t.labels.includes(l))
+      )
+        return false;
+      if (
+        filters.assignees.length > 0 &&
+        (!t.assigneeId || !filters.assignees.includes(t.assigneeId))
+      )
+        return false;
+
+      return true;
+    });
+  }, [tasks, filters]);
+
   function getTasksForDate(date: Date): Task[] {
     const key = format(date, "yyyy-MM-dd");
-    return tasks.filter((t) => t.dueDate?.slice(0, 10) === key);
+    return filteredTasks.filter((t) => t.dueDate?.slice(0, 10) === key);
   }
 
   function handleDateClick(date: Date) {
@@ -148,7 +187,7 @@ export function CalendarPageClient({
     <>
       {viewType === "month" ? (
         <CalendarView
-          tasks={tasks}
+          tasks={filteredTasks}
           labels={labels}
           currentMonth={currentMonth}
           viewType={viewType}
@@ -159,7 +198,7 @@ export function CalendarPageClient({
         />
       ) : viewType === "week" ? (
         <CalendarWeekView
-          tasks={tasks}
+          tasks={filteredTasks}
           labels={labels}
           currentWeek={currentMonth}
           viewType={viewType}
@@ -170,7 +209,7 @@ export function CalendarPageClient({
         />
       ) : viewType === "day" ? (
         <CalendarDayView
-          tasks={tasks}
+          tasks={filteredTasks}
           labels={labels}
           currentDay={currentMonth}
           viewType={viewType}
