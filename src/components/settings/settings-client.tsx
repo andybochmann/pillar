@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InstallPromptCard } from "./install-prompt-card";
 import { ApiTokensCard } from "./api-tokens-card";
+import { NotificationSettingsCard } from "./notification-settings-card";
 
 interface Profile {
   id: string;
@@ -171,6 +172,9 @@ export function SettingsClient({ profile }: SettingsClientProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Notification Settings */}
+      <NotificationSettingsCard />
 
       {/* Profile section */}
       <Card>
