@@ -1,0 +1,28 @@
+{
+  "project_type": "single",
+  "services": {
+    "frontend": {
+      "path": ".",
+      "tech_stack": ["nextjs", "react", "typescript", "tailwindcss", "shadcn-ui"],
+      "framework_version": "Next.js 16.1.6 (App Router)",
+      "port": 3000,
+      "dev_command": "pnpm dev",
+      "test_command": "pnpm test",
+      "e2e_command": "pnpm test:e2e"
+    }
+  },
+  "infrastructure": {
+    "docker": true,
+    "database": "mongodb",
+    "auth": "next-auth (Auth.js v5)"
+  },
+  "conventions": {
+    "linter": "eslint",
+    "formatter": "prettier (implied)",
+    "testing": "vitest",
+    "e2e_testing": "playwright",
+    "ui_library": "shadcn/ui",
+    "icons": "lucide-react",
+    "styling": "tailwindcss v4"
+  }
+}

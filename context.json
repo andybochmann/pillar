@@ -1,0 +1,40 @@
+{
+  "files_to_modify": {
+    "frontend": [
+      "src/app/(auth)/login/page.tsx",
+      "src/app/(auth)/register/page.tsx",
+      "e2e/smoke.spec.ts"
+    ]
+  },
+  "files_to_create": {
+    "frontend": [
+      "src/components/ui/password-input.tsx",
+      "src/components/ui/password-input.test.tsx"
+    ]
+  },
+  "files_to_reference": [
+    "src/components/ui/input.tsx",
+    "src/app/(auth)/login/page.tsx",
+    "src/app/(auth)/register/page.tsx",
+    "e2e/smoke.spec.ts"
+  ],
+  "patterns": {
+    "component_pattern": "Named exports only (no default exports), 'use client' when using hooks/browser APIs",
+    "shadcn_pattern": "shadcn/ui components extend native HTML elements with Tailwind classes using cn() utility",
+    "icon_pattern": "lucide-react icons imported as named imports (e.g., import { Eye, EyeOff } from 'lucide-react')",
+    "test_pattern": "Vitest with React Testing Library for component tests, Playwright for E2E tests",
+    "e2e_pattern": "Use page.getByLabel() and page.getByRole() as primary query strategies"
+  },
+  "existing_implementations": {
+    "description": "Password fields currently use basic shadcn Input component with type='password'",
+    "relevant_files": [
+      "src/components/ui/input.tsx",
+      "src/app/(auth)/login/page.tsx",
+      "src/app/(auth)/register/page.tsx"
+    ],
+    "password_fields": {
+      "login": "1 password field (line 79-86)",
+      "register": "2 password fields: password (line 105-113) and confirmPassword (line 117-125)"
+    }
+  }
+}
