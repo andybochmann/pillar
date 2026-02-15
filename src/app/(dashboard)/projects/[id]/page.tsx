@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
+import { Category } from "@/models/category";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { redirect, notFound } from "next/navigation";
@@ -29,6 +30,17 @@ export default async function ProjectPage({ params }: PageProps) {
   })
     .sort({ order: 1 })
     .lean();
+
+  const category = await Category.findOne({
+    _id: project.categoryId,
+    userId: session.user.id,
+  }).lean();
+
+  const taskCountsByColumn: Record<string, number> = {};
+  for (const t of tasks) {
+    taskCountsByColumn[t.columnId] =
+      (taskCountsByColumn[t.columnId] || 0) + 1;
+  }
 
   const serializedProject = {
     _id: project._id.toString(),
@@ -75,6 +87,11 @@ export default async function ProjectPage({ params }: PageProps) {
   }));
 
   return (
-    <ProjectView project={serializedProject} initialTasks={serializedTasks} />
+    <ProjectView
+      project={serializedProject}
+      initialTasks={serializedTasks}
+      categoryName={category?.name}
+      taskCounts={taskCountsByColumn}
+    />
   );
 }

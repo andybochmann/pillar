@@ -11,9 +11,16 @@ import type { Project, Task } from "@/types";
 interface ProjectViewProps {
   project: Project;
   initialTasks: Task[];
+  categoryName?: string;
+  taskCounts?: Record<string, number>;
 }
 
-export function ProjectView({ project, initialTasks }: ProjectViewProps) {
+export function ProjectView({
+  project,
+  initialTasks,
+  categoryName,
+  taskCounts,
+}: ProjectViewProps) {
   const router = useRouter();
   const [currentProject, setCurrentProject] = useState(project);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -59,12 +66,25 @@ export function ProjectView({ project, initialTasks }: ProjectViewProps) {
     <div className="flex h-full flex-col gap-4">
       <div className="flex items-start justify-between">
         <div>
+          {categoryName && (
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              {categoryName}
+            </p>
+          )}
           <h1 className="text-2xl font-bold tracking-tight">
             {currentProject.name}
           </h1>
           {currentProject.description && (
             <p className="text-muted-foreground">
               {currentProject.description}
+            </p>
+          )}
+          {taskCounts && Object.keys(taskCounts).length > 0 && (
+            <p className="mt-1 text-sm text-muted-foreground">
+              {currentProject.columns
+                .filter((col) => taskCounts[col.id])
+                .map((col) => `${taskCounts[col.id]} ${col.name.toLowerCase()}`)
+                .join(" · ")}
             </p>
           )}
         </div>

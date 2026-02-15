@@ -18,6 +18,7 @@ import {
   FolderKanban,
 } from "lucide-react";
 import { CategoryActions } from "@/components/categories/category-actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -27,6 +28,7 @@ import { CreateCategoryDialog } from "@/components/categories/create-dialog";
 import { CreateProjectDialog } from "@/components/projects/create-dialog";
 import { useCategories } from "@/hooks/use-categories";
 import { useProjects } from "@/hooks/use-projects";
+import { useTaskCounts } from "@/hooks/use-task-counts";
 
 interface SidebarProps {
   onNavigate?: () => void;
@@ -49,6 +51,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     refresh: refreshCategories,
   } = useCategories();
   const { projects, createProject, refresh: refreshProjects } = useProjects();
+  const { counts, refresh: refreshCounts } = useTaskCounts();
   const [collapsed, setCollapsed] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [showProjectDialog, setShowProjectDialog] = useState(false);
@@ -64,7 +67,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   useEffect(() => {
     refreshCategories();
     refreshProjects(showArchived);
-  }, [pathname, refreshCategories, refreshProjects, showArchived]);
+    refreshCounts();
+  }, [pathname, refreshCategories, refreshProjects, refreshCounts, showArchived]);
 
   const projectsByCategory = categories.map((cat) => ({
     ...cat,
@@ -203,6 +207,14 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                           {cat.name}
                         </span>
                       </button>
+                      {counts?.byCategory[cat._id] ? (
+                        <Badge
+                          variant="secondary"
+                          className="ml-auto mr-1 h-5 min-w-5 px-1.5 text-[10px]"
+                        >
+                          {counts.byCategory[cat._id]}
+                        </Badge>
+                      ) : null}
                       <CategoryActions
                         category={cat}
                         onAddProject={handleOpenProjectDialog}

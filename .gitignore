@@ -26,6 +26,7 @@
 .DS_Store
 *.pem
 .auto-claude/
+.claude/settings.local.json
 
 # debug
 npm-debug.log*

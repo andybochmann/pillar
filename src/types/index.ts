@@ -83,6 +83,11 @@ export interface QueuedMutation {
   timestamp: number;
 }
 
+export interface TaskCounts {
+  byCategory: Record<string, number>;
+  byProjectAndColumn: Record<string, Record<string, number>>;
+}
+
 export interface SyncResult {
   total: number;
   succeeded: number;
