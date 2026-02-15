@@ -1,7 +1,18 @@
 {
   "name": "pillar",
   "version": "0.1.0",
+  "description": "Kanban-based task management app with drag-and-drop, recurring tasks, calendar views, and offline PWA support",
   "private": true,
+  "license": "MIT",
+  "author": "Andy Bochmann",
+  "keywords": [
+    "kanban",
+    "task-management",
+    "nextjs",
+    "typescript",
+    "mongodb",
+    "pwa"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
