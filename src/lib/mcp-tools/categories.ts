@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type mongoose from "mongoose";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getMcpUserId } from "@/lib/mcp-server";
 import { emitSyncEvent } from "@/lib/event-bus";
@@ -155,7 +156,7 @@ export function registerCategoryTools(server: McpServer) {
         { categoryId, userId },
         { _id: 1 },
       ).lean();
-      const projectIds = projects.map((p) => p._id);
+      const projectIds = projects.map((p: { _id: mongoose.Types.ObjectId }) => p._id);
 
       await Promise.all([
         Task.deleteMany({ projectId: { $in: projectIds } }),

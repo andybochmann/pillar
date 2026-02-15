@@ -27,6 +27,9 @@ import type {
   LeanCategory,
   LeanLabel,
   LeanSubtask,
+  LeanStatusHistoryEntry,
+  LeanColumn,
+  SerializedColumn,
 } from "@/lib/mcp-tools/types";
 
 vi.mock("@/lib/db", () => ({
@@ -56,13 +59,13 @@ function serializeTask(task: LeanTask) {
           : null,
     },
     order: task.order,
-    labels: task.labels.map((id) => id.toString()),
-    subtasks: task.subtasks.map((s) => ({
+    labels: task.labels.map((id: mongoose.Types.ObjectId) => id.toString()),
+    subtasks: task.subtasks.map((s: LeanSubtask) => ({
       _id: s._id.toString(),
       title: s.title,
       completed: s.completed,
     })),
-    statusHistory: task.statusHistory.map((h) => ({
+    statusHistory: task.statusHistory.map((h: LeanStatusHistoryEntry) => ({
       columnId: h.columnId,
       timestamp: h.timestamp.toISOString(),
     })),
@@ -83,7 +86,7 @@ function serializeProject(project: LeanProject) {
     description: project.description,
     categoryId: project.categoryId.toString(),
     userId: project.userId.toString(),
-    columns: project.columns.map((col) => ({
+    columns: project.columns.map((col: LeanColumn) => ({
       id: col.id,
       name: col.name,
       order: col.order,
@@ -406,7 +409,7 @@ describe("MCP Serializers", () => {
 
       expect(Array.isArray(serialized.columns)).toBe(true);
       expect(serialized.columns.length).toBeGreaterThan(0);
-      serialized.columns.forEach((col) => {
+      serialized.columns.forEach((col: SerializedColumn) => {
         expect(col).toHaveProperty("id");
         expect(col).toHaveProperty("name");
         expect(col).toHaveProperty("order");

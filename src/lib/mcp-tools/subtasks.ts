@@ -127,7 +127,7 @@ export function registerSubtaskTools(server: McpServer) {
       });
 
       const sub = task.subtasks.find(
-        (s) => s._id.toString() === subtaskId,
+        (s: LeanSubtask) => s._id.toString() === subtaskId,
       );
       if (!sub) return errorResponse("Subtask not found");
 
