@@ -8,32 +8,49 @@ import {
   requireProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
+import type {
+  LeanTask,
+  SerializedTask,
+  SerializedSubtask,
+  SerializedRecurrence,
+  SerializedStatusHistoryEntry,
+} from "@/lib/mcp-tools/types";
 
-function serializeDate(date: unknown): string | null {
+function serializeDate(date: Date | undefined): string | null {
   if (date instanceof Date) return date.toISOString();
-  return date ? String(date) : null;
+  return null;
 }
 
-function serializeTask(task: unknown) {
-  const t = task as Record<string, unknown>;
+function serializeTask(task: LeanTask): SerializedTask {
   return {
-    _id: String(t._id),
-    title: t.title,
-    description: t.description,
-    projectId: String(t.projectId),
-    userId: String(t.userId),
-    assigneeId: t.assigneeId ? String(t.assigneeId) : null,
-    columnId: t.columnId,
-    priority: t.priority,
-    dueDate: serializeDate(t.dueDate),
-    recurrence: t.recurrence,
-    order: t.order,
-    labels: Array.isArray(t.labels) ? t.labels.map(String) : [],
-    subtasks: t.subtasks,
-    statusHistory: t.statusHistory,
-    completedAt: serializeDate(t.completedAt),
-    createdAt: serializeDate(t.createdAt),
-    updatedAt: serializeDate(t.updatedAt),
+    _id: task._id.toString(),
+    title: task.title,
+    description: task.description,
+    projectId: task.projectId.toString(),
+    userId: task.userId.toString(),
+    assigneeId: task.assigneeId ? task.assigneeId.toString() : null,
+    columnId: task.columnId,
+    priority: task.priority,
+    dueDate: serializeDate(task.dueDate),
+    recurrence: {
+      frequency: task.recurrence.frequency,
+      interval: task.recurrence.interval,
+      endDate: serializeDate(task.recurrence.endDate),
+    } as SerializedRecurrence,
+    order: task.order,
+    labels: task.labels.map((id) => id.toString()),
+    subtasks: task.subtasks.map((s) => ({
+      _id: s._id.toString(),
+      title: s.title,
+      completed: s.completed,
+    })) as SerializedSubtask[],
+    statusHistory: task.statusHistory.map((h) => ({
+      columnId: h.columnId,
+      timestamp: h.timestamp.toISOString(),
+    })) as SerializedStatusHistoryEntry[],
+    completedAt: serializeDate(task.completedAt),
+    createdAt: task.createdAt.toISOString(),
+    updatedAt: task.updatedAt.toISOString(),
   };
 }
 
@@ -176,7 +193,7 @@ export function registerTaskTools(server: McpServer) {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(serializeTask(task.toObject() as unknown as Record<string, unknown>)),
+            text: JSON.stringify(serializeTask(task.toObject())),
           },
         ],
       };
@@ -251,7 +268,7 @@ export function registerTaskTools(server: McpServer) {
         entityId: taskId,
         projectId: existing.projectId.toString(),
         targetUserIds,
-        data: serializeTask(task as unknown as Record<string, unknown>),
+        data: serializeTask(task),
         timestamp: Date.now(),
       });
 
@@ -355,7 +372,7 @@ export function registerTaskTools(server: McpServer) {
         entityId: taskId,
         projectId: existing.projectId.toString(),
         targetUserIds,
-        data: serializeTask(task as unknown as Record<string, unknown>),
+        data: serializeTask(task),
         timestamp: Date.now(),
       });
 
@@ -424,7 +441,7 @@ export function registerTaskTools(server: McpServer) {
         entityId: taskId,
         projectId: existing.projectId.toString(),
         targetUserIds,
-        data: serializeTask(task as unknown as Record<string, unknown>),
+        data: serializeTask(task),
         timestamp: Date.now(),
       });
 
