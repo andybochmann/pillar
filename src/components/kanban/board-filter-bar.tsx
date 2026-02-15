@@ -20,7 +20,12 @@ export const EMPTY_FILTERS: BoardFilters = {
   dueDateRange: null,
 };
 
-const PRIORITIES: Priority[] = ["urgent", "high", "medium", "low"];
+const PRIORITIES = [
+  { value: "urgent" as const, label: "Urgent" },
+  { value: "high" as const, label: "High" },
+  { value: "medium" as const, label: "Medium" },
+  { value: "low" as const, label: "Low" },
+];
 
 const DUE_DATE_OPTIONS = [
   { value: "overdue" as const, label: "Overdue" },
@@ -86,15 +91,15 @@ export function BoardFilterBar({
             <div className="flex flex-wrap gap-1">
               {PRIORITIES.map((p) => (
                 <Button
-                  key={p}
+                  key={p.value}
                   variant={
-                    filters.priorities.includes(p) ? "default" : "outline"
+                    filters.priorities.includes(p.value) ? "default" : "outline"
                   }
                   size="sm"
-                  onClick={() => togglePriority(p)}
-                  aria-pressed={filters.priorities.includes(p)}
+                  onClick={() => togglePriority(p.value)}
+                  aria-pressed={filters.priorities.includes(p.value)}
                 >
-                  {p}
+                  {p.label}
                 </Button>
               ))}
             </div>
