@@ -31,6 +31,7 @@ export interface ITask extends Document {
   description?: string;
   projectId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
+  assigneeId?: mongoose.Types.ObjectId;
   columnId: string;
   priority: Priority;
   dueDate?: Date;
@@ -87,6 +88,11 @@ const TaskSchema = new Schema<ITask>(
       type: Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
+    },
+    assigneeId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       index: true,
     },
     columnId: { type: String, required: true },

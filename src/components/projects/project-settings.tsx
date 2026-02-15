@@ -14,8 +14,10 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { ColumnManager } from "./column-manager";
+import { ShareDialog } from "./share-dialog";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
+import { Users } from "lucide-react";
 import type { Project, Column, Task } from "@/types";
 
 interface ProjectSettingsProps {
@@ -38,6 +40,8 @@ export function ProjectSettings({
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description ?? "");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const isOwner = project.currentUserRole === "owner";
 
   function hasTasksInColumn(columnId: string) {
     return tasks.some((t) => t.columnId === columnId);
@@ -111,29 +115,57 @@ export function ProjectSettings({
 
             <Separator />
 
+            {/* Sharing */}
             <div className="flex items-center justify-between">
               <div>
-                <Label>Archive project</Label>
+                <Label className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Sharing
+                </Label>
                 <p className="text-xs text-muted-foreground">
-                  Hidden from sidebar when archived
+                  {project.memberCount && project.memberCount > 1
+                    ? `${project.memberCount} members`
+                    : "Only you"}
                 </p>
               </div>
-              <Switch
-                aria-label="Archive project"
-                checked={project.archived}
-                onCheckedChange={handleArchiveToggle}
-              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowShareDialog(true)}
+              >
+                {isOwner ? "Manage" : "View"}
+              </Button>
             </div>
 
             <Separator />
 
-            <Button
-              variant="destructive"
-              className="w-full"
-              onClick={() => setShowDeleteConfirm(true)}
-            >
-              Delete project
-            </Button>
+            {isOwner && (
+              <>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Archive project</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Hidden from sidebar when archived
+                    </p>
+                  </div>
+                  <Switch
+                    aria-label="Archive project"
+                    checked={project.archived}
+                    onCheckedChange={handleArchiveToggle}
+                  />
+                </div>
+
+                <Separator />
+
+                <Button
+                  variant="destructive"
+                  className="w-full"
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  Delete project
+                </Button>
+              </>
+            )}
           </div>
         </SheetContent>
       </Sheet>
@@ -146,6 +178,14 @@ export function ProjectSettings({
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={onDelete}
+      />
+
+      <ShareDialog
+        projectId={project._id}
+        projectName={project.name}
+        currentUserRole={project.currentUserRole ?? "owner"}
+        open={showShareDialog}
+        onOpenChange={setShowShareDialog}
       />
     </>
   );

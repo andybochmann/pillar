@@ -5,6 +5,8 @@ import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Project } from "@/models/project";
 import { Category } from "@/models/category";
+import { ProjectMember } from "@/models/project-member";
+import { getAccessibleProjectIds } from "@/lib/project-access";
 
 const CreateProjectSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -32,12 +34,44 @@ export async function GET(request: Request) {
   const categoryId = searchParams.get("categoryId");
   const includeArchived = searchParams.get("includeArchived") === "true";
 
-  const filter: Record<string, unknown> = { userId: session.user.id };
+  const accessibleIds = await getAccessibleProjectIds(session.user.id);
+  const filter: Record<string, unknown> = { _id: { $in: accessibleIds } };
   if (categoryId) filter.categoryId = categoryId;
   if (!includeArchived) filter.archived = false;
 
-  const projects = await Project.find(filter).sort({ createdAt: -1 });
-  return NextResponse.json(projects);
+  const projects = await Project.find(filter).sort({ createdAt: -1 }).lean();
+
+  // Attach currentUserRole and memberCount
+  const memberCounts = await ProjectMember.aggregate([
+    { $match: { projectId: { $in: projects.map((p) => p._id) } } },
+    { $group: { _id: "$projectId", count: { $sum: 1 } } },
+  ]);
+  const countMap = new Map(
+    memberCounts.map((m: { _id: { toString(): string }; count: number }) => [
+      m._id.toString(),
+      m.count,
+    ]),
+  );
+
+  const userMemberships = await ProjectMember.find(
+    { userId: session.user.id, projectId: { $in: projects.map((p) => p._id) } },
+    { projectId: 1, role: 1 },
+  ).lean();
+  const roleMap = new Map(
+    userMemberships.map((m) => [m.projectId.toString(), m.role]),
+  );
+
+  const currentUserId = session.user.id;
+  const enriched = projects.map((p) => ({
+    ...p,
+    _id: p._id.toString(),
+    categoryId: p.categoryId.toString(),
+    userId: p.userId.toString(),
+    currentUserRole: roleMap.get(p._id.toString()) ?? (p.userId.toString() === currentUserId ? "owner" : "editor"),
+    memberCount: countMap.get(p._id.toString()) ?? 1,
+  }));
+
+  return NextResponse.json(enriched);
 }
 
 export async function POST(request: Request) {
@@ -73,6 +107,14 @@ export async function POST(request: Request) {
     const project = await Project.create({
       ...result.data,
       userId: session.user.id,
+    });
+
+    // Create owner membership record
+    await ProjectMember.create({
+      projectId: project._id,
+      userId: session.user.id,
+      role: "owner",
+      invitedBy: session.user.id,
     });
 
     emitSyncEvent({

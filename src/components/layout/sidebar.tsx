@@ -16,6 +16,7 @@ import {
   Plus,
   LogOut,
   FolderKanban,
+  Users,
 } from "lucide-react";
 import { CategoryActions } from "@/components/categories/category-actions";
 import { Badge } from "@/components/ui/badge";
@@ -70,9 +71,16 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     refreshCounts();
   }, [pathname, refreshCategories, refreshProjects, refreshCounts, showArchived]);
 
+  const ownedProjects = projects.filter(
+    (p) => !p.currentUserRole || p.currentUserRole === "owner",
+  );
+  const sharedProjects = projects.filter(
+    (p) => p.currentUserRole && p.currentUserRole !== "owner",
+  );
+
   const projectsByCategory = categories.map((cat) => ({
     ...cat,
-    projects: projects.filter((p) => p.categoryId === cat._id),
+    projects: ownedProjects.filter((p) => p.categoryId === cat._id),
   }));
 
   function handleOpenProjectDialog(categoryId?: string) {
@@ -266,6 +274,40 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                     Create one to get started
                   </Button>
                 </div>
+              )}
+
+              {/* Shared with me */}
+              {sharedProjects.length > 0 && (
+                <>
+                  <Separator className="my-3" />
+                  <div className="flex items-center px-3 py-1">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Shared with me
+                    </span>
+                  </div>
+                  {sharedProjects.map((project) => (
+                    <Link
+                      key={project._id}
+                      href={`/projects/${project._id}`}
+                      onClick={onNavigate}
+                      className={cn(
+                        "flex items-center gap-2 rounded-md px-3 py-1.5 pl-6 text-sm transition-colors",
+                        pathname === `/projects/${project._id}`
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        project.archived && "opacity-50",
+                      )}
+                    >
+                      <Users className="h-3 w-3 shrink-0" />
+                      {project.name}
+                      {project.archived && (
+                        <span className="ml-auto text-xs text-muted-foreground">
+                          archived
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                </>
               )}
 
               <Separator className="my-3" />

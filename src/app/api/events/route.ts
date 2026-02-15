@@ -41,7 +41,12 @@ export async function GET(request: Request): Promise<Response> {
       }
 
       function onSync(event: SyncEvent) {
-        if (event.userId !== userId || event.sessionId === clientSessionId) return;
+        // Skip events from the same browser tab
+        if (event.sessionId === clientSessionId) return;
+        // Deliver if user matches OR is in targetUserIds
+        const isTarget = event.userId === userId ||
+          (event.targetUserIds?.includes(userId) ?? false);
+        if (!isTarget) return;
         send(`event: sync\ndata: ${JSON.stringify(event)}\n\n`);
       }
 

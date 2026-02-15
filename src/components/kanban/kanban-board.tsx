@@ -30,18 +30,20 @@ import { useTasks } from "@/hooks/use-tasks";
 import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
 import { isToday, isBefore, startOfDay, endOfWeek } from "date-fns";
-import type { Task, Column, Priority } from "@/types";
+import type { Task, Column, Priority, ProjectMember } from "@/types";
 
 interface KanbanBoardProps {
   projectId: string;
   columns: Column[];
   initialTasks: Task[];
+  members?: ProjectMember[];
 }
 
 export function KanbanBoard({
   projectId,
   columns,
   initialTasks,
+  members,
 }: KanbanBoardProps) {
   const { tasks, setTasks, createTask, updateTask, deleteTask } =
     useTasks(initialTasks, projectId);
@@ -81,6 +83,9 @@ export function KanbanBoard({
 
   const labelColors = new Map(allLabels.map((l) => [l._id, l.color]));
   const labelNames = new Map(allLabels.map((l) => [l._id, l.name]));
+  const memberNames = new Map(
+    (members ?? []).map((m) => [m.userId, m.userName ?? ""]),
+  );
 
   const filteredTasks = useMemo(() => {
     const hasFilters = filters.priorities.length > 0 || filters.labels.length > 0 || filters.dueDateRange !== null;
@@ -354,6 +359,7 @@ export function KanbanBoard({
                 onPriorityChange={handlePriorityChange}
                 labelColors={labelColors}
                 labelNames={labelNames}
+                memberNames={memberNames}
                 selectedIds={selectedIds}
                 onSelect={toggleSelection}
                 showForm={newTaskColumnId === column.id}
@@ -367,7 +373,7 @@ export function KanbanBoard({
 
         <DragOverlay>
           {activeTask ? (
-            <TaskCard task={activeTask} isOverlay labelColors={labelColors} labelNames={labelNames} />
+            <TaskCard task={activeTask} isOverlay labelColors={labelColors} labelNames={labelNames} memberNames={memberNames} />
           ) : null}
         </DragOverlay>
       </DndContext>
@@ -386,6 +392,7 @@ export function KanbanBoard({
         onCreateLabel={async (data) => {
           await createLabel(data);
         }}
+        members={members}
       />
 
       {/* Screen reader announcements for DnD */}

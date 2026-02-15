@@ -1,4 +1,5 @@
 export type Priority = "urgent" | "high" | "medium" | "low";
+export type ProjectRole = "owner" | "editor";
 
 export type RecurrenceFrequency =
   | "daily"
@@ -38,6 +39,8 @@ export interface Project {
   userId: string;
   columns: Column[];
   archived: boolean;
+  currentUserRole?: ProjectRole;
+  memberCount?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -62,12 +65,27 @@ export interface StatusHistoryEntry {
   timestamp: string;
 }
 
+export interface ProjectMember {
+  _id: string;
+  projectId: string;
+  userId: string;
+  role: ProjectRole;
+  invitedBy: string;
+  userName?: string;
+  userEmail?: string;
+  userImage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Task {
   _id: string;
   title: string;
   description?: string;
   projectId: string;
   userId: string;
+  assigneeId?: string | null;
+  assigneeName?: string;
   columnId: string;
   priority: Priority;
   dueDate?: string;

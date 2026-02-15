@@ -23,6 +23,7 @@ interface TaskCardProps {
   onPriorityChange?: (taskId: string, priority: Priority) => void;
   labelColors?: Map<string, string>;
   labelNames?: Map<string, string>;
+  memberNames?: Map<string, string>;
   selected?: boolean;
   onSelect?: (taskId: string) => void;
 }
@@ -73,6 +74,7 @@ export function TaskCard({
   onPriorityChange,
   labelColors,
   labelNames,
+  memberNames,
   selected,
   onSelect,
 }: TaskCardProps) {
@@ -226,6 +228,18 @@ export function TaskCard({
               </Badge>
             );
           })}
+          {task.assigneeId && memberNames && (() => {
+            const assigneeName = memberNames.get(task.assigneeId!);
+            if (!assigneeName) return null;
+            return (
+              <span
+                className="ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[10px] font-medium text-primary"
+                title={assigneeName}
+              >
+                {assigneeName.charAt(0).toUpperCase()}
+              </span>
+            );
+          })()}
         </div>
       </CardContent>
     </Card>

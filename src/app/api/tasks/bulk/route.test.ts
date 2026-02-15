@@ -17,6 +17,7 @@ import {
   createTestCategory,
   createTestProject,
   createTestTask,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { PATCH } from "./route";
 
@@ -126,9 +127,10 @@ describe("PATCH /api/tasks/bulk", () => {
   });
 
   it("returns 400 when move action missing columnId", async () => {
+    await seedTasks();
     const req = new NextRequest("http://localhost/api/tasks/bulk", {
       method: "PATCH",
-      body: JSON.stringify({ taskIds: ["x"], action: "move" }),
+      body: JSON.stringify({ taskIds: [task1Id], action: "move" }),
     });
     const res = await PATCH(req);
     expect(res.status).toBe(400);
@@ -230,9 +232,9 @@ describe("PATCH /api/tasks/bulk", () => {
     expect(doneEntries).toHaveLength(1);
   });
 
-  it("only affects tasks owned by the user", async () => {
+  it("only affects tasks in accessible projects", async () => {
     await seedTasks();
-    // Create a task owned by another user
+    // Create a task owned by another user in a separate project
     const otherUser = await createTestUser({ email: "other@test.com" });
     const otherUserId = otherUser._id as mongoose.Types.ObjectId;
     const otherCat = await createTestCategory({ userId: otherUserId });
@@ -258,10 +260,10 @@ describe("PATCH /api/tasks/bulk", () => {
     const res = await PATCH(req);
     expect(res.status).toBe(200);
 
-    // Own task deleted
+    // Own task deleted (user has access via project ownership fallback)
     const ownCount = await Task.countDocuments({ _id: task1Id });
     expect(ownCount).toBe(0);
-    // Other user's task still exists
+    // Other user's task still exists (not accessible)
     const otherCount = await Task.countDocuments({ _id: otherTask._id });
     expect(otherCount).toBe(1);
   });

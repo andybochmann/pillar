@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
+import { getProjectRole } from "@/lib/project-access";
 
 const BulkUpdateSchema = z.object({
   taskIds: z.array(z.string().min(1)).min(1, "At least one task ID required"),
@@ -31,7 +32,45 @@ export async function PATCH(request: Request) {
     await connectDB();
 
     const { taskIds, action, columnId, priority } = result.data;
-    const filter = { _id: { $in: taskIds }, userId: session.user.id };
+
+    // Verify all tasks exist and user has access
+    const tasks = await Task.find({ _id: { $in: taskIds } }, { projectId: 1 });
+    if (tasks.length === 0) {
+      // No valid tasks found — proceed silently (nothing to do)
+      if (action === "move" && !columnId) {
+        return NextResponse.json(
+          { error: "columnId required for move action" },
+          { status: 400 },
+        );
+      }
+      if (action === "priority" && !priority) {
+        return NextResponse.json(
+          { error: "priority required for priority action" },
+          { status: 400 },
+        );
+      }
+      return NextResponse.json({ success: true });
+    }
+
+    // Verify membership on each unique project — filter to accessible tasks only
+    const accessibleTaskIds: string[] = [];
+    const projectIds = [...new Set(tasks.map((t) => t.projectId.toString()))];
+    const accessibleProjectIds = new Set<string>();
+    for (const pid of projectIds) {
+      const role = await getProjectRole(session.user.id, pid);
+      if (role) accessibleProjectIds.add(pid);
+    }
+    for (const t of tasks) {
+      if (accessibleProjectIds.has(t.projectId.toString())) {
+        accessibleTaskIds.push(t._id.toString());
+      }
+    }
+
+    if (accessibleTaskIds.length === 0) {
+      return NextResponse.json({ success: true });
+    }
+
+    const filter = { _id: { $in: accessibleTaskIds } };
 
     if (action === "move") {
       if (!columnId) {

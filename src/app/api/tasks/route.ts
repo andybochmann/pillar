@@ -6,8 +6,10 @@ import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
+import { ProjectMember } from "@/models/project-member";
 import { startOfDay, endOfDay } from "date-fns";
 import { parseLocalDate } from "@/lib/date-utils";
+import { getAccessibleProjectIds, getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 
 const CreateTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -34,6 +36,7 @@ const CreateTaskSchema = z.object({
     )
     .max(50)
     .optional(),
+  assigneeId: z.string().nullable().optional(),
 });
 
 export async function GET(request: Request) {
@@ -52,12 +55,26 @@ export async function GET(request: Request) {
   const dueDateTo = searchParams.get("dueDateTo");
   const labels = searchParams.get("labels");
   const completed = searchParams.get("completed");
+  const assigneeId = searchParams.get("assigneeId");
   const sortBy = searchParams.get("sortBy");
   const sortOrder = searchParams.get("sortOrder") === "desc" ? -1 : 1;
 
-  const filter: Record<string, unknown> = { userId: session.user.id };
+  const filter: Record<string, unknown> = {};
 
-  if (projectId) filter.projectId = projectId;
+  if (projectId) {
+    // Verify membership
+    const role = await getProjectRole(session.user.id, projectId);
+    if (!role) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    filter.projectId = projectId;
+  } else {
+    // All accessible projects
+    const accessibleIds = await getAccessibleProjectIds(session.user.id);
+    filter.projectId = { $in: accessibleIds.map((id) => new mongoose.Types.ObjectId(id)) };
+  }
+
+  if (assigneeId) filter.assigneeId = assigneeId;
   if (columnId) filter.columnId = columnId;
   if (search) {
     filter.$text = { $search: search };
@@ -83,14 +100,9 @@ export async function GET(request: Request) {
   }
 
   if (sortBy === "priority") {
-    const aggFilter: Record<string, unknown> = {
-      ...filter,
-      userId: new mongoose.Types.ObjectId(session.user.id),
-    };
-    if (filter.projectId) {
-      aggFilter.projectId = new mongoose.Types.ObjectId(
-        filter.projectId as string,
-      );
+    const aggFilter: Record<string, unknown> = { ...filter };
+    if (typeof filter.projectId === "string") {
+      aggFilter.projectId = new mongoose.Types.ObjectId(filter.projectId);
     }
     const tasks = await Task.aggregate([
       { $match: aggFilter },
@@ -145,21 +157,29 @@ export async function POST(request: Request) {
 
     await connectDB();
 
-    const project = await Project.findOne({
-      _id: result.data.projectId,
-      userId: session.user.id,
-    });
-    if (!project) {
+    // Verify project membership (editor can create tasks)
+    const role = await getProjectRole(session.user.id, result.data.projectId);
+    if (!role) {
       return NextResponse.json(
         { error: "Project not found" },
         { status: 404 },
       );
     }
 
+    // Validate assigneeId is a project member
+    if (result.data.assigneeId) {
+      const assigneeRole = await getProjectRole(result.data.assigneeId, result.data.projectId);
+      if (!assigneeRole) {
+        return NextResponse.json(
+          { error: "Assignee is not a project member" },
+          { status: 400 },
+        );
+      }
+    }
+
     const taskCount = await Task.countDocuments({
       projectId: result.data.projectId,
       columnId: result.data.columnId,
-      userId: session.user.id,
     });
 
     const taskData: Record<string, unknown> = {
@@ -180,8 +200,13 @@ export async function POST(request: Request) {
       };
     }
 
+    if (result.data.assigneeId) {
+      taskData.assigneeId = result.data.assigneeId;
+    }
+
     const task = await Task.create(taskData);
 
+    const targetUserIds = await getProjectMemberUserIds(result.data.projectId);
     emitSyncEvent({
       entity: "task",
       action: "created",
@@ -189,6 +214,7 @@ export async function POST(request: Request) {
       sessionId: request.headers.get("X-Session-Id") ?? "",
       entityId: task._id.toString(),
       projectId: result.data.projectId,
+      targetUserIds,
       data: task.toJSON(),
       timestamp: Date.now(),
     });

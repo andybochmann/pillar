@@ -3,16 +3,19 @@
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { KanbanBoard } from "@/components/kanban";
 import { ProjectSettings } from "@/components/projects/project-settings";
 import { toast } from "sonner";
-import type { Project, Task } from "@/types";
+import { Users } from "lucide-react";
+import type { Project, Task, ProjectMember as ProjectMemberType } from "@/types";
 
 interface ProjectViewProps {
   project: Project;
   initialTasks: Task[];
   categoryName?: string;
   taskCounts?: Record<string, number>;
+  members?: ProjectMemberType[];
 }
 
 export function ProjectView({
@@ -20,6 +23,7 @@ export function ProjectView({
   initialTasks,
   categoryName,
   taskCounts,
+  members,
 }: ProjectViewProps) {
   const router = useRouter();
   const [currentProject, setCurrentProject] = useState(project);
@@ -71,9 +75,17 @@ export function ProjectView({
               {categoryName}
             </p>
           )}
-          <h1 className="text-2xl font-bold tracking-tight">
-            {currentProject.name}
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold tracking-tight">
+              {currentProject.name}
+            </h1>
+            {currentProject.memberCount && currentProject.memberCount > 1 && (
+              <Badge variant="secondary" className="gap-1 text-xs">
+                <Users className="h-3 w-3" />
+                {currentProject.memberCount}
+              </Badge>
+            )}
+          </div>
           {currentProject.description && (
             <p className="text-muted-foreground">
               {currentProject.description}
@@ -101,6 +113,7 @@ export function ProjectView({
         projectId={currentProject._id}
         columns={currentProject.columns}
         initialTasks={initialTasks}
+        members={members}
       />
 
       <ProjectSettings

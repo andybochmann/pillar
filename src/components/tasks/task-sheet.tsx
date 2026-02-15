@@ -33,6 +33,7 @@ import type {
   Priority,
   Recurrence,
   Label as LabelType,
+  ProjectMember,
 } from "@/types";
 
 interface TaskSheetProps {
@@ -44,6 +45,7 @@ interface TaskSheetProps {
   onDelete: (id: string) => Promise<void>;
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
+  members?: ProjectMember[];
 }
 
 export function TaskSheet({
@@ -55,6 +57,7 @@ export function TaskSheet({
   onDelete,
   allLabels,
   onCreateLabel,
+  members,
 }: TaskSheetProps) {
   if (!task) return null;
 
@@ -73,6 +76,7 @@ export function TaskSheet({
           onClose={() => onOpenChange(false)}
           allLabels={allLabels}
           onCreateLabel={onCreateLabel}
+          members={members}
         />
       </SheetContent>
     </Sheet>
@@ -89,6 +93,7 @@ interface TaskSheetFormProps {
   onClose: () => void;
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
+  members?: ProjectMember[];
 }
 
 function TaskSheetForm({
@@ -99,6 +104,7 @@ function TaskSheetForm({
   onClose,
   allLabels,
   onCreateLabel,
+  members,
 }: TaskSheetFormProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
@@ -106,6 +112,9 @@ function TaskSheetForm({
   const [columnId, setColumnId] = useState(task.columnId);
   const [dueDate, setDueDate] = useState(
     task.dueDate ? task.dueDate.slice(0, 10) : "",
+  );
+  const [assigneeId, setAssigneeId] = useState<string | null>(
+    task.assigneeId ?? null,
   );
   const [labels, setLabels] = useState<string[]>(task.labels);
   const [recurrence, setRecurrence] = useState<Recurrence>({
@@ -173,6 +182,12 @@ function TaskSheetForm({
   function handleRecurrenceChange(value: Recurrence) {
     setRecurrence(value);
     saveField({ recurrence: value });
+  }
+
+  function handleAssigneeChange(value: string) {
+    const newValue = value === "unassigned" ? null : value;
+    setAssigneeId(newValue);
+    saveField({ assigneeId: newValue });
   }
 
   function handleToggleLabel(labelId: string) {
@@ -298,6 +313,29 @@ function TaskSheetForm({
               </Select>
             </div>
           </div>
+
+          {/* Assignee */}
+          {members && members.length > 1 && (
+            <div className="space-y-1.5">
+              <Label htmlFor="task-assignee">Assignee</Label>
+              <Select
+                value={assigneeId ?? "unassigned"}
+                onValueChange={handleAssigneeChange}
+              >
+                <SelectTrigger id="task-assignee">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                  {members.map((member) => (
+                    <SelectItem key={member.userId} value={member.userId}>
+                      {member.userName ?? member.userEmail}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Due Date & Recurrence */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

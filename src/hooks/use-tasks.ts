@@ -19,6 +19,7 @@ interface UseTasksReturn {
     columnId: string;
     priority?: string;
     description?: string;
+    assigneeId?: string | null;
   }) => Promise<Task>;
   updateTask: (
     id: string,
@@ -35,6 +36,7 @@ interface UseTasksReturn {
         | "labels"
         | "subtasks"
         | "completedAt"
+        | "assigneeId"
       >
     >,
   ) => Promise<Task>;
@@ -70,6 +72,7 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
       columnId: string;
       priority?: string;
       description?: string;
+      assigneeId?: string | null;
     }) => {
       const res = await offlineFetch("/api/tasks", {
         method: "POST",
@@ -102,6 +105,7 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
           | "order"
           | "labels"
           | "completedAt"
+          | "assigneeId"
         >
       >,
     ) => {

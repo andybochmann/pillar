@@ -6,6 +6,7 @@ import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { addDays, addWeeks, addMonths, addYears } from "date-fns";
+import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 
 const UpdateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -33,6 +34,7 @@ const UpdateTaskSchema = z.object({
     .max(50)
     .optional(),
   completedAt: z.string().datetime().nullable().optional(),
+  assigneeId: z.string().nullable().optional(),
 });
 
 interface RouteParams {
@@ -47,9 +49,15 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
   const { id } = await params;
   await connectDB();
-  const task = await Task.findOne({ _id: id, userId: session.user.id });
+  const task = await Task.findById(id);
 
   if (!task) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
+
+  // Verify membership on task's project
+  const role = await getProjectRole(session.user.id, task.projectId.toString());
+  if (!role) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
@@ -95,15 +103,38 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       };
     }
 
-    const existingTask = result.data.columnId
-      ? await Task.findOne({ _id: id, userId: session.user.id }).select("columnId")
-      : null;
+    // Handle assigneeId: null means unassign
+    if (result.data.assigneeId === null) {
+      updateData.assigneeId = null;
+    }
+
+    // Find task and verify membership
+    const existingTask = await Task.findById(id).select("columnId projectId");
+    if (!existingTask) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    const role = await getProjectRole(session.user.id, existingTask.projectId.toString());
+    if (!role) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    // Validate assigneeId is a project member
+    if (result.data.assigneeId && result.data.assigneeId !== null) {
+      const assigneeRole = await getProjectRole(result.data.assigneeId, existingTask.projectId.toString());
+      if (!assigneeRole) {
+        return NextResponse.json(
+          { error: "Assignee is not a project member" },
+          { status: 400 },
+        );
+      }
+    }
 
     const shouldPushHistory =
-      existingTask && result.data.columnId && existingTask.columnId !== result.data.columnId;
+      result.data.columnId && existingTask.columnId !== result.data.columnId;
 
-    const task = await Task.findOneAndUpdate(
-      { _id: id, userId: session.user.id },
+    const task = await Task.findByIdAndUpdate(
+      id,
       shouldPushHistory
         ? {
             ...updateData,
@@ -123,6 +154,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     const sessionId = request.headers.get("X-Session-Id") ?? "";
+    const targetUserIds = await getProjectMemberUserIds(task.projectId.toString());
 
     emitSyncEvent({
       entity: "task",
@@ -131,6 +163,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       sessionId,
       entityId: task._id.toString(),
       projectId: task.projectId.toString(),
+      targetUserIds,
       data: task.toJSON(),
       timestamp: Date.now(),
     });
@@ -213,15 +246,21 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
   const { id } = await params;
   await connectDB();
-  const task = await Task.findOneAndDelete({
-    _id: id,
-    userId: session.user.id,
-  });
 
+  // Find task first to check membership
+  const task = await Task.findById(id);
   if (!task) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
   }
 
+  const role = await getProjectRole(session.user.id, task.projectId.toString());
+  if (!role) {
+    return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
+
+  await Task.deleteOne({ _id: id });
+
+  const targetUserIds = await getProjectMemberUserIds(task.projectId.toString());
   emitSyncEvent({
     entity: "task",
     action: "deleted",
@@ -229,6 +268,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     sessionId: request.headers.get("X-Session-Id") ?? "",
     entityId: id,
     projectId: task.projectId.toString(),
+    targetUserIds,
     timestamp: Date.now(),
   });
 

@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import type { TaskCounts } from "@/types";
+import { getAccessibleProjectIds } from "@/lib/project-access";
 
 export async function GET() {
   const session = await auth();
@@ -16,9 +17,10 @@ export async function GET() {
 
     const userId = session.user.id;
 
-    // Get non-archived projects for this user
+    // Get non-archived accessible projects
+    const accessibleIds = await getAccessibleProjectIds(userId);
     const projects = await Project.find(
-      { userId, archived: false },
+      { _id: { $in: accessibleIds }, archived: false },
       { _id: 1, categoryId: 1 },
     ).lean();
 

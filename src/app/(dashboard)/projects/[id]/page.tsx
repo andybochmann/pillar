@@ -3,8 +3,10 @@ import { connectDB } from "@/lib/db";
 import { Category } from "@/models/category";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
+import { ProjectMember } from "@/models/project-member";
 import { redirect, notFound } from "next/navigation";
 import { ProjectView } from "@/components/projects/project-view";
+import { getProjectRole } from "@/lib/project-access";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -17,24 +19,26 @@ export default async function ProjectPage({ params }: PageProps) {
   const { id } = await params;
   await connectDB();
 
-  const project = await Project.findOne({
-    _id: id,
-    userId: session.user.id,
-  }).lean();
+  // Verify access via membership
+  const role = await getProjectRole(session.user.id, id);
+  if (!role) notFound();
 
+  const project = await Project.findById(id).lean();
   if (!project) notFound();
 
-  const tasks = await Task.find({
-    projectId: id,
-    userId: session.user.id,
-  })
+  // Tasks in shared projects belong to all members
+  const tasks = await Task.find({ projectId: id })
     .sort({ order: 1 })
     .lean();
 
-  const category = await Category.findOne({
-    _id: project.categoryId,
-    userId: session.user.id,
-  }).lean();
+  const category = await Category.findById(project.categoryId).lean();
+
+  // Fetch members
+  const membersRaw = await ProjectMember.find({ projectId: id })
+    .populate("userId", "name email image")
+    .lean();
+
+  const memberCount = membersRaw.length || 1;
 
   const taskCountsByColumn: Record<string, number> = {};
   for (const t of tasks) {
@@ -54,9 +58,32 @@ export default async function ProjectPage({ params }: PageProps) {
       order: c.order,
     })),
     archived: project.archived,
+    currentUserRole: role,
+    memberCount,
     createdAt: project.createdAt.toISOString(),
     updatedAt: project.updatedAt.toISOString(),
   };
+
+  const serializedMembers = membersRaw.map((m) => {
+    const user = m.userId as unknown as {
+      _id: { toString(): string };
+      name: string;
+      email: string;
+      image?: string;
+    };
+    return {
+      _id: m._id.toString(),
+      projectId: m.projectId.toString(),
+      userId: user._id.toString(),
+      role: m.role,
+      invitedBy: m.invitedBy.toString(),
+      userName: user.name,
+      userEmail: user.email,
+      userImage: user.image,
+      createdAt: m.createdAt.toISOString(),
+      updatedAt: m.updatedAt.toISOString(),
+    };
+  });
 
   const serializedTasks = tasks.map((t) => ({
     _id: t._id.toString(),
@@ -64,6 +91,7 @@ export default async function ProjectPage({ params }: PageProps) {
     description: t.description,
     projectId: t.projectId.toString(),
     userId: t.userId.toString(),
+    assigneeId: t.assigneeId?.toString() ?? null,
     columnId: t.columnId,
     priority: t.priority,
     dueDate: t.dueDate?.toISOString(),
@@ -96,6 +124,7 @@ export default async function ProjectPage({ params }: PageProps) {
       initialTasks={serializedTasks}
       categoryName={category?.name}
       taskCounts={taskCountsByColumn}
+      members={serializedMembers}
     />
   );
 }

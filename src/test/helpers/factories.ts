@@ -4,6 +4,11 @@ import { Category, type ICategory } from "@/models/category";
 import { Project, type IProject } from "@/models/project";
 import { Task, type ITask } from "@/models/task";
 import { Label, type ILabel } from "@/models/label";
+import {
+  ProjectMember,
+  type IProjectMember,
+  type ProjectRole,
+} from "@/models/project-member";
 import { hash } from "bcryptjs";
 
 interface CreateUserInput {
@@ -119,5 +124,23 @@ export async function createTestLabel(
     name: overrides.name ?? "Test Label",
     color: overrides.color ?? "#ef4444",
     userId: overrides.userId,
+  });
+}
+
+interface CreateProjectMemberInput {
+  projectId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+  role?: ProjectRole;
+  invitedBy: mongoose.Types.ObjectId;
+}
+
+export async function createTestProjectMember(
+  overrides: CreateProjectMemberInput,
+): Promise<IProjectMember> {
+  return ProjectMember.create({
+    projectId: overrides.projectId,
+    userId: overrides.userId,
+    role: overrides.role ?? "editor",
+    invitedBy: overrides.invitedBy,
   });
 }

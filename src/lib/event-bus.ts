@@ -1,12 +1,13 @@
 import { EventEmitter } from "events";
 
 export interface SyncEvent {
-  entity: "task" | "project" | "category" | "label";
+  entity: "task" | "project" | "category" | "label" | "member";
   action: "created" | "updated" | "deleted" | "reordered";
   userId: string;
   sessionId: string;
   entityId: string;
   projectId?: string;
+  targetUserIds?: string[];
   data?: unknown;
   timestamp: number;
 }
