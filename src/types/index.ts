@@ -152,3 +152,26 @@ export interface SyncResult {
   succeeded: number;
   failed: number;
 }
+
+export type NotificationType =
+  | "due-soon"
+  | "overdue"
+  | "reminder"
+  | "daily-summary";
+
+export interface Notification {
+  _id: string;
+  userId: string;
+  taskId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  dismissed: boolean;
+  scheduledFor?: string;
+  sentAt?: string;
+  snoozedUntil?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
