@@ -1,42 +1,123 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarView } from "./calendar-view";
+import { CalendarWeekView } from "./calendar-week-view";
+import { CalendarDayView } from "./calendar-day-view";
 import { DayDetail } from "./day-detail";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useTasks } from "@/hooks/use-tasks";
+import { useLabels } from "@/hooks/use-labels";
+import { useCategories } from "@/hooks/use-categories";
 import { toast } from "sonner";
 import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
-import type { Task, Project } from "@/types";
+import type { Task, Project, CalendarViewType } from "@/types";
+import type { CalendarFilters } from "./calendar-filter-bar";
+import { EMPTY_FILTERS } from "./calendar-filter-bar";
 
 interface CalendarPageClientProps {
   initialTasks: Task[];
   projects: Project[];
   currentMonth: Date;
+  initialViewType?: CalendarViewType;
+  filters?: CalendarFilters;
 }
 
 export function CalendarPageClient({
   initialTasks,
   projects,
   currentMonth,
+  initialViewType = "month",
+  filters: initialFilters = EMPTY_FILTERS,
 }: CalendarPageClientProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { tasks, setTasks, updateTask, deleteTask } = useTasks(initialTasks);
+  const { labels } = useLabels();
+  const { categories } = useCategories();
 
+  const [viewType, setViewType] = useState<CalendarViewType>(initialViewType);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDetailOpen, setDayDetailOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [taskSheetOpen, setTaskSheetOpen] = useState(false);
+  const [filters, setFilters] = useState<CalendarFilters>(initialFilters);
 
   // Get columns for the selected task's project
   const selectedProject = selectedTask
     ? projects.find((p) => p._id === selectedTask.projectId)
     : null;
 
+  // Create a map of project ID to category color
+  const projectColors = useMemo(() => {
+    const colorMap = new Map<string, string>();
+    for (const project of projects) {
+      const category = categories.find((c) => c._id === project.categoryId);
+      if (category) {
+        colorMap.set(project._id, category.color);
+      }
+    }
+    return colorMap;
+  }, [projects, categories]);
+
+  const filteredTasks = useMemo(() => {
+    const hasFilters =
+      filters.projects.length > 0 ||
+      filters.priorities.length > 0 ||
+      filters.labels.length > 0 ||
+      filters.assignees.length > 0;
+
+    if (!hasFilters) return tasks;
+
+    return tasks.filter((t) => {
+      if (
+        filters.projects.length > 0 &&
+        !filters.projects.includes(t.projectId)
+      )
+        return false;
+      if (
+        filters.priorities.length > 0 &&
+        !filters.priorities.includes(t.priority)
+      )
+        return false;
+      if (
+        filters.labels.length > 0 &&
+        !filters.labels.some((l) => t.labels.includes(l))
+      )
+        return false;
+      if (
+        filters.assignees.length > 0 &&
+        (!t.assigneeId || !filters.assignees.includes(t.assigneeId))
+      )
+        return false;
+
+      return true;
+    });
+  }, [tasks, filters]);
+
+  const assignees = useMemo(() => {
+    const uniqueAssignees = new Map<
+      string,
+      { _id: string; name: string; email: string }
+    >();
+    for (const task of tasks) {
+      if (task.assigneeId && task.assigneeName) {
+        if (!uniqueAssignees.has(task.assigneeId)) {
+          uniqueAssignees.set(task.assigneeId, {
+            _id: task.assigneeId,
+            name: task.assigneeName,
+            email: "",
+          });
+        }
+      }
+    }
+    return Array.from(uniqueAssignees.values());
+  }, [tasks]);
+
   function getTasksForDate(date: Date): Task[] {
     const key = format(date, "yyyy-MM-dd");
-    return tasks.filter((t) => t.dueDate?.slice(0, 10) === key);
+    return filteredTasks.filter((t) => t.dueDate?.slice(0, 10) === key);
   }
 
   function handleDateClick(date: Date) {
@@ -129,15 +210,66 @@ export function CalendarPageClient({
     toast.success("Task created");
   }
 
+  function handleViewTypeChange(newViewType: CalendarViewType) {
+    setViewType(newViewType);
+    const params = new URLSearchParams(searchParams);
+    params.set("view", newViewType);
+    router.push(`/calendar?${params.toString()}`);
+  }
+
+  function handleFiltersChange(newFilters: CalendarFilters) {
+    setFilters(newFilters);
+  }
+
   return (
     <>
-      <CalendarView
-        tasks={tasks}
-        currentMonth={currentMonth}
-        onTaskClick={handleTaskClick}
-        onDateClick={handleDateClick}
-        onTaskReschedule={handleTaskReschedule}
-      />
+      {viewType === "month" ? (
+        <CalendarView
+          tasks={filteredTasks}
+          labels={labels}
+          projectColors={projectColors}
+          currentMonth={currentMonth}
+          viewType={viewType}
+          filters={filters}
+          projects={projects}
+          assignees={assignees}
+          onViewTypeChange={handleViewTypeChange}
+          onFiltersChange={handleFiltersChange}
+          onTaskClick={handleTaskClick}
+          onDateClick={handleDateClick}
+          onTaskReschedule={handleTaskReschedule}
+        />
+      ) : viewType === "week" ? (
+        <CalendarWeekView
+          tasks={filteredTasks}
+          labels={labels}
+          projectColors={projectColors}
+          currentWeek={currentMonth}
+          viewType={viewType}
+          filters={filters}
+          projects={projects}
+          assignees={assignees}
+          onViewTypeChange={handleViewTypeChange}
+          onFiltersChange={handleFiltersChange}
+          onTaskClick={handleTaskClick}
+          onDateClick={handleDateClick}
+          onTaskReschedule={handleTaskReschedule}
+        />
+      ) : viewType === "day" ? (
+        <CalendarDayView
+          tasks={filteredTasks}
+          labels={labels}
+          currentDay={currentMonth}
+          viewType={viewType}
+          filters={filters}
+          projects={projects}
+          assignees={assignees}
+          onViewTypeChange={handleViewTypeChange}
+          onFiltersChange={handleFiltersChange}
+          onTaskClick={handleTaskClick}
+          onTaskReschedule={handleTaskReschedule}
+        />
+      ) : null}
 
       <DayDetail
         date={selectedDate}

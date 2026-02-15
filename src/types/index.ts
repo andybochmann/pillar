@@ -1,6 +1,7 @@
 export type Priority = "urgent" | "high" | "medium" | "low";
 export type ProjectRole = "owner" | "editor" | "viewer";
 export type ViewType = "board" | "list";
+export type CalendarViewType = "month" | "week" | "day";
 
 export type RecurrenceFrequency =
   | "daily"

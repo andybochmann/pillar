@@ -3,7 +3,8 @@
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import { isToday } from "date-fns";
-import type { Task } from "@/types";
+import { TaskHoverCard } from "./task-hover-card";
+import type { Task, Label } from "@/types";
 
 const MAX_VISIBLE_PILLS = 3;
 
@@ -17,6 +18,8 @@ const priorityColors: Record<string, string> = {
 interface CalendarDayProps {
   date: Date;
   tasks: Task[];
+  labels: Label[];
+  projectColors?: Map<string, string>;
   isCurrentMonth: boolean;
   onDateClick: (date: Date) => void;
   onTaskClick: (task: Task) => void;
@@ -25,6 +28,8 @@ interface CalendarDayProps {
 export function CalendarDay({
   date,
   tasks,
+  labels,
+  projectColors,
   isCurrentMonth,
   onDateClick,
   onTaskClick,
@@ -62,6 +67,8 @@ export function CalendarDay({
           <DraggableTaskPill
             key={task._id}
             task={task}
+            labels={labels}
+            projectColors={projectColors}
             onClick={() => onTaskClick(task)}
           />
         ))}
@@ -81,38 +88,45 @@ export function CalendarDay({
 
 interface DraggableTaskPillProps {
   task: Task;
+  labels: Label[];
+  projectColors?: Map<string, string>;
   onClick: () => void;
 }
 
-function DraggableTaskPill({ task, onClick }: DraggableTaskPillProps) {
+function DraggableTaskPill({ task, labels, projectColors, onClick }: DraggableTaskPillProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task._id,
   });
 
+  const projectColor = projectColors?.get(task.projectId);
+
   return (
-    <button
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-xs hover:bg-accent truncate cursor-grab active:cursor-grabbing",
-        task.completedAt && "line-through opacity-60",
-        isDragging && "opacity-50",
-      )}
-      title={task.title}
-    >
-      <span
+    <TaskHoverCard task={task} labels={labels}>
+      <button
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        type="button"
+        onClick={onClick}
         className={cn(
-          "h-1.5 w-1.5 shrink-0 rounded-full",
-          priorityColors[task.priority] ?? "bg-gray-400",
+          "flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-xs hover:bg-accent truncate cursor-grab active:cursor-grabbing border-l-2",
+          task.completedAt && "line-through opacity-60",
+          isDragging && "opacity-50",
         )}
-      />
-      <span className="truncate">{task.title}</span>
-      {task.recurrence?.frequency && task.recurrence.frequency !== "none" && (
-        <span className="shrink-0 text-muted-foreground">↻</span>
-      )}
-    </button>
+        style={projectColor ? { borderLeftColor: projectColor } : undefined}
+        title={task.title}
+      >
+        <span
+          className={cn(
+            "h-1.5 w-1.5 shrink-0 rounded-full",
+            priorityColors[task.priority] ?? "bg-gray-400",
+          )}
+        />
+        <span className="truncate">{task.title}</span>
+        {task.recurrence?.frequency && task.recurrence.frequency !== "none" && (
+          <span className="shrink-0 text-muted-foreground">↻</span>
+        )}
+      </button>
+    </TaskHoverCard>
   );
 }

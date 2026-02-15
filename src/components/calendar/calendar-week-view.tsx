@@ -12,14 +12,11 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  startOfMonth,
-  endOfMonth,
   startOfWeek,
   endOfWeek,
   eachDayOfInterval,
-  isSameMonth,
-  addMonths,
-  subMonths,
+  addWeeks,
+  subWeeks,
   format,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -30,18 +27,16 @@ import {
   type CalendarFilters,
   type Assignee,
 } from "./calendar-filter-bar";
-import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Task, CalendarViewType, Label, Project } from "@/types";
 
-const WEEKDAYS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
-const WEEKDAYS_FULL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const WEEKDAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-interface CalendarViewProps {
+interface CalendarWeekViewProps {
   tasks: Task[];
   labels: Label[];
   projectColors?: Map<string, string>;
-  currentMonth: Date;
+  currentWeek: Date;
   viewType: CalendarViewType;
   filters: CalendarFilters;
   projects: Project[];
@@ -53,11 +48,11 @@ interface CalendarViewProps {
   onTaskReschedule: (taskId: string, newDate: Date) => Promise<void>;
 }
 
-export function CalendarView({
+export function CalendarWeekView({
   tasks,
   labels,
   projectColors,
-  currentMonth,
+  currentWeek,
   viewType,
   filters,
   projects,
@@ -67,7 +62,7 @@ export function CalendarView({
   onTaskClick,
   onDateClick,
   onTaskReschedule,
-}: CalendarViewProps) {
+}: CalendarWeekViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -78,12 +73,9 @@ export function CalendarView({
     }),
   );
 
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const gridStart = startOfWeek(monthStart);
-  const gridEnd = endOfWeek(monthEnd);
-
-  const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
+  const weekStart = startOfWeek(currentWeek);
+  const weekEnd = endOfWeek(currentWeek);
+  const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
 
   const tasksByDate = (() => {
     const map = new Map<string, Task[]>();
@@ -102,11 +94,11 @@ export function CalendarView({
     return tasksByDate.get(key) ?? [];
   }
 
-  function navigateMonth(offset: number) {
+  function navigateWeek(offset: number) {
     const newDate =
       offset > 0
-        ? addMonths(currentMonth, offset)
-        : subMonths(currentMonth, Math.abs(offset));
+        ? addWeeks(currentWeek, offset)
+        : subWeeks(currentWeek, Math.abs(offset));
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", format(newDate, "yyyy-MM"));
     router.push(`/calendar?${params.toString()}`);
@@ -157,10 +149,10 @@ export function CalendarView({
         assignees={assignees}
       />
 
-      {/* Month navigation */}
+      {/* Week navigation */}
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">
-          {format(currentMonth, "MMMM yyyy")}
+          {format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
         </h2>
         <div className="flex items-center gap-4">
           <CalendarViewToggle
@@ -174,16 +166,16 @@ export function CalendarView({
             <Button
               variant="outline"
               size="icon"
-              onClick={() => navigateMonth(-1)}
-              aria-label="Previous month"
+              onClick={() => navigateWeek(-1)}
+              aria-label="Previous week"
             >
               ‹
             </Button>
             <Button
               variant="outline"
               size="icon"
-              onClick={() => navigateMonth(1)}
-              aria-label="Next month"
+              onClick={() => navigateWeek(1)}
+              aria-label="Next week"
             >
               ›
             </Button>
@@ -191,7 +183,7 @@ export function CalendarView({
         </div>
       </div>
 
-      {/* Calendar grid */}
+      {/* Week grid */}
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}
@@ -203,10 +195,9 @@ export function CalendarView({
             {WEEKDAYS_FULL.map((day, i) => (
               <div
                 key={day}
-                className="py-1 text-center text-xs font-medium text-muted-foreground sm:py-2 sm:text-sm"
+                className="py-2 text-center text-sm font-medium text-muted-foreground"
               >
-                <span className="hidden sm:inline">{day}</span>
-                <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
+                {day}
               </div>
             ))}
           </div>
@@ -222,7 +213,7 @@ export function CalendarView({
                   tasks={dayTasks}
                   labels={labels}
                   projectColors={projectColors}
-                  isCurrentMonth={isSameMonth(day, currentMonth)}
+                  isCurrentMonth={true}
                   onDateClick={onDateClick}
                   onTaskClick={onTaskClick}
                 />
@@ -233,44 +224,12 @@ export function CalendarView({
 
         <DragOverlay>
           {activeTask ? (
-            <DraggableTaskPill task={activeTask} isOverlay />
+            <div className="rounded bg-background px-2 py-1 text-sm shadow-lg border">
+              {activeTask.title}
+            </div>
           ) : null}
         </DragOverlay>
       </DndContext>
     </div>
   );
 }
-
-/* Wrapper to make task pills in CalendarDay draggable */
-interface DraggableTaskPillProps {
-  task: Task;
-  isOverlay?: boolean;
-}
-
-function DraggableTaskPill({ task, isOverlay }: DraggableTaskPillProps) {
-  const priorityColors: Record<string, string> = {
-    urgent: "bg-red-500",
-    high: "bg-orange-500",
-    medium: "bg-blue-500",
-    low: "bg-gray-400",
-  };
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-1 rounded bg-background border px-1.5 py-0.5 text-xs shadow-sm",
-        isOverlay && "shadow-lg rotate-1",
-      )}
-    >
-      <span
-        className={cn(
-          "h-1.5 w-1.5 shrink-0 rounded-full",
-          priorityColors[task.priority] ?? "bg-gray-400",
-        )}
-      />
-      <span className="truncate">{task.title}</span>
-    </div>
-  );
-}
-
-export { DraggableTaskPill };
