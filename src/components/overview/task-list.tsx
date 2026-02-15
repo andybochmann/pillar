@@ -11,11 +11,12 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
-import type { Task, Project } from "@/types";
+import type { Task, Project, Label } from "@/types";
 
 interface TaskListProps {
   tasks: Task[];
   projects: Project[];
+  labels?: Label[];
 }
 
 const priorityConfig = {
@@ -39,8 +40,9 @@ function getDueDateDisplay(dueDateStr?: string) {
   };
 }
 
-export function TaskList({ tasks, projects }: TaskListProps) {
+export function TaskList({ tasks, projects, labels = [] }: TaskListProps) {
   const projectMap = new Map(projects.map((p) => [p._id, p]));
+  const labelMap = new Map(labels.map((l) => [l._id, l]));
 
   if (tasks.length === 0) {
     return (
@@ -109,11 +111,24 @@ export function TaskList({ tasks, projects }: TaskListProps) {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
-                    {task.labels.map((label) => (
-                      <Badge key={label} variant="outline" className="text-xs">
-                        {label}
-                      </Badge>
-                    ))}
+                    {task.labels.map((labelId) => {
+                      const label = labelMap.get(labelId);
+                      if (!label) return null;
+                      return (
+                        <Badge
+                          key={labelId}
+                          variant="outline"
+                          className="text-xs"
+                          style={{
+                            backgroundColor: label.color + "20",
+                            color: label.color,
+                            borderColor: label.color,
+                          }}
+                        >
+                          {label.name}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 </TableCell>
               </TableRow>

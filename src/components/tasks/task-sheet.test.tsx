@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TaskSheet } from "./task-sheet";
-import type { Task, Column } from "@/types";
+import type { Task, Column, Label as LabelType } from "@/types";
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -12,6 +12,25 @@ const mockColumns: Column[] = [
   { id: "todo", name: "To Do", order: 0 },
   { id: "in-progress", name: "In Progress", order: 1 },
   { id: "done", name: "Done", order: 2 },
+];
+
+const mockLabels: LabelType[] = [
+  {
+    _id: "lbl-1",
+    name: "bug",
+    color: "#ef4444",
+    userId: "u1",
+    createdAt: "",
+    updatedAt: "",
+  },
+  {
+    _id: "lbl-2",
+    name: "urgent",
+    color: "#f97316",
+    userId: "u1",
+    createdAt: "",
+    updatedAt: "",
+  },
 ];
 
 const mockTask: Task = {
@@ -24,8 +43,9 @@ const mockTask: Task = {
   priority: "high",
   dueDate: "2026-03-15T00:00:00.000Z",
   order: 0,
-  labels: ["bug", "urgent"],
+  labels: ["lbl-1", "lbl-2"],
   subtasks: [],
+  statusHistory: [],
   createdAt: "",
   updatedAt: "",
 };
@@ -43,6 +63,7 @@ describe("TaskSheet", () => {
     onOpenChange: vi.fn(),
     onUpdate: vi.fn().mockResolvedValue({}),
     onDelete: vi.fn().mockResolvedValue(undefined),
+    allLabels: mockLabels,
   };
 
   it("renders task fields", () => {

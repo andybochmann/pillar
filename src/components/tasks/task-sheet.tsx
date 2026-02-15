@@ -175,10 +175,10 @@ function TaskSheetForm({
     saveField({ recurrence: value });
   }
 
-  function handleToggleLabel(labelName: string) {
-    const newLabels = labels.includes(labelName)
-      ? labels.filter((l) => l !== labelName)
-      : [...labels, labelName];
+  function handleToggleLabel(labelId: string) {
+    const newLabels = labels.includes(labelId)
+      ? labels.filter((l) => l !== labelId)
+      : [...labels, labelId];
     setLabels(newLabels);
     saveField({ labels: newLabels });
   }
@@ -200,8 +200,10 @@ function TaskSheetForm({
   function handleAddSubtask() {
     const trimmed = newSubtaskTitle.trim();
     if (!trimmed) return;
-    const tempId = `temp-${Date.now()}`;
-    const updated = [...subtasks, { _id: tempId, title: trimmed, completed: false }];
+    const updated = [
+      ...subtasks,
+      { _id: `temp-${Date.now()}`, title: trimmed, completed: false },
+    ];
     setSubtasks(updated);
     setNewSubtaskTitle("");
     saveField({ subtasks: updated });

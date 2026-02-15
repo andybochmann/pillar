@@ -88,7 +88,7 @@ describe("BoardFilterBar", () => {
     const user = userEvent.setup();
     const filters: BoardFilters = {
       priorities: ["high"],
-      labels: ["Bug"],
+      labels: ["lbl-1"],
       dueDateRange: "today",
     };
     render(
@@ -116,10 +116,10 @@ describe("BoardFilterBar", () => {
 
     await user.click(screen.getByRole("button", { name: "Filters" }));
 
-    expect(screen.getByRole("button", { name: "urgent" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "high" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "medium" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "low" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Urgent" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "High" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Medium" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Low" })).toBeInTheDocument();
   });
 
   it("toggles a priority filter", async () => {
@@ -133,7 +133,7 @@ describe("BoardFilterBar", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Filters" }));
-    await user.click(screen.getByRole("button", { name: "high" }));
+    await user.click(screen.getByRole("button", { name: "High" }));
 
     expect(onChange).toHaveBeenCalledWith({
       ...EMPTY_FILTERS,
@@ -157,7 +157,7 @@ describe("BoardFilterBar", () => {
     );
 
     await user.click(screen.getByRole("button", { name: "Filters (1)" }));
-    await user.click(screen.getByRole("button", { name: "high" }));
+    await user.click(screen.getByRole("button", { name: "High" }));
 
     expect(onChange).toHaveBeenCalledWith({ ...EMPTY_FILTERS, priorities: [] });
   });
@@ -193,7 +193,7 @@ describe("BoardFilterBar", () => {
 
     expect(onChange).toHaveBeenCalledWith({
       ...EMPTY_FILTERS,
-      labels: ["Bug"],
+      labels: ["lbl-1"],
     });
   });
 

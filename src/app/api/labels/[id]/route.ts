@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Label } from "@/models/label";
@@ -37,17 +38,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     await connectDB();
 
-    const existing = await Label.findOne({
-      _id: id,
-      userId: session.user.id,
-    });
-
-    if (!existing) {
-      return NextResponse.json({ error: "Label not found" }, { status: 404 });
-    }
-
-    // If renaming, cascade to all tasks that use the old name
-    if (result.data.name && result.data.name !== existing.name) {
+    // Check for duplicate name if renaming
+    if (result.data.name) {
       const duplicate = await Label.findOne({
         userId: session.user.id,
         name: result.data.name,
@@ -60,11 +52,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           { status: 409 },
         );
       }
-
-      await Task.updateMany(
-        { userId: session.user.id, labels: existing.name },
-        { $set: { "labels.$": result.data.name } },
-      );
     }
 
     const label = await Label.findOneAndUpdate(
@@ -72,6 +59,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       result.data,
       { returnDocument: "after" },
     );
+
+    if (!label) {
+      return NextResponse.json({ error: "Label not found" }, { status: 404 });
+    }
 
     return NextResponse.json(label);
   } catch {
@@ -91,19 +82,38 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
   const { id } = await params;
   await connectDB();
 
-  const label = await Label.findOne({ _id: id, userId: session.user.id });
+  const dbSession = await mongoose.startSession();
+  try {
+    dbSession.startTransaction();
 
-  if (!label) {
-    return NextResponse.json({ error: "Label not found" }, { status: 404 });
+    const label = await Label.findOneAndDelete(
+      { _id: id, userId: session.user.id },
+      { session: dbSession },
+    );
+
+    if (!label) {
+      await dbSession.abortTransaction();
+      return NextResponse.json(
+        { error: "Label not found" },
+        { status: 404 },
+      );
+    }
+
+    await Task.updateMany(
+      { userId: session.user.id, labels: label._id },
+      { $pull: { labels: label._id } },
+      { session: dbSession },
+    );
+
+    await dbSession.commitTransaction();
+    return NextResponse.json({ success: true });
+  } catch {
+    await dbSession.abortTransaction();
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  } finally {
+    dbSession.endSession();
   }
-
-  // Remove label name from all tasks
-  await Task.updateMany(
-    { userId: session.user.id, labels: label.name },
-    { $pull: { labels: label.name } },
-  );
-
-  await Label.deleteOne({ _id: id });
-
-  return NextResponse.json({ success: true });
 }

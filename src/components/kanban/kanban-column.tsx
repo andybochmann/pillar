@@ -16,6 +16,7 @@ interface KanbanColumnProps {
   onTaskClick: (task: Task) => void;
   onPriorityChange?: (taskId: string, priority: Priority) => void;
   labelColors?: Map<string, string>;
+  labelNames?: Map<string, string>;
   selectedIds?: Set<string>;
   onSelect?: (taskId: string) => void;
   showForm?: boolean;
@@ -29,6 +30,7 @@ export function KanbanColumn({
   onTaskClick,
   onPriorityChange,
   labelColors,
+  labelNames,
   selectedIds,
   onSelect,
   showForm: showFormProp,
@@ -81,6 +83,7 @@ export function KanbanColumn({
             onClick={() => onTaskClick(task)}
             onPriorityChange={onPriorityChange}
             labelColors={labelColors}
+            labelNames={labelNames}
             selected={selectedIds?.has(task._id)}
             onSelect={onSelect}
           />

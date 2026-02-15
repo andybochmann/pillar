@@ -82,7 +82,7 @@ interface CreateTaskInput {
     endDate?: Date;
   };
   order?: number;
-  labels?: string[];
+  labels?: (mongoose.Types.ObjectId | string)[];
   subtasks?: { title: string; completed?: boolean }[];
   statusHistory?: { columnId: string; timestamp: Date }[];
 }

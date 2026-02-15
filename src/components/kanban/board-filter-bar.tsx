@@ -116,11 +116,11 @@ export function BoardFilterBar({
                   <Button
                     key={l._id}
                     variant={
-                      filters.labels.includes(l.name) ? "default" : "outline"
+                      filters.labels.includes(l._id) ? "default" : "outline"
                     }
                     size="sm"
-                    onClick={() => toggleLabel(l.name)}
-                    aria-pressed={filters.labels.includes(l.name)}
+                    onClick={() => toggleLabel(l._id)}
+                    aria-pressed={filters.labels.includes(l._id)}
                   >
                     <span
                       className="mr-1 inline-block h-2 w-2 rounded-full"

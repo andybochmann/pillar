@@ -6,6 +6,7 @@ import {
   createTestUser,
   createTestCategory,
   createTestProject,
+  createTestLabel,
 } from "@/test/helpers";
 import { Task } from "@/models/task";
 
@@ -35,6 +36,8 @@ describe("Task Model", () => {
 
   it("creates a task with valid fields", async () => {
     const dueDate = new Date("2026-03-01");
+    const label1 = await createTestLabel({ userId, name: "bug" });
+    const label2 = await createTestLabel({ userId, name: "auth" });
     const task = await Task.create({
       title: "Fix bug",
       description: "Fix the login bug",
@@ -44,7 +47,7 @@ describe("Task Model", () => {
       priority: "high",
       dueDate,
       order: 0,
-      labels: ["bug", "auth"],
+      labels: [label1._id, label2._id],
     });
 
     expect(task.title).toBe("Fix bug");
@@ -53,7 +56,9 @@ describe("Task Model", () => {
     expect(task.dueDate).toEqual(dueDate);
     expect(task.columnId).toBe("todo");
     expect(task.order).toBe(0);
-    expect(task.labels).toEqual(["bug", "auth"]);
+    expect(task.labels).toHaveLength(2);
+    expect(task.labels[0].toString()).toBe(label1._id.toString());
+    expect(task.labels[1].toString()).toBe(label2._id.toString());
     expect(task.completedAt).toBeUndefined();
   });
 
@@ -266,6 +271,60 @@ describe("Task Model", () => {
     expect(retrieved!.statusHistory).toHaveLength(1);
     expect(retrieved!.statusHistory[0].columnId).toBe("todo");
     expect(retrieved!.statusHistory[0].timestamp).toEqual(timestamp);
+  });
+
+  it("rejects title exceeding maxlength of 200", async () => {
+    await expect(
+      Task.create({
+        title: "x".repeat(201),
+        projectId,
+        userId,
+        columnId: "todo",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects description exceeding maxlength of 2000", async () => {
+    await expect(
+      Task.create({
+        title: "Test",
+        description: "x".repeat(2001),
+        projectId,
+        userId,
+        columnId: "todo",
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects more than 50 subtasks", async () => {
+    const subtasks = Array.from({ length: 51 }, (_, i) => ({
+      title: `Subtask ${i}`,
+      completed: false,
+    }));
+    await expect(
+      Task.create({
+        title: "Too many subtasks",
+        projectId,
+        userId,
+        columnId: "todo",
+        subtasks,
+      }),
+    ).rejects.toThrow(/more than 50 subtasks/i);
+  });
+
+  it("allows exactly 50 subtasks", async () => {
+    const subtasks = Array.from({ length: 50 }, (_, i) => ({
+      title: `Subtask ${i}`,
+      completed: false,
+    }));
+    const task = await Task.create({
+      title: "Max subtasks",
+      projectId,
+      userId,
+      columnId: "todo",
+      subtasks,
+    });
+    expect(task.subtasks).toHaveLength(50);
   });
 
   it("queries tasks by due date range", async () => {

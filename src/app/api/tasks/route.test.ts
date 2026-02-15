@@ -17,6 +17,7 @@ import {
   createTestCategory,
   createTestProject,
   createTestTask,
+  createTestLabel,
 } from "@/test/helpers";
 import { GET, POST } from "./route";
 
@@ -148,11 +149,17 @@ describe("GET /api/tasks", () => {
 
   it("filters by labels", async () => {
     await setupFixtures();
+    const bugLabel = await createTestLabel({ userId, name: "bug" });
+    const frontendLabel = await createTestLabel({
+      userId,
+      name: "frontend",
+      color: "#3b82f6",
+    });
     await createTestTask({
       projectId,
       userId,
       title: "Tagged",
-      labels: ["bug", "frontend"],
+      labels: [bugLabel._id, frontendLabel._id],
     });
     await createTestTask({
       projectId,
@@ -161,7 +168,9 @@ describe("GET /api/tasks", () => {
       labels: [],
     });
 
-    const res = await GET(createRequest({ labels: "bug" }));
+    const res = await GET(
+      createRequest({ labels: bugLabel._id.toString() }),
+    );
     const data = await res.json();
     expect(data).toHaveLength(1);
     expect(data[0].title).toBe("Tagged");

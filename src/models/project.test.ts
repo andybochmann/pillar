@@ -86,6 +86,27 @@ describe("Project Model", () => {
     );
   });
 
+  it("rejects name exceeding maxlength of 100", async () => {
+    await expect(
+      Project.create({
+        name: "x".repeat(101),
+        categoryId,
+        userId,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("rejects description exceeding maxlength of 500", async () => {
+    await expect(
+      Project.create({
+        name: "Test",
+        description: "x".repeat(501),
+        categoryId,
+        userId,
+      }),
+    ).rejects.toThrow();
+  });
+
   it("trims name and description", async () => {
     const project = await Project.create({
       name: "  My Project  ",

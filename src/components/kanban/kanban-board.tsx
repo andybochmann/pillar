@@ -79,7 +79,8 @@ export function KanbanBoard({
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [sortedColumns]);
 
-  const labelColors = new Map(allLabels.map((l) => [l.name, l.color]));
+  const labelColors = new Map(allLabels.map((l) => [l._id, l.color]));
+  const labelNames = new Map(allLabels.map((l) => [l._id, l.name]));
 
   const filteredTasks = useMemo(() => {
     const hasFilters = filters.priorities.length > 0 || filters.labels.length > 0 || filters.dueDateRange !== null;
@@ -352,6 +353,7 @@ export function KanbanBoard({
                 onTaskClick={handleTaskClick}
                 onPriorityChange={handlePriorityChange}
                 labelColors={labelColors}
+                labelNames={labelNames}
                 selectedIds={selectedIds}
                 onSelect={toggleSelection}
                 showForm={newTaskColumnId === column.id}
@@ -365,7 +367,7 @@ export function KanbanBoard({
 
         <DragOverlay>
           {activeTask ? (
-            <TaskCard task={activeTask} isOverlay labelColors={labelColors} />
+            <TaskCard task={activeTask} isOverlay labelColors={labelColors} labelNames={labelNames} />
           ) : null}
         </DragOverlay>
       </DndContext>

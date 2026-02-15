@@ -26,7 +26,7 @@ export const COLOR_PRESETS = [
 interface LabelPickerProps {
   labels: Label[];
   selectedLabels: string[];
-  onToggle: (labelName: string) => void;
+  onToggle: (labelId: string) => void;
   onCreate: (data: { name: string; color: string }) => Promise<void>;
 }
 
@@ -57,25 +57,22 @@ export function LabelPicker({
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-1">
-        {selectedLabels.map((name) => {
-          const label = labels.find((l) => l.name === name);
+        {selectedLabels.map((id) => {
+          const label = labels.find((l) => l._id === id);
+          if (!label) return null;
           return (
             <Badge
-              key={name}
+              key={id}
               variant="secondary"
               className="cursor-pointer"
-              style={
-                label
-                  ? {
-                      backgroundColor: label.color + "20",
-                      color: label.color,
-                      borderColor: label.color,
-                    }
-                  : undefined
-              }
-              onClick={() => onToggle(name)}
+              style={{
+                backgroundColor: label.color + "20",
+                color: label.color,
+                borderColor: label.color,
+              }}
+              onClick={() => onToggle(id)}
             >
-              {name} ×
+              {label.name} ×
             </Badge>
           );
         })}
@@ -95,8 +92,8 @@ export function LabelPicker({
                 className="flex items-center gap-2 cursor-pointer rounded px-2 py-1 hover:bg-accent"
               >
                 <Checkbox
-                  checked={selectedLabels.includes(label.name)}
-                  onCheckedChange={() => onToggle(label.name)}
+                  checked={selectedLabels.includes(label._id)}
+                  onCheckedChange={() => onToggle(label._id)}
                   aria-label={`Toggle ${label.name}`}
                 />
                 <span

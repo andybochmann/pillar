@@ -32,11 +32,11 @@ describe("LabelPicker", () => {
     onCreate = vi.fn().mockResolvedValue(undefined);
   });
 
-  it("renders selected labels as badges", () => {
+  it("renders selected labels as badges with resolved names", () => {
     render(
       <LabelPicker
         labels={mockLabels}
-        selectedLabels={["Bug"]}
+        selectedLabels={["lbl-1"]}
         onToggle={onToggle}
         onCreate={onCreate}
       />,
@@ -50,14 +50,14 @@ describe("LabelPicker", () => {
     render(
       <LabelPicker
         labels={mockLabels}
-        selectedLabels={["Bug"]}
+        selectedLabels={["lbl-1"]}
         onToggle={onToggle}
         onCreate={onCreate}
       />,
     );
 
     await user.click(screen.getByText("Bug ×"));
-    expect(onToggle).toHaveBeenCalledWith("Bug");
+    expect(onToggle).toHaveBeenCalledWith("lbl-1");
   });
 
   it("shows manage labels button", () => {
@@ -80,7 +80,7 @@ describe("LabelPicker", () => {
     render(
       <LabelPicker
         labels={mockLabels}
-        selectedLabels={["Bug"]}
+        selectedLabels={["lbl-1"]}
         onToggle={onToggle}
         onCreate={onCreate}
       />,
@@ -106,7 +106,7 @@ describe("LabelPicker", () => {
     await user.click(screen.getByRole("button", { name: "Manage labels" }));
     await user.click(screen.getByLabelText("Toggle Feature"));
 
-    expect(onToggle).toHaveBeenCalledWith("Feature");
+    expect(onToggle).toHaveBeenCalledWith("lbl-2");
   });
 
   it("shows empty state when no labels exist", async () => {

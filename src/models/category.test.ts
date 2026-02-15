@@ -56,6 +56,16 @@ describe("Category Model", () => {
     expect(category.color).toBe("#6366f1");
   });
 
+  it("rejects name exceeding maxlength of 50", async () => {
+    await expect(
+      Category.create({
+        name: "x".repeat(51),
+        userId,
+        order: 0,
+      }),
+    ).rejects.toThrow();
+  });
+
   it("trims name", async () => {
     const category = await Category.create({
       name: "  Work  ",

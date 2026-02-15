@@ -58,11 +58,14 @@ export async function GET(request: Request) {
   if (projectId) filter.projectId = projectId;
   if (columnId) filter.columnId = columnId;
   if (search) {
-    const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    filter.title = { $regex: escaped, $options: "i" };
+    filter.$text = { $search: search };
   }
   if (priority) filter.priority = { $in: priority.split(",") };
-  if (labels) filter.labels = { $in: labels.split(",") };
+  if (labels) {
+    filter.labels = {
+      $in: labels.split(",").map((id) => new mongoose.Types.ObjectId(id)),
+    };
+  }
 
   if (dueDateFrom || dueDateTo) {
     const dateFilter: Record<string, Date> = {};
@@ -77,10 +80,8 @@ export async function GET(request: Request) {
     filter.completedAt = null;
   }
 
-  // For priority sort, use aggregate for custom ordering
   if (sortBy === "priority") {
-    // Aggregate doesn't auto-cast strings to ObjectId like find() does
-    const aggFilter: Record<string, unknown> = {
+    const aggFilter = {
       ...filter,
       userId: new mongoose.Types.ObjectId(session.user.id),
     };

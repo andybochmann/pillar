@@ -16,6 +16,7 @@ import {
   createTestUser,
   createTestCategory,
   createTestProject,
+  createTestTask,
 } from "@/test/helpers";
 import { GET, PATCH, DELETE } from "./route";
 
@@ -177,6 +178,49 @@ describe("Projects [id] API", () => {
         makeParams(fakeId),
       );
       expect(res.status).toBe(404);
+    });
+
+    it("reassigns orphaned tasks when column is removed", async () => {
+      await setupFixtures();
+      const proj = await createTestProject({
+        name: "Col Test",
+        userId,
+        categoryId,
+        columns: [
+          { id: "todo", name: "Todo", order: 0 },
+          { id: "in-progress", name: "In Progress", order: 1 },
+          { id: "done", name: "Done", order: 2 },
+        ],
+      });
+
+      // Create a task in the "in-progress" column
+      await createTestTask({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        columnId: "in-progress",
+        title: "Orphan task",
+      });
+
+      // Remove the "in-progress" column
+      const newColumns = [
+        { id: "todo", name: "Todo", order: 0 },
+        { id: "done", name: "Done", order: 1 },
+      ];
+
+      const res = await PATCH(
+        new NextRequest(`http://localhost:3000/api/projects/${proj._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ columns: newColumns }),
+        }),
+        makeParams(proj._id.toString()),
+      );
+      expect(res.status).toBe(200);
+
+      // Verify the task was moved to the first column ("todo")
+      const { Task } = await import("@/models/task");
+      const task = await Task.findOne({ title: "Orphan task" });
+      expect(task!.columnId).toBe("todo");
     });
   });
 

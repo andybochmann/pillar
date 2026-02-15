@@ -99,13 +99,13 @@ describe("Labels [id] API", () => {
       expect(data.color).toBe("#3b82f6");
     });
 
-    it("renames label and cascades to tasks", async () => {
+    it("renames label without cascading to tasks (tasks reference by ID)", async () => {
       await setupUser();
       const label = await createTestLabel({ userId, name: "Bug" });
       await createTestTask({
         userId,
         projectId,
-        labels: ["Bug"],
+        labels: [label._id],
       });
 
       const res = await PATCH(
@@ -116,11 +116,12 @@ describe("Labels [id] API", () => {
       const data = await res.json();
       expect(data.name).toBe("Defect");
 
-      // Verify task label was updated
+      // Verify task still references the same label ID (no cascade needed)
       const { Task } = await import("@/models/task");
       const task = await Task.findOne({ userId });
-      expect(task!.labels).toContain("Defect");
-      expect(task!.labels).not.toContain("Bug");
+      expect(task!.labels.map((l) => l.toString())).toContain(
+        label._id.toString(),
+      );
     });
 
     it("returns 409 when renaming to existing name", async () => {
@@ -159,13 +160,18 @@ describe("Labels [id] API", () => {
   });
 
   describe("DELETE /api/labels/[id]", () => {
-    it("deletes label and removes from tasks", async () => {
+    it("deletes label and removes ID from tasks", async () => {
       await setupUser();
       const label = await createTestLabel({ userId, name: "Bug" });
+      const featureLabel = await createTestLabel({
+        userId,
+        name: "Feature",
+        color: "#3b82f6",
+      });
       await createTestTask({
         userId,
         projectId,
-        labels: ["Bug", "Feature"],
+        labels: [label._id, featureLabel._id],
       });
 
       const res = await DELETE(
@@ -179,11 +185,12 @@ describe("Labels [id] API", () => {
       const found = await Label.findById(label._id);
       expect(found).toBeNull();
 
-      // Verify task label was removed
+      // Verify task label ID was removed but other label remains
       const { Task } = await import("@/models/task");
       const task = await Task.findOne({ userId });
-      expect(task!.labels).not.toContain("Bug");
-      expect(task!.labels).toContain("Feature");
+      const labelIds = task!.labels.map((l) => l.toString());
+      expect(labelIds).not.toContain(label._id.toString());
+      expect(labelIds).toContain(featureLabel._id.toString());
     });
 
     it("returns 404 for non-existent label", async () => {

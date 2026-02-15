@@ -29,8 +29,8 @@ const ColumnSchema = new Schema<IColumn>(
 
 const ProjectSchema = new Schema<IProject>(
   {
-    name: { type: String, required: true, trim: true },
-    description: { type: String, trim: true },
+    name: { type: String, required: true, trim: true, maxlength: 100 },
+    description: { type: String, trim: true, maxlength: 500 },
     categoryId: {
       type: Schema.Types.ObjectId,
       ref: "Category",

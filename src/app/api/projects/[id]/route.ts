@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Project } from "@/models/project";
@@ -74,6 +75,21 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
 
+    if (result.data.columns) {
+      const newColumnIds = result.data.columns.map((c) => c.id);
+      const firstColumnId = result.data.columns.reduce((min, col) =>
+        col.order < min.order ? col : min,
+      ).id;
+      await Task.updateMany(
+        {
+          projectId: id,
+          userId: session.user.id,
+          columnId: { $nin: newColumnIds },
+        },
+        { $set: { columnId: firstColumnId } },
+      );
+    }
+
     return NextResponse.json(project);
   } catch {
     return NextResponse.json(
@@ -91,17 +107,39 @@ export async function DELETE(_request: Request, { params }: RouteParams) {
 
   const { id } = await params;
   await connectDB();
-  const project = await Project.findOneAndDelete({
-    _id: id,
-    userId: session.user.id,
-  });
 
-  if (!project) {
-    return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  const dbSession = await mongoose.startSession();
+  try {
+    dbSession.startTransaction();
+
+    const project = await Project.findOneAndDelete(
+      { _id: id, userId: session.user.id },
+      { session: dbSession },
+    );
+
+    if (!project) {
+      await dbSession.abortTransaction();
+      return NextResponse.json(
+        { error: "Project not found" },
+        { status: 404 },
+      );
+    }
+
+    // Cascade: delete all tasks in this project
+    await Task.deleteMany(
+      { projectId: id, userId: session.user.id },
+      { session: dbSession },
+    );
+
+    await dbSession.commitTransaction();
+    return NextResponse.json({ success: true });
+  } catch {
+    await dbSession.abortTransaction();
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
+  } finally {
+    dbSession.endSession();
   }
-
-  // Cascade: delete all tasks in this project
-  await Task.deleteMany({ projectId: id, userId: session.user.id });
-
-  return NextResponse.json({ success: true });
 }

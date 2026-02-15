@@ -4,11 +4,12 @@ import { Suspense } from "react";
 import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
+import { Label } from "@/models/label";
 import { TaskFilters } from "@/components/overview/task-filters";
 import { TaskList } from "@/components/overview/task-list";
 import { startOfDay, endOfDay } from "date-fns";
 import type { SortOrder } from "mongoose";
-import type { Task as TaskType, Project as ProjectType } from "@/types";
+import type { Task as TaskType, Project as ProjectType, Label as LabelType } from "@/types";
 
 interface OverviewPageProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -46,13 +47,15 @@ export default async function OverviewPage({
   else if (params.sortBy === "priority") sort = { priority: sortOrder, order: 1 };
   else if (params.sortBy === "createdAt") sort = { createdAt: sortOrder };
 
-  const [tasksRaw, projectsRaw] = await Promise.all([
+  const [tasksRaw, projectsRaw, labelsRaw] = await Promise.all([
     Task.find(filter).sort(sort).lean(),
     Project.find({ userId: session.user.id, archived: false }).sort({ createdAt: -1 }).lean(),
+    Label.find({ userId: session.user.id }).lean(),
   ]);
 
   const tasks: TaskType[] = JSON.parse(JSON.stringify(tasksRaw));
   const projects: ProjectType[] = JSON.parse(JSON.stringify(projectsRaw));
+  const labels: LabelType[] = JSON.parse(JSON.stringify(labelsRaw));
 
   return (
     <div className="space-y-6">
@@ -65,7 +68,7 @@ export default async function OverviewPage({
         <TaskFilters projects={projects} />
       </Suspense>
 
-      <TaskList tasks={tasks} projects={projects} />
+      <TaskList tasks={tasks} projects={projects} labels={labels} />
     </div>
   );
 }

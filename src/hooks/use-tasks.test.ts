@@ -24,7 +24,7 @@ const mockTasks = [
     columnId: "todo",
     priority: "medium" as const,
     order: 1,
-    labels: ["testing"],
+    labels: ["lbl-testing"],
     subtasks: [],
     createdAt: "",
     updatedAt: "",

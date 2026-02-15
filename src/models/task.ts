@@ -36,7 +36,7 @@ export interface ITask extends Document {
   dueDate?: Date;
   recurrence: IRecurrence;
   order: number;
-  labels: string[];
+  labels: mongoose.Types.ObjectId[];
   subtasks: ISubtask[];
   statusHistory: IStatusHistoryEntry[];
   completedAt?: Date;
@@ -75,8 +75,8 @@ const StatusHistoryEntrySchema = new Schema<IStatusHistoryEntry>(
 
 const TaskSchema = new Schema<ITask>(
   {
-    title: { type: String, required: true, trim: true },
-    description: { type: String, trim: true },
+    title: { type: String, required: true, trim: true, maxlength: 200 },
+    description: { type: String, trim: true, maxlength: 2000 },
     projectId: {
       type: Schema.Types.ObjectId,
       ref: "Project",
@@ -101,8 +101,15 @@ const TaskSchema = new Schema<ITask>(
       default: { frequency: "none", interval: 1 },
     },
     order: { type: Number, required: true, default: 0 },
-    labels: { type: [String], default: [] },
-    subtasks: { type: [SubtaskSchema], default: [] },
+    labels: { type: [Schema.Types.ObjectId], ref: "Label", default: [] },
+    subtasks: {
+      type: [SubtaskSchema],
+      default: [],
+      validate: {
+        validator: (v: ISubtask[]) => v.length <= 50,
+        message: "A task cannot have more than 50 subtasks",
+      },
+    },
     statusHistory: { type: [StatusHistoryEntrySchema], default: [] },
     completedAt: { type: Date },
   },
@@ -112,6 +119,7 @@ const TaskSchema = new Schema<ITask>(
 TaskSchema.index({ projectId: 1, columnId: 1, order: 1 });
 TaskSchema.index({ userId: 1, dueDate: 1 });
 TaskSchema.index({ userId: 1, priority: 1 });
+TaskSchema.index({ title: "text", description: "text" });
 
 export const Task: Model<ITask> =
   mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema);

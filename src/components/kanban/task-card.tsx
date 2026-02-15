@@ -22,6 +22,7 @@ interface TaskCardProps {
   onClick?: () => void;
   onPriorityChange?: (taskId: string, priority: Priority) => void;
   labelColors?: Map<string, string>;
+  labelNames?: Map<string, string>;
   selected?: boolean;
   onSelect?: (taskId: string) => void;
 }
@@ -71,6 +72,7 @@ export function TaskCard({
   onClick,
   onPriorityChange,
   labelColors,
+  labelNames,
   selected,
   onSelect,
 }: TaskCardProps) {
@@ -201,11 +203,13 @@ export function TaskCard({
               </span>
             );
           })()}
-          {task.labels.map((label) => {
-            const color = labelColors?.get(label);
+          {task.labels.map((labelId) => {
+            const color = labelColors?.get(labelId);
+            const name = labelNames?.get(labelId);
+            if (!name) return null;
             return (
               <Badge
-                key={label}
+                key={labelId}
                 variant="outline"
                 className="text-xs"
                 style={
@@ -218,7 +222,7 @@ export function TaskCard({
                     : undefined
                 }
               >
-                {label}
+                {name}
               </Badge>
             );
           })}

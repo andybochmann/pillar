@@ -48,8 +48,17 @@ describe("TaskCard", () => {
     expect(screen.getByText("Urgent")).toBeInTheDocument();
   });
 
-  it("renders labels", () => {
-    render(<TaskCard task={{ ...baseTask, labels: ["bug", "critical"] }} />);
+  it("renders labels with resolved names", () => {
+    const labelNames = new Map([
+      ["lbl-1", "bug"],
+      ["lbl-2", "critical"],
+    ]);
+    render(
+      <TaskCard
+        task={{ ...baseTask, labels: ["lbl-1", "lbl-2"] }}
+        labelNames={labelNames}
+      />,
+    );
     expect(screen.getByText("bug")).toBeInTheDocument();
     expect(screen.getByText("critical")).toBeInTheDocument();
   });
