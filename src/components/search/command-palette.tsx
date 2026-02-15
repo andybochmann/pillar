@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useBackButton } from "@/hooks/use-back-button";
+import { SearchX, Loader2 } from "lucide-react";
 
 interface SearchResult {
   _id: string;
@@ -127,11 +128,22 @@ export function CommandPalette() {
           />
           <CommandList>
             {query.trim() && !loading && results.length === 0 && (
-              <CommandEmpty>No tasks found.</CommandEmpty>
+              <CommandEmpty>
+                <div className="flex flex-col items-center justify-center py-12">
+                  <SearchX className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-sm font-medium text-muted-foreground">
+                    No tasks found
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Try a different search term
+                  </p>
+                </div>
+              </CommandEmpty>
             )}
             {loading && (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                Searching…
+              <div className="flex flex-col items-center gap-3 py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Searching...</p>
               </div>
             )}
             {results.length > 0 && (

@@ -90,7 +90,7 @@ describe("CommandPalette", () => {
     await user.type(screen.getByPlaceholderText("Search tasks…"), "xyz");
 
     await waitFor(() => {
-      expect(screen.getByText("No tasks found.")).toBeInTheDocument();
+      expect(screen.getByText("No tasks found")).toBeInTheDocument();
     });
   });
 
