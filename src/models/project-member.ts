@@ -1,6 +1,6 @@
 import mongoose, { Schema, type Document, type Model } from "mongoose";
 
-export type ProjectRole = "owner" | "editor";
+export type ProjectRole = "owner" | "editor" | "viewer";
 
 export interface IProjectMember extends Document {
   _id: mongoose.Types.ObjectId;
@@ -28,7 +28,7 @@ const ProjectMemberSchema = new Schema<IProjectMember>(
     },
     role: {
       type: String,
-      enum: ["owner", "editor"],
+      enum: ["owner", "editor", "viewer"],
       required: true,
     },
     invitedBy: {

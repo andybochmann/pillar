@@ -9,7 +9,7 @@ import { getProjectRole, getProjectMemberUserIds, requireProjectRole } from "@/l
 
 const AddMemberSchema = z.object({
   email: z.string().email("Valid email is required"),
-  role: z.enum(["editor"]),
+  role: z.enum(["viewer", "editor"]),
 });
 
 function serializeMember(member: {

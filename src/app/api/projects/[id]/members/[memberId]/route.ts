@@ -8,7 +8,7 @@ import { Task } from "@/models/task";
 import { getProjectMemberUserIds, requireProjectRole } from "@/lib/project-access";
 
 const UpdateRoleSchema = z.object({
-  role: z.enum(["owner", "editor"]),
+  role: z.enum(["viewer", "editor"]),
 });
 
 interface RouteParams {

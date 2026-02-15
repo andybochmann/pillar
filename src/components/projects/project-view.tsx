@@ -39,6 +39,7 @@ export function ProjectView({
   const router = useRouter();
   const [currentProject, setCurrentProject] = useState(project);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const readOnly = currentProject.currentUserRole === "viewer";
 
   const handleUpdate = useCallback(
     async (data: Partial<Project>) => {
@@ -113,13 +114,15 @@ export function ProjectView({
             </p>
           )}
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setSettingsOpen(true)}
-        >
-          Settings
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSettingsOpen(true)}
+          >
+            Settings
+          </Button>
+        )}
       </div>
 
       {currentProject.viewType === "list" ? (
@@ -128,6 +131,7 @@ export function ProjectView({
           columns={currentProject.columns}
           initialTasks={initialTasks}
           members={members}
+          readOnly={readOnly}
         />
       ) : (
         <KanbanBoard
@@ -135,6 +139,7 @@ export function ProjectView({
           columns={currentProject.columns}
           initialTasks={initialTasks}
           members={members}
+          readOnly={readOnly}
         />
       )}
 

@@ -1,5 +1,5 @@
 export type Priority = "urgent" | "high" | "medium" | "low";
-export type ProjectRole = "owner" | "editor";
+export type ProjectRole = "owner" | "editor" | "viewer";
 export type ViewType = "board" | "list";
 
 export type RecurrenceFrequency =

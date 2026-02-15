@@ -53,6 +53,12 @@ export async function getProjectRole(
   return null;
 }
 
+const ROLE_LEVEL: Record<ProjectRole, number> = {
+  viewer: 0,
+  editor: 1,
+  owner: 2,
+};
+
 /**
  * Checks that a user has at least the minimum role on a project.
  * Returns the actual role, or throws with status info for API routes.
@@ -70,7 +76,7 @@ export async function requireProjectRole(
     throw err;
   }
 
-  if (minimumRole === "owner" && role !== "owner") {
+  if (ROLE_LEVEL[role] < ROLE_LEVEL[minimumRole]) {
     const err = new Error("Forbidden") as Error & { status: number };
     err.status = 403;
     throw err;

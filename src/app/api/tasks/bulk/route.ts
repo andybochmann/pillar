@@ -53,12 +53,13 @@ export async function PATCH(request: Request) {
     }
 
     // Verify membership on each unique project — filter to accessible tasks only
+    // Viewers are excluded (they cannot mutate tasks)
     const accessibleTaskIds: string[] = [];
     const projectIds = [...new Set(tasks.map((t) => t.projectId.toString()))];
     const accessibleProjectIds = new Set<string>();
     for (const pid of projectIds) {
       const role = await getProjectRole(session.user.id, pid);
-      if (role) accessibleProjectIds.add(pid);
+      if (role && role !== "viewer") accessibleProjectIds.add(pid);
     }
     for (const t of tasks) {
       if (accessibleProjectIds.has(t.projectId.toString())) {

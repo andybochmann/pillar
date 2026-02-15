@@ -118,6 +118,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     if (!role) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
+    if (role === "viewer") {
+      return NextResponse.json(
+        { error: "Viewers cannot edit tasks" },
+        { status: 403 },
+      );
+    }
 
     // Validate assigneeId is a project member
     if (result.data.assigneeId && result.data.assigneeId !== null) {
@@ -256,6 +262,12 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   const role = await getProjectRole(session.user.id, task.projectId.toString());
   if (!role) {
     return NextResponse.json({ error: "Task not found" }, { status: 404 });
+  }
+  if (role === "viewer") {
+    return NextResponse.json(
+      { error: "Viewers cannot delete tasks" },
+      { status: 403 },
+    );
   }
 
   await Task.deleteOne({ _id: id });

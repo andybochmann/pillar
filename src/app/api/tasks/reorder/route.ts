@@ -57,6 +57,12 @@ export async function PATCH(request: Request) {
         { status: 404 },
       );
     }
+    if (role === "viewer") {
+      return NextResponse.json(
+        { error: "Viewers cannot reorder tasks" },
+        { status: 403 },
+      );
+    }
 
     const bulkOps = result.data.tasks.map((t) => ({
       updateOne: {

@@ -18,6 +18,7 @@ import {
   createTestProject,
   createTestTask,
   createTestLabel,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { GET, POST } from "./route";
 
@@ -387,6 +388,33 @@ describe("POST /api/tasks", () => {
     expect(data.statusHistory).toHaveLength(1);
     expect(data.statusHistory[0].columnId).toBe("todo");
     expect(data.statusHistory[0].timestamp).toBeDefined();
+  });
+
+  it("returns 403 when viewer tries to create a task", async () => {
+    await setupFixtures();
+    const viewer = await createTestUser({ email: "viewer@example.com" });
+    await createTestProjectMember({
+      projectId,
+      userId: viewer._id as mongoose.Types.ObjectId,
+      role: "viewer",
+      invitedBy: userId,
+    });
+    session.user.id = viewer._id.toString();
+
+    const res = await POST(
+      createRequest({
+        title: "Should fail",
+        projectId: projectId.toString(),
+        columnId: "todo",
+      }),
+    );
+
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe("Viewers cannot create tasks");
+
+    // Restore session
+    session.user.id = userId.toString();
   });
 
   it("auto-increments order", async () => {

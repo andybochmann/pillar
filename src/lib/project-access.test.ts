@@ -242,6 +242,44 @@ describe("project-access", () => {
       expect(role).toBe("owner");
     });
 
+    it("allows viewer when minimum is viewer", async () => {
+      const { owner, project } = await setupFixtures();
+      const viewer = await createTestUser({ email: "viewer@test.com" });
+      await createTestProjectMember({
+        projectId: project._id,
+        userId: viewer._id,
+        role: "viewer",
+        invitedBy: owner._id,
+      });
+
+      const role = await requireProjectRole(
+        viewer._id.toString(),
+        project._id.toString(),
+        "viewer",
+      );
+      expect(role).toBe("viewer");
+    });
+
+    it("allows owner when minimum is viewer", async () => {
+      const { owner, project } = await setupFixtures();
+      const role = await requireProjectRole(
+        owner._id.toString(),
+        project._id.toString(),
+        "viewer",
+      );
+      expect(role).toBe("owner");
+    });
+
+    it("allows editor when minimum is viewer", async () => {
+      const { editor, project } = await setupFixtures();
+      const role = await requireProjectRole(
+        editor._id.toString(),
+        project._id.toString(),
+        "viewer",
+      );
+      expect(role).toBe("editor");
+    });
+
     it("throws 404 for non-members", async () => {
       const { outsider, project } = await setupFixtures();
       await expect(
@@ -258,6 +296,44 @@ describe("project-access", () => {
       await expect(
         requireProjectRole(
           editor._id.toString(),
+          project._id.toString(),
+          "owner",
+        ),
+      ).rejects.toThrow("Forbidden");
+    });
+
+    it("throws 403 when viewer tries to access editor-level action", async () => {
+      const { owner, project } = await setupFixtures();
+      const viewer = await createTestUser({ email: "viewer2@test.com" });
+      await createTestProjectMember({
+        projectId: project._id,
+        userId: viewer._id,
+        role: "viewer",
+        invitedBy: owner._id,
+      });
+
+      await expect(
+        requireProjectRole(
+          viewer._id.toString(),
+          project._id.toString(),
+          "editor",
+        ),
+      ).rejects.toThrow("Forbidden");
+    });
+
+    it("throws 403 when viewer tries to access owner-level action", async () => {
+      const { owner, project } = await setupFixtures();
+      const viewer = await createTestUser({ email: "viewer3@test.com" });
+      await createTestProjectMember({
+        projectId: project._id,
+        userId: viewer._id,
+        role: "viewer",
+        invitedBy: owner._id,
+      });
+
+      await expect(
+        requireProjectRole(
+          viewer._id.toString(),
           project._id.toString(),
           "owner",
         ),

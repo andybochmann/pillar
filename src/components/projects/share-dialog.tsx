@@ -206,13 +206,13 @@ export function ShareDialog({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="viewer">Viewer</SelectItem>
                           <SelectItem value="editor">Editor</SelectItem>
-                          <SelectItem value="owner">Owner</SelectItem>
                         </SelectContent>
                       </Select>
                     ) : (
                       <Badge variant="outline" className="text-xs">
-                        Editor
+                        {member.role === "editor" ? "Editor" : "Viewer"}
                       </Badge>
                     )}
                     {member.role !== "owner" && (

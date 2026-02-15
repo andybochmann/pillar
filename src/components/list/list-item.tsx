@@ -10,9 +10,9 @@ import type { Task } from "@/types";
 interface ListItemProps {
   task: Task;
   completed: boolean;
-  onToggle: (taskId: string) => void;
+  onToggle?: (taskId: string) => void;
   onClick: (taskId: string) => void;
-  onDelete: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
   memberNames?: Map<string, string>;
 }
 
@@ -28,7 +28,8 @@ export function ListItem({
     <div className="group flex items-center gap-3 rounded-md px-3 py-2 hover:bg-accent/50 transition-colors">
       <Checkbox
         checked={completed}
-        onCheckedChange={() => onToggle(task._id)}
+        onCheckedChange={onToggle ? () => onToggle(task._id) : undefined}
+        disabled={!onToggle}
         aria-label={`Mark "${task.title}" as ${completed ? "incomplete" : "complete"}`}
       />
       <button
@@ -59,7 +60,7 @@ export function ListItem({
             {memberNames.get(task.assigneeId)!.charAt(0).toUpperCase()}
           </span>
         )}
-        {completed && (
+        {completed && onDelete && (
           <Button
             variant="ghost"
             size="icon"

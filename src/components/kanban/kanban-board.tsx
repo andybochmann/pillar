@@ -37,6 +37,7 @@ interface KanbanBoardProps {
   columns: Column[];
   initialTasks: Task[];
   members?: ProjectMember[];
+  readOnly?: boolean;
 }
 
 export function KanbanBoard({
@@ -44,6 +45,7 @@ export function KanbanBoard({
   columns,
   initialTasks,
   members,
+  readOnly,
 }: KanbanBoardProps) {
   const { tasks, setTasks, createTask, updateTask, deleteTask } =
     useTasks(initialTasks, projectId);
@@ -63,6 +65,7 @@ export function KanbanBoard({
 
   // Keyboard shortcut: "n" to open new task form in first column
   useEffect(() => {
+    if (readOnly) return;
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
       if (
@@ -79,7 +82,7 @@ export function KanbanBoard({
     }
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [sortedColumns]);
+  }, [sortedColumns, readOnly]);
 
   const labelColors = new Map(allLabels.map((l) => [l._id, l.color]));
   const labelNames = new Map(allLabels.map((l) => [l._id, l.name]));
@@ -329,20 +332,22 @@ export function KanbanBoard({
         onChange={setFilters}
         allLabels={allLabels}
       />
-      <BulkActionsBar
-        selectedCount={selectedIds.size}
-        columns={columns}
-        onClearSelection={() => setSelectedIds(new Set())}
-        onBulkMove={handleBulkMove}
-        onBulkPriority={handleBulkPriority}
-        onBulkDelete={handleBulkDelete}
-      />
+      {!readOnly && (
+        <BulkActionsBar
+          selectedCount={selectedIds.size}
+          columns={columns}
+          onClearSelection={() => setSelectedIds(new Set())}
+          onBulkMove={handleBulkMove}
+          onBulkPriority={handleBulkPriority}
+          onBulkDelete={handleBulkDelete}
+        />
+      )}
       <DndContext
-        sensors={sensors}
+        sensors={readOnly ? [] : sensors}
         collisionDetection={closestCorners}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
+        onDragStart={readOnly ? undefined : handleDragStart}
+        onDragOver={readOnly ? undefined : handleDragOver}
+        onDragEnd={readOnly ? undefined : handleDragEnd}
       >
         <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto pb-4">
           {sortedColumns.map((column) => (
@@ -356,16 +361,17 @@ export function KanbanBoard({
                 tasks={getColumnTasks(column.id)}
                 onAddTask={(title) => handleAddTask(column.id, title)}
                 onTaskClick={handleTaskClick}
-                onPriorityChange={handlePriorityChange}
+                onPriorityChange={readOnly ? undefined : handlePriorityChange}
                 labelColors={labelColors}
                 labelNames={labelNames}
                 memberNames={memberNames}
-                selectedIds={selectedIds}
-                onSelect={toggleSelection}
-                showForm={newTaskColumnId === column.id}
+                selectedIds={readOnly ? undefined : selectedIds}
+                onSelect={readOnly ? undefined : toggleSelection}
+                showForm={!readOnly && newTaskColumnId === column.id}
                 onFormOpenChange={(open) => {
                   if (!open) setNewTaskColumnId(null);
                 }}
+                readOnly={readOnly}
               />
             </SortableContext>
           ))}

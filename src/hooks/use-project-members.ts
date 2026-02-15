@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import { useSyncSubscription } from "./use-sync-subscription";
-import type { ProjectMember } from "@/types";
+import type { ProjectMember, ProjectRole } from "@/types";
 import type { SyncEvent } from "@/lib/event-bus";
 
 interface UseProjectMembersReturn {
@@ -15,7 +15,7 @@ interface UseProjectMembersReturn {
   updateMemberRole: (
     projectId: string,
     memberId: string,
-    role: "owner" | "editor",
+    role: ProjectRole,
   ) => Promise<ProjectMember>;
   removeMember: (projectId: string, memberId: string) => Promise<void>;
 }
@@ -47,7 +47,7 @@ export function useProjectMembers(projectId?: string): UseProjectMembersReturn {
       const res = await offlineFetch(`/api/projects/${pid}/members`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, role: "editor" }),
+        body: JSON.stringify({ email, role: "viewer" }),
       });
       if (!res.ok) {
         const body = await res.json();
@@ -61,7 +61,7 @@ export function useProjectMembers(projectId?: string): UseProjectMembersReturn {
   );
 
   const updateMemberRole = useCallback(
-    async (pid: string, memberId: string, role: "owner" | "editor") => {
+    async (pid: string, memberId: string, role: ProjectRole) => {
       const res = await offlineFetch(
         `/api/projects/${pid}/members/${memberId}`,
         {

@@ -17,9 +17,10 @@ import {
   createTestCategory,
   createTestProject,
   createTestTask,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { Task } from "@/models/task";
-import { PATCH } from "./route";
+import { PATCH, DELETE } from "./route";
 
 const session = vi.hoisted(() => ({
   user: {
@@ -259,5 +260,56 @@ describe("PATCH /api/tasks/[id]", () => {
     });
     const res = await PATCH(request, { params });
     expect(res.status).toBe(400);
+  });
+
+  it("returns 403 when viewer tries to update a task", async () => {
+    await setupFixtures();
+    const viewer = await createTestUser({ email: "viewer@example.com" });
+    await createTestProjectMember({
+      projectId,
+      userId: viewer._id as mongoose.Types.ObjectId,
+      role: "viewer",
+      invitedBy: userId,
+    });
+    const task = await createTestTask({ projectId, userId });
+    session.user.id = viewer._id.toString();
+
+    const { request, params } = createRequest(task._id.toString(), {
+      title: "Should fail",
+    });
+    const res = await PATCH(request, { params });
+
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe("Viewers cannot edit tasks");
+
+    session.user.id = userId.toString();
+  });
+
+  it("returns 403 when viewer tries to delete a task", async () => {
+    await setupFixtures();
+    const viewer = await createTestUser({ email: "viewer-del@example.com" });
+    await createTestProjectMember({
+      projectId,
+      userId: viewer._id as mongoose.Types.ObjectId,
+      role: "viewer",
+      invitedBy: userId,
+    });
+    const task = await createTestTask({ projectId, userId });
+    session.user.id = viewer._id.toString();
+
+    const req = new NextRequest(
+      `http://localhost:3000/api/tasks/${task._id.toString()}`,
+      { method: "DELETE" },
+    );
+    const res = await DELETE(req, {
+      params: Promise.resolve({ id: task._id.toString() }),
+    });
+
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toBe("Viewers cannot delete tasks");
+
+    session.user.id = userId.toString();
   });
 });

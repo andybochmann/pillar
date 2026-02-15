@@ -157,12 +157,18 @@ export async function POST(request: Request) {
 
     await connectDB();
 
-    // Verify project membership (editor can create tasks)
+    // Verify project membership (editor+ can create tasks)
     const role = await getProjectRole(session.user.id, result.data.projectId);
     if (!role) {
       return NextResponse.json(
         { error: "Project not found" },
         { status: 404 },
+      );
+    }
+    if (role === "viewer") {
+      return NextResponse.json(
+        { error: "Viewers cannot create tasks" },
+        { status: 403 },
       );
     }
 

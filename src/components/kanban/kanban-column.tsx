@@ -22,6 +22,7 @@ interface KanbanColumnProps {
   onSelect?: (taskId: string) => void;
   showForm?: boolean;
   onFormOpenChange?: (open: boolean) => void;
+  readOnly?: boolean;
 }
 
 export function KanbanColumn({
@@ -37,6 +38,7 @@ export function KanbanColumn({
   onSelect,
   showForm: showFormProp,
   onFormOpenChange,
+  readOnly,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [localShowForm, setLocalShowForm] = useState(false);
@@ -65,15 +67,17 @@ export function KanbanColumn({
             {tasks.length}
           </span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-          onClick={() => setShowForm(true)}
-          aria-label={`Add task to ${column.name}`}
-        >
-          <Plus className="h-4 w-4" />
-        </Button>
+        {!readOnly && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground hover:text-foreground"
+            onClick={() => setShowForm(true)}
+            aria-label={`Add task to ${column.name}`}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Task list */}
@@ -95,14 +99,16 @@ export function KanbanColumn({
           <div className="flex flex-col items-center py-8 text-center">
             <Inbox className="h-8 w-8 text-muted-foreground/30" />
             <p className="mt-2 text-xs text-muted-foreground">No tasks yet</p>
-            <Button
-              variant="link"
-              size="sm"
-              className="mt-1 h-auto p-0 text-xs"
-              onClick={() => setShowForm(true)}
-            >
-              Add a task
-            </Button>
+            {!readOnly && (
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-1 h-auto p-0 text-xs"
+                onClick={() => setShowForm(true)}
+              >
+                Add a task
+              </Button>
+            )}
           </div>
         )}
         {showForm && (

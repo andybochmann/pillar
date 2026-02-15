@@ -81,7 +81,7 @@ describe("PATCH /api/projects/[id]/members/[memberId]", () => {
       new Request("http://localhost", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "owner" }),
+        body: JSON.stringify({ role: "viewer" }),
       }),
       {
         params: Promise.resolve({
@@ -93,7 +93,27 @@ describe("PATCH /api/projects/[id]/members/[memberId]", () => {
 
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data.role).toBe("owner");
+    expect(data.role).toBe("viewer");
+  });
+
+  it("rejects setting role to owner", async () => {
+    const { project, editorMember } = await setupFixtures();
+
+    const res = await PATCH(
+      new Request("http://localhost", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "owner" }),
+      }),
+      {
+        params: Promise.resolve({
+          id: project._id.toString(),
+          memberId: editorMember._id.toString(),
+        }),
+      },
+    );
+
+    expect(res.status).toBe(400);
   });
 
   it("prevents changing own role", async () => {
@@ -124,7 +144,7 @@ describe("PATCH /api/projects/[id]/members/[memberId]", () => {
       new Request("http://localhost", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "owner" }),
+        body: JSON.stringify({ role: "viewer" }),
       }),
       {
         params: Promise.resolve({

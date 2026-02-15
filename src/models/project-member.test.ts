@@ -115,6 +115,19 @@ describe("ProjectMember model", () => {
     ).rejects.toThrow();
   });
 
+  it("accepts viewer role", async () => {
+    const { owner, editor, project } = await setupFixtures();
+
+    const member = await ProjectMember.create({
+      projectId: project._id,
+      userId: editor._id,
+      role: "viewer",
+      invitedBy: owner._id,
+    });
+
+    expect(member.role).toBe("viewer");
+  });
+
   it("enforces unique compound index on projectId + userId", async () => {
     const { owner, project } = await setupFixtures();
 

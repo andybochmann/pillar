@@ -18,6 +18,7 @@ interface ListViewProps {
   columns: Column[];
   initialTasks: Task[];
   members?: ProjectMember[];
+  readOnly?: boolean;
 }
 
 export function ListView({
@@ -25,6 +26,7 @@ export function ListView({
   columns,
   initialTasks,
   members,
+  readOnly,
 }: ListViewProps) {
   const { tasks, createTask, updateTask, deleteTask } = useTasks(
     initialTasks,
@@ -173,13 +175,15 @@ export function ListView({
   return (
     <div className="flex flex-col gap-2">
       {/* Quick-add input */}
-      <Input
-        placeholder="Add an item…"
-        value={quickAddValue}
-        onChange={(e) => setQuickAddValue(e.target.value)}
-        onKeyDown={handleQuickAdd}
-        className="mb-2"
-      />
+      {!readOnly && (
+        <Input
+          placeholder="Add an item…"
+          value={quickAddValue}
+          onChange={(e) => setQuickAddValue(e.target.value)}
+          onKeyDown={handleQuickAdd}
+          className="mb-2"
+        />
+      )}
 
       {/* Active items */}
       <div className="space-y-0.5">
@@ -188,9 +192,9 @@ export function ListView({
             key={task._id}
             task={task}
             completed={false}
-            onToggle={handleToggle}
+            onToggle={readOnly ? undefined : handleToggle}
             onClick={handleClick}
-            onDelete={handleDelete}
+            onDelete={readOnly ? undefined : handleDelete}
             memberNames={memberNames}
           />
         ))}
@@ -212,7 +216,7 @@ export function ListView({
               )}
               Completed <span className="text-xs">({completedTasks.length})</span>
             </button>
-            {completedExpanded && (
+            {completedExpanded && !readOnly && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -232,9 +236,9 @@ export function ListView({
                   key={task._id}
                   task={task}
                   completed={true}
-                  onToggle={handleToggle}
+                  onToggle={readOnly ? undefined : handleToggle}
                   onClick={handleClick}
-                  onDelete={handleDelete}
+                  onDelete={readOnly ? undefined : handleDelete}
                   memberNames={memberNames}
                 />
               ))}
@@ -252,7 +256,7 @@ export function ListView({
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
         allLabels={labels}
-        onCreateLabel={createLabel}
+        onCreateLabel={async (data) => { await createLabel(data); }}
         members={members}
       />
 
