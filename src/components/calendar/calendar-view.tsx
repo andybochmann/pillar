@@ -27,13 +27,14 @@ import { CalendarDay } from "./calendar-day";
 import { CalendarViewToggle } from "./calendar-view-toggle";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Task, CalendarViewType } from "@/types";
+import type { Task, CalendarViewType, Label } from "@/types";
 
 const WEEKDAYS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
 const WEEKDAYS_FULL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface CalendarViewProps {
   tasks: Task[];
+  labels: Label[];
   currentMonth: Date;
   viewType: CalendarViewType;
   onViewTypeChange: (viewType: CalendarViewType) => void;
@@ -44,6 +45,7 @@ interface CalendarViewProps {
 
 export function CalendarView({
   tasks,
+  labels,
   currentMonth,
   viewType,
   onViewTypeChange,
@@ -194,6 +196,7 @@ export function CalendarView({
                   key={day.toISOString()}
                   date={day}
                   tasks={dayTasks}
+                  labels={labels}
                   isCurrentMonth={isSameMonth(day, currentMonth)}
                   onDateClick={onDateClick}
                   onTaskClick={onTaskClick}

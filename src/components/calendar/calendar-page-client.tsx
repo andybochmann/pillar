@@ -8,6 +8,7 @@ import { CalendarDayView } from "./calendar-day-view";
 import { DayDetail } from "./day-detail";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useTasks } from "@/hooks/use-tasks";
+import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
 import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
 import type { Task, Project, CalendarViewType } from "@/types";
@@ -28,6 +29,7 @@ export function CalendarPageClient({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { tasks, setTasks, updateTask, deleteTask } = useTasks(initialTasks);
+  const { labels } = useLabels();
 
   const [viewType, setViewType] = useState<CalendarViewType>(initialViewType);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -147,6 +149,7 @@ export function CalendarPageClient({
       {viewType === "month" ? (
         <CalendarView
           tasks={tasks}
+          labels={labels}
           currentMonth={currentMonth}
           viewType={viewType}
           onViewTypeChange={handleViewTypeChange}
@@ -157,6 +160,7 @@ export function CalendarPageClient({
       ) : viewType === "week" ? (
         <CalendarWeekView
           tasks={tasks}
+          labels={labels}
           currentWeek={currentMonth}
           viewType={viewType}
           onViewTypeChange={handleViewTypeChange}
@@ -167,6 +171,7 @@ export function CalendarPageClient({
       ) : viewType === "day" ? (
         <CalendarDayView
           tasks={tasks}
+          labels={labels}
           currentDay={currentMonth}
           viewType={viewType}
           onViewTypeChange={handleViewTypeChange}

@@ -16,9 +16,10 @@ import {
 import { addDays, subDays, format, isToday } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { CalendarViewToggle } from "./calendar-view-toggle";
+import { TaskHoverCard } from "./task-hover-card";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Task, CalendarViewType } from "@/types";
+import type { Task, CalendarViewType, Label } from "@/types";
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
 
@@ -31,6 +32,7 @@ const priorityColors: Record<string, string> = {
 
 interface CalendarDayViewProps {
   tasks: Task[];
+  labels: Label[];
   currentDay: Date;
   viewType: CalendarViewType;
   onViewTypeChange: (viewType: CalendarViewType) => void;
@@ -40,6 +42,7 @@ interface CalendarDayViewProps {
 
 export function CalendarDayView({
   tasks,
+  labels,
   currentDay,
   viewType,
   onViewTypeChange,
@@ -202,6 +205,7 @@ export function CalendarDayView({
           {/* All-day section */}
           <AllDaySection
             tasks={allDayTasks}
+            labels={labels}
             onTaskClick={onTaskClick}
           />
 
@@ -215,6 +219,7 @@ export function CalendarDayView({
                   key={hour}
                   hour={hour}
                   tasks={hourTasks}
+                  labels={labels}
                   isCurrent={isCurrent}
                   onTaskClick={onTaskClick}
                 />
@@ -237,10 +242,11 @@ export function CalendarDayView({
 
 interface AllDaySectionProps {
   tasks: Task[];
+  labels: Label[];
   onTaskClick: (task: Task) => void;
 }
 
-function AllDaySection({ tasks, onTaskClick }: AllDaySectionProps) {
+function AllDaySection({ tasks, labels, onTaskClick }: AllDaySectionProps) {
   const { setNodeRef, isOver } = useDroppable({ id: "all-day" });
 
   return (
@@ -259,6 +265,7 @@ function AllDaySection({ tasks, onTaskClick }: AllDaySectionProps) {
           <DraggableTask
             key={task._id}
             task={task}
+            labels={labels}
             onClick={() => onTaskClick(task)}
           />
         ))}
@@ -270,11 +277,12 @@ function AllDaySection({ tasks, onTaskClick }: AllDaySectionProps) {
 interface TimeSlotProps {
   hour: number;
   tasks: Task[];
+  labels: Label[];
   isCurrent: boolean;
   onTaskClick: (task: Task) => void;
 }
 
-function TimeSlot({ hour, tasks, isCurrent, onTaskClick }: TimeSlotProps) {
+function TimeSlot({ hour, tasks, labels, isCurrent, onTaskClick }: TimeSlotProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `hour-${hour}` });
 
   const formattedHour = format(
@@ -304,6 +312,7 @@ function TimeSlot({ hour, tasks, isCurrent, onTaskClick }: TimeSlotProps) {
           <DraggableTask
             key={task._id}
             task={task}
+            labels={labels}
             onClick={() => onTaskClick(task)}
           />
         ))}
@@ -314,38 +323,41 @@ function TimeSlot({ hour, tasks, isCurrent, onTaskClick }: TimeSlotProps) {
 
 interface DraggableTaskProps {
   task: Task;
+  labels: Label[];
   onClick: () => void;
 }
 
-function DraggableTask({ task, onClick }: DraggableTaskProps) {
+function DraggableTask({ task, labels, onClick }: DraggableTaskProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task._id,
   });
 
   return (
-    <button
-      ref={setNodeRef}
-      {...attributes}
-      {...listeners}
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent transition-colors cursor-grab active:cursor-grabbing border",
-        task.completedAt && "line-through opacity-60",
-        isDragging && "opacity-50",
-      )}
-      title={task.title}
-    >
-      <span
+    <TaskHoverCard task={task} labels={labels}>
+      <button
+        ref={setNodeRef}
+        {...attributes}
+        {...listeners}
+        type="button"
+        onClick={onClick}
         className={cn(
-          "h-2 w-2 shrink-0 rounded-full",
-          priorityColors[task.priority] ?? "bg-gray-400",
+          "flex w-full items-center gap-2 rounded px-2 py-1 text-left text-sm hover:bg-accent transition-colors cursor-grab active:cursor-grabbing border",
+          task.completedAt && "line-through opacity-60",
+          isDragging && "opacity-50",
         )}
-      />
-      <span className="flex-1 truncate">{task.title}</span>
-      {task.recurrence?.frequency && task.recurrence.frequency !== "none" && (
-        <span className="shrink-0 text-xs text-muted-foreground">↻</span>
-      )}
-    </button>
+        title={task.title}
+      >
+        <span
+          className={cn(
+            "h-2 w-2 shrink-0 rounded-full",
+            priorityColors[task.priority] ?? "bg-gray-400",
+          )}
+        />
+        <span className="flex-1 truncate">{task.title}</span>
+        {task.recurrence?.frequency && task.recurrence.frequency !== "none" && (
+          <span className="shrink-0 text-xs text-muted-foreground">↻</span>
+        )}
+      </button>
+    </TaskHoverCard>
   );
 }

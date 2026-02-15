@@ -23,12 +23,13 @@ import { Button } from "@/components/ui/button";
 import { CalendarDay } from "./calendar-day";
 import { CalendarViewToggle } from "./calendar-view-toggle";
 import { toast } from "sonner";
-import type { Task, CalendarViewType } from "@/types";
+import type { Task, CalendarViewType, Label } from "@/types";
 
 const WEEKDAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
 interface CalendarWeekViewProps {
   tasks: Task[];
+  labels: Label[];
   currentWeek: Date;
   viewType: CalendarViewType;
   onViewTypeChange: (viewType: CalendarViewType) => void;
@@ -39,6 +40,7 @@ interface CalendarWeekViewProps {
 
 export function CalendarWeekView({
   tasks,
+  labels,
   currentWeek,
   viewType,
   onViewTypeChange,
@@ -185,6 +187,7 @@ export function CalendarWeekView({
                   key={day.toISOString()}
                   date={day}
                   tasks={dayTasks}
+                  labels={labels}
                   isCurrentMonth={true}
                   onDateClick={onDateClick}
                   onTaskClick={onTaskClick}
