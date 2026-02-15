@@ -91,9 +91,9 @@ describe("CalendarPageClient", () => {
     render(
       <CalendarPageClient {...defaultProps} initialViewType="week" />,
     );
-    // This test will pass once we implement week view in later subtasks
-    // For now, we just verify it doesn't crash and renders the calendar heading
-    expect(screen.getByText("February 2026")).toBeInTheDocument();
+    // Week view should show the week date range
+    // For Feb 15, 2026, the week is Feb 8-14, 2026
+    expect(screen.getByText(/Feb \d+ - Feb \d+, 2026/)).toBeInTheDocument();
   });
 
   it("handles invalid view type gracefully", () => {

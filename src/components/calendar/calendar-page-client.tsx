@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CalendarView } from "./calendar-view";
+import { CalendarWeekView } from "./calendar-week-view";
 import { DayDetail } from "./day-detail";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useTasks } from "@/hooks/use-tasks";
@@ -142,15 +143,27 @@ export function CalendarPageClient({
 
   return (
     <>
-      <CalendarView
-        tasks={tasks}
-        currentMonth={currentMonth}
-        viewType={viewType}
-        onViewTypeChange={handleViewTypeChange}
-        onTaskClick={handleTaskClick}
-        onDateClick={handleDateClick}
-        onTaskReschedule={handleTaskReschedule}
-      />
+      {viewType === "month" ? (
+        <CalendarView
+          tasks={tasks}
+          currentMonth={currentMonth}
+          viewType={viewType}
+          onViewTypeChange={handleViewTypeChange}
+          onTaskClick={handleTaskClick}
+          onDateClick={handleDateClick}
+          onTaskReschedule={handleTaskReschedule}
+        />
+      ) : viewType === "week" ? (
+        <CalendarWeekView
+          tasks={tasks}
+          currentWeek={currentMonth}
+          viewType={viewType}
+          onViewTypeChange={handleViewTypeChange}
+          onTaskClick={handleTaskClick}
+          onDateClick={handleDateClick}
+          onTaskReschedule={handleTaskReschedule}
+        />
+      ) : null}
 
       <DayDetail
         date={selectedDate}
