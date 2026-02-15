@@ -35,7 +35,19 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
     router.push("/overview");
   }, [router]);
 
-  const hasFilters = searchParams.toString().length > 0;
+  const activeCount =
+    (searchParams.get("projectId") &&
+    searchParams.get("projectId") !== "all"
+      ? 1
+      : 0) +
+    (searchParams.get("priority") && searchParams.get("priority") !== "all"
+      ? 1
+      : 0) +
+    (searchParams.get("completed") &&
+    searchParams.get("completed") !== "false"
+      ? 1
+      : 0) +
+    (searchParams.get("labels") ? 1 : 0);
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
@@ -114,9 +126,9 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
         }}
       />
 
-      {hasFilters && (
+      {activeCount > 0 && (
         <Button variant="ghost" size="sm" onClick={clearFilters}>
-          Clear filters
+          Clear filters ({activeCount})
         </Button>
       )}
     </div>
