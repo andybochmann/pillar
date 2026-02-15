@@ -61,13 +61,13 @@ describe("TaskForm", () => {
 
   it("renders submit and cancel buttons", () => {
     render(<TaskForm {...defaultProps} />);
-    expect(screen.getByRole("button", { name: /add task/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /cancel/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /submit task/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel task creation/i })).toBeInTheDocument();
   });
 
   it("submit button is disabled when input is empty", () => {
     render(<TaskForm {...defaultProps} />);
-    const submitButton = screen.getByRole("button", { name: /add task/i });
+    const submitButton = screen.getByRole("button", { name: /submit task/i });
     expect(submitButton).toBeDisabled();
   });
 
@@ -75,7 +75,7 @@ describe("TaskForm", () => {
     const user = userEvent.setup();
     render(<TaskForm {...defaultProps} />);
 
-    const submitButton = screen.getByRole("button", { name: /add task/i });
+    const submitButton = screen.getByRole("button", { name: /submit task/i });
     expect(submitButton).toBeDisabled();
 
     await user.type(screen.getByLabelText("New task title"), "New task");
@@ -88,7 +88,7 @@ describe("TaskForm", () => {
     render(<TaskForm {...defaultProps} onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText("New task title"), "New task");
-    await user.click(screen.getByRole("button", { name: /add task/i }));
+    await user.click(screen.getByRole("button", { name: /submit task/i }));
 
     expect(onSubmit).toHaveBeenCalledWith("New task");
   });
@@ -105,9 +105,11 @@ describe("TaskForm", () => {
     render(<TaskForm {...defaultProps} onSubmit={onSubmit} />);
 
     await user.type(screen.getByLabelText("New task title"), "New task");
-    await user.click(screen.getByRole("button", { name: /add task/i }));
+    await user.click(screen.getByRole("button", { name: /submit task/i }));
 
-    expect(screen.getByRole("button", { name: /adding…/i })).toBeDisabled();
+    const submitButton = screen.getByRole("button", { name: /submit task/i });
+    expect(submitButton).toBeDisabled();
+    expect(submitButton).toHaveTextContent("Adding…");
 
     resolveSubmit!();
   });
@@ -117,7 +119,7 @@ describe("TaskForm", () => {
     const onCancel = vi.fn();
     render(<TaskForm {...defaultProps} onCancel={onCancel} />);
 
-    await user.click(screen.getByRole("button", { name: /cancel/i }));
+    await user.click(screen.getByRole("button", { name: /cancel task creation/i }));
     expect(onCancel).toHaveBeenCalled();
   });
 });
