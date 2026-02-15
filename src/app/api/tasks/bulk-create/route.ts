@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const userId = session.user.id;
 
   const body = await request.json();
   const result = BulkCreateSchema.safeParse(body);
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
   await connectDB();
 
   try {
-    await requireProjectRole(session.user.id, projectId, "editor");
+    await requireProjectRole(userId, projectId, "editor");
   } catch (err) {
     const status = (err as Error & { status?: number }).status ?? 500;
     return NextResponse.json(
@@ -78,7 +79,7 @@ export async function POST(request: Request) {
         title: task.title,
         description: task.description,
         projectId,
-        userId: session.user.id,
+        userId: userId,
         columnId: task.columnId,
         priority: task.priority ?? "medium",
         order,
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
       emitSyncEvent({
         entity: "task",
         action: "created",
-        userId: session.user.id,
+        userId: userId,
         sessionId,
         entityId: task._id.toString(),
         projectId,

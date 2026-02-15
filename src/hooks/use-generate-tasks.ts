@@ -41,7 +41,7 @@ export function useGenerateTasks(): UseGenerateTasksReturn {
         }
 
         const data = await res.json();
-        const taskDrafts: TaskDraft[] = data.tasks.map((task, index) => ({
+        const taskDrafts: TaskDraft[] = data.tasks.map((task: Omit<TaskDraft, "id" | "selected">, index: number) => ({
           id: `draft-${Date.now()}-${index}`,
           ...task,
           subtasks: task.subtasks ?? [],
