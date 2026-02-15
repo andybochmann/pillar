@@ -30,6 +30,7 @@ import { X, Plus, Sparkles, Square, Play } from "lucide-react";
 import { toast } from "sonner";
 import { TimeSessionsList } from "@/components/tasks/time-sessions-list";
 import { useBackButton } from "@/hooks/use-back-button";
+import { cn } from "@/lib/utils";
 import type {
   Task,
   Subtask,
@@ -397,6 +398,12 @@ function TaskSheetForm({
                 <SelectContent>
                   {PRIORITIES.map((p) => (
                     <SelectItem key={p} value={p}>
+                      <span
+                        className={cn(
+                          "mr-2 inline-block h-2 w-2 rounded-full",
+                          priorityConfig[p].className,
+                        )}
+                      />
                       {p.charAt(0).toUpperCase() + p.slice(1)}
                     </SelectItem>
                   ))}
