@@ -30,14 +30,16 @@ export async function POST(request: Request) {
     const existingUser = await User.findOne({
       email: result.data.email.toLowerCase(),
     });
+
+    // Always hash password for timing normalization (prevents timing attacks)
+    const passwordHash = await hash(result.data.password, 12);
+
     if (existingUser) {
       return NextResponse.json(
         { error: "Invalid registration data" },
         { status: 400 },
       );
     }
-
-    const passwordHash = await hash(result.data.password, 12);
     const user = await User.create({
       name: result.data.name,
       email: result.data.email.toLowerCase(),

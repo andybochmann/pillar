@@ -147,4 +147,34 @@ describe("POST /api/auth/register", () => {
     const data = await res.json();
     expect(data.email).toBe("upper@example.com");
   });
+
+  it("maintains timing consistency to prevent timing attacks", async () => {
+    await createTestUser({ email: "existing@example.com" });
+
+    // Measure duplicate email response time
+    const start1 = Date.now();
+    await POST(
+      createRequest({
+        name: "Test",
+        email: "existing@example.com",
+        password: "SecurePass123!",
+      }),
+    );
+    const duplicateTime = Date.now() - start1;
+
+    // Measure new user response time
+    const start2 = Date.now();
+    await POST(
+      createRequest({
+        name: "Test",
+        email: "newuser@example.com",
+        password: "SecurePass123!",
+      }),
+    );
+    const newUserTime = Date.now() - start2;
+
+    // Timing difference should be minimal (within 50ms)
+    const timingDiff = Math.abs(newUserTime - duplicateTime);
+    expect(timingDiff).toBeLessThan(50);
+  });
 });
