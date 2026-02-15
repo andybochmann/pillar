@@ -7,6 +7,7 @@ import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { Category } from "@/models/category";
 import { Label } from "@/models/label";
+import { ProjectMember } from "@/models/project-member";
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -57,7 +58,7 @@ export async function PATCH(request: Request) {
   const user = await User.findByIdAndUpdate(
     session.user.id,
     { $set: result.data },
-    { new: true },
+    { returnDocument: "after" },
   ).select("name email image createdAt");
 
   if (!user) {
@@ -92,6 +93,7 @@ export async function DELETE() {
       Project.deleteMany({ userId: session.user.id }),
       Category.deleteMany({ userId: session.user.id }),
       Label.deleteMany({ userId: session.user.id }),
+      ProjectMember.deleteMany({ userId: session.user.id }),
     ]);
 
     return NextResponse.json({ message: "Account deleted" });

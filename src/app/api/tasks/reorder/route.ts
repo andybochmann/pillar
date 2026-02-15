@@ -48,8 +48,16 @@ export async function PATCH(request: Request) {
       );
     }
 
-    // Verify membership on the project
+    // Verify all tasks belong to the same project
     const projectId = tasks[0].projectId.toString();
+    if (tasks.some((t) => t.projectId.toString() !== projectId)) {
+      return NextResponse.json(
+        { error: "All tasks must belong to the same project" },
+        { status: 400 },
+      );
+    }
+
+    // Verify membership on the project
     const role = await getProjectRole(session.user.id, projectId);
     if (!role) {
       return NextResponse.json(

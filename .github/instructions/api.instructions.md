@@ -57,6 +57,32 @@ Format: `NextResponse.json({ error: "description" }, { status: code })`
 Always filter queries by `userId` from the session. Never trust client-provided userId.
 Verify resource ownership before update/delete operations.
 
+For shared projects, use `src/lib/project-access.ts` to check membership and roles:
+- `requireProjectRole(projectId, userId, "owner", "editor")` — guards mutation routes
+- `getAccessibleProjectIds(userId)` — for listing across owned + shared projects
+- `getProjectMemberUserIds(projectId)` — for populating `targetUserIds` in sync events
+
+## Real-Time Sync Events
+
+All mutation routes (POST, PATCH, DELETE) must call `emitSyncEvent()` after successful writes:
+
+```typescript
+import { emitSyncEvent } from "@/lib/event-bus";
+
+emitSyncEvent({
+  entity: "task", // task | project | label | category | member
+  action: "created", // created | updated | deleted
+  userId: session.user.id,
+  sessionId: request.headers.get("x-session-id") || "",
+  entityId: created._id.toString(),
+  projectId: projectId.toString(),
+  targetUserIds, // from getProjectMemberUserIds()
+  data: created.toJSON(),
+  timestamp: Date.now(),
+});
+```
+
 ## Database
 
 Call `connectDB()` at the start of each handler to ensure connection is established.
+MongoDB is standalone (no replica set) — do NOT use `startSession()` or transactions.

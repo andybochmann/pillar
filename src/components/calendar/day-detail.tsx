@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -57,6 +58,7 @@ export function DayDetail({
       <SheetContent className="overflow-y-auto sm:max-w-md">
         <SheetHeader>
           <SheetTitle>{format(date, "EEEE, MMMM d, yyyy")}</SheetTitle>
+          <SheetDescription className="sr-only">Tasks for this day</SheetDescription>
         </SheetHeader>
         <DayDetailContent
           key={date.toISOString()}

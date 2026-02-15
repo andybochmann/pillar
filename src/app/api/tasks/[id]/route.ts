@@ -228,6 +228,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
             sessionId,
             entityId: newTask._id.toString(),
             projectId: task.projectId.toString(),
+            targetUserIds,
             data: newTask.toJSON(),
             timestamp: Date.now(),
           });

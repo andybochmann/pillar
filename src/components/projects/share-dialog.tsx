@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -105,6 +106,7 @@ export function ShareDialog({
             <Users className="h-5 w-5" />
             Share &ldquo;{projectName}&rdquo;
           </DialogTitle>
+          <DialogDescription className="sr-only">Manage project members and sharing</DialogDescription>
         </DialogHeader>
 
         {isOwner && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,6 @@ interface ProjectViewProps {
   project: Project;
   initialTasks: Task[];
   categoryName?: string;
-  taskCounts?: Record<string, number>;
   members?: ProjectMemberType[];
   currentUserId?: string;
 }
@@ -34,7 +33,6 @@ export function ProjectView({
   project,
   initialTasks,
   categoryName,
-  taskCounts,
   members,
   currentUserId,
 }: ProjectViewProps) {
@@ -42,6 +40,15 @@ export function ProjectView({
   const [currentProject, setCurrentProject] = useState(project);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const readOnly = currentProject.currentUserRole === "viewer";
+  const [liveTasks, setLiveTasks] = useState<Task[]>(initialTasks);
+
+  const liveTaskCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const t of liveTasks) {
+      counts[t.columnId] = (counts[t.columnId] ?? 0) + 1;
+    }
+    return counts;
+  }, [liveTasks]);
 
   const handleUpdate = useCallback(
     async (data: Partial<Project>) => {
@@ -105,13 +112,13 @@ export function ProjectView({
               {currentProject.description}
             </p>
           )}
-          {taskCounts && Object.keys(taskCounts).length > 0 && (
+          {Object.keys(liveTaskCounts).length > 0 && (
             <p className="mt-1 text-sm text-muted-foreground">
               {currentProject.viewType === "list"
-                ? getListTaskCounts(currentProject.columns, taskCounts)
+                ? getListTaskCounts(currentProject.columns, liveTaskCounts)
                 : currentProject.columns
-                    .filter((col) => taskCounts[col.id])
-                    .map((col) => `${taskCounts[col.id]} ${col.name.toLowerCase()}`)
+                    .filter((col) => liveTaskCounts[col.id])
+                    .map((col) => `${liveTaskCounts[col.id]} ${col.name.toLowerCase()}`)
                     .join(" · ")}
             </p>
           )}
@@ -134,6 +141,7 @@ export function ProjectView({
           initialTasks={initialTasks}
           members={members}
           readOnly={readOnly}
+          onTasksChange={setLiveTasks}
         />
       ) : (
         <KanbanBoard
@@ -143,6 +151,7 @@ export function ProjectView({
           members={members}
           readOnly={readOnly}
           currentUserId={currentUserId}
+          onTasksChange={setLiveTasks}
         />
       )}
 

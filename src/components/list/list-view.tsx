@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ListItem } from "./list-item";
@@ -19,6 +19,7 @@ interface ListViewProps {
   initialTasks: Task[];
   members?: ProjectMember[];
   readOnly?: boolean;
+  onTasksChange?: (tasks: Task[]) => void;
 }
 
 export function ListView({
@@ -27,11 +28,16 @@ export function ListView({
   initialTasks,
   members,
   readOnly,
+  onTasksChange,
 }: ListViewProps) {
   const { tasks, createTask, updateTask, deleteTask } = useTasks(
     initialTasks,
     projectId,
   );
+  useEffect(() => {
+    onTasksChange?.(tasks);
+  }, [tasks, onTasksChange]);
+
   const { labels, createLabel } = useLabels();
   const [quickAddValue, setQuickAddValue] = useState("");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);

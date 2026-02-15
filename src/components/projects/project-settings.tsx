@@ -4,6 +4,7 @@ import { useState } from "react";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -84,6 +85,7 @@ export function ProjectSettings({
         <SheetContent className="overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Project Settings</SheetTitle>
+            <SheetDescription className="sr-only">Configure project name, columns, and settings</SheetDescription>
           </SheetHeader>
 
           <div className="space-y-6 px-4 py-4">

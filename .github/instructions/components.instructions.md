@@ -27,6 +27,8 @@ applyTo: "src/components/**"
 - Include aria-labels for icon-only buttons
 - Touch targets must be at least 44x44px for mobile
 - Support keyboard navigation in Kanban board
+- **Every `Dialog` must include `DialogDescription`** — even if visually hidden with `className="sr-only"`. Radix UI logs console warnings without it.
+- **Every `Sheet` must include `SheetDescription`** — same rule as Dialog above.
 
 ## Styling
 

@@ -40,12 +40,6 @@ export default async function ProjectPage({ params }: PageProps) {
 
   const memberCount = membersRaw.length || 1;
 
-  const taskCountsByColumn: Record<string, number> = {};
-  for (const t of tasks) {
-    taskCountsByColumn[t.columnId] =
-      (taskCountsByColumn[t.columnId] || 0) + 1;
-  }
-
   const serializedProject = {
     _id: project._id.toString(),
     name: project.name,
@@ -130,7 +124,6 @@ export default async function ProjectPage({ params }: PageProps) {
       project={serializedProject}
       initialTasks={serializedTasks}
       categoryName={category?.name}
-      taskCounts={taskCountsByColumn}
       members={serializedMembers}
       currentUserId={session.user.id}
     />

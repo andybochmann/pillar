@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
@@ -24,7 +25,7 @@ import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
 import { StatusHistory } from "@/components/tasks/status-history";
 import { LabelPicker } from "@/components/tasks/label-picker";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Plus, Sparkles, Loader2 } from "lucide-react";
+import { X, Plus, Sparkles, Loader2, Square, Play } from "lucide-react";
 import { toast } from "sonner";
 import { TimeSessionsList } from "@/components/tasks/time-sessions-list";
 import type {
@@ -75,6 +76,7 @@ export function TaskSheet({
       <SheetContent className="overflow-y-auto p-0 sm:max-w-lg">
         <SheetHeader className="sr-only">
           <SheetTitle>Edit Task</SheetTitle>
+          <SheetDescription>Edit task details</SheetDescription>
         </SheetHeader>
         <TaskSheetForm
           key={task._id}
@@ -190,7 +192,7 @@ function TaskSheetForm({
     [task._id, onUpdate],
   );
 
-  function handleTitleBlur() {
+  function saveTitleIfChanged() {
     if (title.trim() === task.title) return;
     if (!title.trim()) {
       setTitle(task.title);
@@ -198,6 +200,34 @@ function TaskSheetForm({
     }
     saveField({ title: title.trim() });
   }
+
+  function handleTitleBlur() {
+    saveTitleIfChanged();
+  }
+
+  function handleTitleKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      (e.target as HTMLInputElement).blur();
+    }
+  }
+
+  // Save any pending title/description changes when sheet closes
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      // Flush unsaved title
+      const trimmed = title.trim();
+      if (trimmed && trimmed !== task.title) {
+        onUpdate(task._id, { title: trimmed });
+      }
+      // Flush unsaved description
+      if (description !== (task.description ?? "")) {
+        onUpdate(task._id, { description });
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, description, task._id, task.title, task.description]);
 
   function handleDescriptionBlur() {
     if (description === (task.description ?? "")) return;
@@ -342,6 +372,7 @@ function TaskSheetForm({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleTitleBlur}
+              onKeyDown={handleTitleKeyDown}
               className="text-lg font-semibold"
             />
           </div>

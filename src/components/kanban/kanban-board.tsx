@@ -40,6 +40,7 @@ interface KanbanBoardProps {
   members?: ProjectMember[];
   readOnly?: boolean;
   currentUserId?: string;
+  onTasksChange?: (tasks: Task[]) => void;
 }
 
 export function KanbanBoard({
@@ -49,6 +50,7 @@ export function KanbanBoard({
   members,
   readOnly,
   currentUserId,
+  onTasksChange,
 }: KanbanBoardProps) {
   const { tasks, setTasks, createTask, updateTask, deleteTask } =
     useTasks(initialTasks, projectId);
@@ -60,6 +62,10 @@ export function KanbanBoard({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [newTaskColumnId, setNewTaskColumnId] = useState<string | null>(null);
   const [dndAnnouncement, setDndAnnouncement] = useState("");
+  useEffect(() => {
+    onTasksChange?.(tasks);
+  }, [tasks, onTasksChange]);
+
   const { startTracking, stopTracking, deleteSession: deleteTimeSession } = useTimeTracking(
     tasks,
     setTasks,
@@ -369,6 +375,7 @@ export function KanbanBoard({
         />
       )}
       <DndContext
+        id="kanban-dnd"
         sensors={readOnly ? [] : sensors}
         collisionDetection={closestCorners}
         onDragStart={readOnly ? undefined : handleDragStart}

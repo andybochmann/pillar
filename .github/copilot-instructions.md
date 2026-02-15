@@ -4,7 +4,7 @@
 
 ## Project Summary
 
-Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. It supports multiple users, project categories, configurable Kanban columns, recurring tasks, calendar views, and offline PWA mode.
+Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, real-time sync via SSE, and offline PWA mode. Deployed via Docker Compose.
 
 ## Architecture
 
@@ -13,6 +13,9 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 - **MongoDB** via Mongoose 9 (`src/models/`) — singleton connection in `src/lib/db.ts` with global HMR cache
 - **Auth.js v5** split across three files: `src/lib/auth.config.ts` (edge-safe, no bcryptjs), `src/lib/auth.ts` (full config with Credentials provider), `src/proxy.ts` (auth middleware — Next.js 16 convention, NOT `middleware.ts`)
 - **PWA/Offline**: vanilla service worker (`public/sw.js`), IndexedDB queue (`src/lib/offline-queue.ts`), `offlineFetch()` wrapper for mutations, auto-sync on reconnect (`src/lib/sync.ts`)
+- **Real-time sync** via SSE + in-memory EventEmitter — see `docs/realtime-sync.md`
+- **Project sharing** via `ProjectMember` model with role-based access — see `docs/project-sharing.md`
+- **Kanban DnD** via @dnd-kit with optimistic updates — see `docs/kanban-dnd.md`
 - **State**: no SWR/React Query — custom hooks in `src/hooks/` with `useState` + `useCallback` + `fetch`/`offlineFetch`
 - **Types duality**: Mongoose models use `ObjectId`/`Date` (`I<Model>` in `src/models/`), components use `string` IDs/dates (`src/types/index.ts`). Conversion happens at JSON serialization boundary.
 
@@ -21,7 +24,7 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 ```bash
 pnpm dev              # Dev server (Turbopack) at localhost:3000
 pnpm build            # Production build (output: standalone)
-pnpm test             # Vitest unit/integration tests (48 files, 320+ tests)
+pnpm test             # Vitest unit/integration tests (79 files, 603 tests)
 pnpm test:watch       # Tests in watch mode
 pnpm test:coverage    # Tests with coverage report
 pnpm test:e2e         # Playwright E2E tests (requires running dev server)
@@ -57,6 +60,7 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 - Toast via `import { toast } from "sonner"` (named import, not default)
 - `cn()` from `@/lib/utils` for conditional Tailwind classes
 - `Label` type collision: import as `Label as LabelType` from `@/types` when `Label` from shadcn/ui is also needed
+- **Accessibility**: Every `Dialog` must include `DialogDescription` and every `Sheet` must include `SheetDescription` (even if visually hidden via `className="sr-only"`). Radix UI logs console warnings without these.
 
 ### Data Models
 
@@ -118,18 +122,27 @@ import { GET, POST } from "./route";
 
 ## Key Files
 
-| Purpose                   | File                       |
-| ------------------------- | -------------------------- |
-| Auth (edge-safe)          | `src/lib/auth.config.ts`   |
-| Auth (full)               | `src/lib/auth.ts`          |
-| Auth proxy                | `src/proxy.ts`             |
-| DB connection             | `src/lib/db.ts`            |
-| Shared types              | `src/types/index.ts`       |
-| Offline fetch wrapper     | `src/lib/offline-fetch.ts` |
-| Offline queue (IndexedDB) | `src/lib/offline-queue.ts` |
-| Sync engine               | `src/lib/sync.ts`          |
-| Test helpers              | `src/test/helpers/`        |
-| Service worker            | `public/sw.js`             |
+| Purpose                   | File                                        |
+| ------------------------- | ------------------------------------------- |
+| Auth (edge-safe)          | `src/lib/auth.config.ts`                    |
+| Auth (full)               | `src/lib/auth.ts`                           |
+| Auth proxy                | `src/proxy.ts`                              |
+| DB connection             | `src/lib/db.ts`                             |
+| Shared types              | `src/types/index.ts`                        |
+| Event bus (SSE)           | `src/lib/event-bus.ts`                      |
+| SSE endpoint              | `src/app/api/events/route.ts`               |
+| Project access control    | `src/lib/project-access.ts`                 |
+| ProjectMember model       | `src/models/project-member.ts`              |
+| Offline fetch wrapper     | `src/lib/offline-fetch.ts`                  |
+| Offline queue (IndexedDB) | `src/lib/offline-queue.ts`                  |
+| Sync engine               | `src/lib/sync.ts`                           |
+| Test helpers              | `src/test/helpers/`                         |
+| Service worker            | `public/sw.js`                              |
+
+## Feature Documentation
+
+Detailed docs for each major feature in the `docs/` folder:
+`realtime-sync.md`, `project-sharing.md`, `time-tracking.md`, `offline-pwa.md`, `ai-features.md`, `kanban-dnd.md`
 
 ## Test Credentials (Dev/E2E)
 
