@@ -24,9 +24,10 @@ import {
 } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { CalendarDay } from "./calendar-day";
+import { CalendarViewToggle } from "./calendar-view-toggle";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Task } from "@/types";
+import type { Task, CalendarViewType } from "@/types";
 
 const WEEKDAYS_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
 const WEEKDAYS_FULL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -34,6 +35,8 @@ const WEEKDAYS_FULL = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 interface CalendarViewProps {
   tasks: Task[];
   currentMonth: Date;
+  viewType: CalendarViewType;
+  onViewTypeChange: (viewType: CalendarViewType) => void;
   onTaskClick: (task: Task) => void;
   onDateClick: (date: Date) => void;
   onTaskReschedule: (taskId: string, newDate: Date) => Promise<void>;
@@ -42,6 +45,8 @@ interface CalendarViewProps {
 export function CalendarView({
   tasks,
   currentMonth,
+  viewType,
+  onViewTypeChange,
   onTaskClick,
   onDateClick,
   onTaskReschedule,
@@ -131,26 +136,32 @@ export function CalendarView({
         <h2 className="text-xl font-semibold">
           {format(currentMonth, "MMMM yyyy")}
         </h2>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={goToToday}>
-            Today
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => navigateMonth(-1)}
-            aria-label="Previous month"
-          >
-            ‹
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => navigateMonth(1)}
-            aria-label="Next month"
-          >
-            ›
-          </Button>
+        <div className="flex items-center gap-4">
+          <CalendarViewToggle
+            viewType={viewType}
+            onChange={onViewTypeChange}
+          />
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={goToToday}>
+              Today
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigateMonth(-1)}
+              aria-label="Previous month"
+            >
+              ‹
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigateMonth(1)}
+              aria-label="Next month"
+            >
+              ›
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -145,6 +145,8 @@ export function CalendarPageClient({
       <CalendarView
         tasks={tasks}
         currentMonth={currentMonth}
+        viewType={viewType}
+        onViewTypeChange={handleViewTypeChange}
         onTaskClick={handleTaskClick}
         onDateClick={handleDateClick}
         onTaskReschedule={handleTaskReschedule}

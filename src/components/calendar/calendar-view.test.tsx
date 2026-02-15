@@ -59,6 +59,8 @@ describe("CalendarView", () => {
   const defaultProps = {
     tasks: mockTasks,
     currentMonth: new Date(2026, 1, 1), // February 2026
+    viewType: "month" as const,
+    onViewTypeChange: vi.fn(),
     onTaskClick: vi.fn(),
     onDateClick: vi.fn(),
     onTaskReschedule: vi.fn().mockResolvedValue(undefined),
@@ -138,5 +140,10 @@ describe("CalendarView", () => {
     render(<CalendarView {...defaultProps} tasks={[]} />);
     expect(screen.getByText("February 2026")).toBeInTheDocument();
     expect(screen.queryByText("Calendar task")).not.toBeInTheDocument();
+  });
+
+  it("renders view toggle component", () => {
+    render(<CalendarView {...defaultProps} />);
+    expect(screen.getByTestId("calendar-view-toggle")).toBeInTheDocument();
   });
 });
