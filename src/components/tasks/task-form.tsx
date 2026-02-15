@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface TaskFormProps {
   onSubmit: (title: string) => Promise<void>;
@@ -39,7 +41,7 @@ export function TaskForm({ onSubmit, onCancel }: TaskFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={handleSubmit} className="space-y-2">
       <Input
         ref={inputRef}
         value={title}
@@ -50,6 +52,26 @@ export function TaskForm({ onSubmit, onCancel }: TaskFormProps) {
         aria-label="New task title"
         className="text-sm"
       />
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onCancel}
+          size="sm"
+          aria-label="Cancel task creation"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={!title.trim() || submitting}
+          size="sm"
+          aria-label="Submit task"
+        >
+          <Check className="h-4 w-4 mr-1.5" />
+          {submitting ? "Adding…" : "Add Task"}
+        </Button>
+      </div>
     </form>
   );
 }

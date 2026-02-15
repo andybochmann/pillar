@@ -58,4 +58,68 @@ describe("TaskForm", () => {
     await user.type(input, "New task{Enter}");
     expect(input).toHaveValue("");
   });
+
+  it("renders submit and cancel buttons", () => {
+    render(<TaskForm {...defaultProps} />);
+    expect(screen.getByRole("button", { name: /submit task/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cancel task creation/i })).toBeInTheDocument();
+  });
+
+  it("submit button is disabled when input is empty", () => {
+    render(<TaskForm {...defaultProps} />);
+    const submitButton = screen.getByRole("button", { name: /submit task/i });
+    expect(submitButton).toBeDisabled();
+  });
+
+  it("submit button is enabled when input has text", async () => {
+    const user = userEvent.setup();
+    render(<TaskForm {...defaultProps} />);
+
+    const submitButton = screen.getByRole("button", { name: /submit task/i });
+    expect(submitButton).toBeDisabled();
+
+    await user.type(screen.getByLabelText("New task title"), "New task");
+    expect(submitButton).toBeEnabled();
+  });
+
+  it("submits when submit button is clicked", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<TaskForm {...defaultProps} onSubmit={onSubmit} />);
+
+    await user.type(screen.getByLabelText("New task title"), "New task");
+    await user.click(screen.getByRole("button", { name: /submit task/i }));
+
+    expect(onSubmit).toHaveBeenCalledWith("New task");
+  });
+
+  it("shows loading state while submitting", async () => {
+    const user = userEvent.setup();
+    let resolveSubmit: () => void;
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSubmit = resolve;
+        }),
+    );
+    render(<TaskForm {...defaultProps} onSubmit={onSubmit} />);
+
+    await user.type(screen.getByLabelText("New task title"), "New task");
+    await user.click(screen.getByRole("button", { name: /submit task/i }));
+
+    const submitButton = screen.getByRole("button", { name: /submit task/i });
+    expect(submitButton).toBeDisabled();
+    expect(submitButton).toHaveTextContent("Adding…");
+
+    resolveSubmit!();
+  });
+
+  it("calls onCancel when cancel button is clicked", async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn();
+    render(<TaskForm {...defaultProps} onCancel={onCancel} />);
+
+    await user.click(screen.getByRole("button", { name: /cancel task creation/i }));
+    expect(onCancel).toHaveBeenCalled();
+  });
 });
