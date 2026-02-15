@@ -57,6 +57,11 @@ export interface Subtask {
   completed: boolean;
 }
 
+export interface StatusHistoryEntry {
+  columnId: string;
+  timestamp: string;
+}
+
 export interface Task {
   _id: string;
   title: string;
@@ -70,6 +75,7 @@ export interface Task {
   order: number;
   labels: string[];
   subtasks: Subtask[];
+  statusHistory: StatusHistoryEntry[];
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;

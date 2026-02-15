@@ -173,6 +173,63 @@ describe("PATCH /api/tasks/bulk", () => {
     expect(count).toBe(0);
   });
 
+  it("appends statusHistory entries on bulk move", async () => {
+    await seedTasks();
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [task1Id, task2Id],
+        action: "move",
+        columnId: "done",
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+
+    const { Task } = await import("@/models/task");
+    const tasks = await Task.find({ _id: { $in: [task1Id, task2Id] } });
+    for (const t of tasks) {
+      expect(t.statusHistory.length).toBeGreaterThanOrEqual(1);
+      const lastEntry = t.statusHistory[t.statusHistory.length - 1];
+      expect(lastEntry.columnId).toBe("done");
+      expect(lastEntry.timestamp).toBeDefined();
+    }
+  });
+
+  it("does not add duplicate statusHistory for tasks already in target column", async () => {
+    await seedTasks();
+
+    // Move task1 to "done" first
+    const { Task } = await import("@/models/task");
+    await Task.findByIdAndUpdate(task1Id, {
+      $set: { columnId: "done" },
+      $push: { statusHistory: { columnId: "done", timestamp: new Date() } },
+    });
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [task1Id, task2Id],
+        action: "move",
+        columnId: "done",
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+
+    // task1 was already in "done" — should NOT get another history entry
+    const task1 = await Task.findById(task1Id);
+    expect(task1!.statusHistory).toHaveLength(1);
+
+    // task2 was in "todo" — should get a history entry
+    const task2 = await Task.findById(task2Id);
+    const doneEntries = task2!.statusHistory.filter(
+      (e) => e.columnId === "done",
+    );
+    expect(doneEntries).toHaveLength(1);
+  });
+
   it("only affects tasks owned by the user", async () => {
     await seedTasks();
     // Create a task owned by another user

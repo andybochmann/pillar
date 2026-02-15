@@ -163,6 +163,7 @@ export async function POST(request: Request) {
       ...result.data,
       userId: session.user.id,
       order: result.data.order ?? taskCount,
+      statusHistory: [{ columnId: result.data.columnId, timestamp: new Date() }],
     };
 
     if (result.data.dueDate) {

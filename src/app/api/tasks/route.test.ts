@@ -363,6 +363,23 @@ describe("POST /api/tasks", () => {
     expect(data.subtasks[1].completed).toBe(true);
   });
 
+  it("seeds statusHistory with initial column on creation", async () => {
+    await setupFixtures();
+    const res = await POST(
+      createRequest({
+        title: "History Task",
+        projectId: projectId.toString(),
+        columnId: "todo",
+      }),
+    );
+
+    expect(res.status).toBe(201);
+    const data = await res.json();
+    expect(data.statusHistory).toHaveLength(1);
+    expect(data.statusHistory[0].columnId).toBe("todo");
+    expect(data.statusHistory[0].timestamp).toBeDefined();
+  });
+
   it("auto-increments order", async () => {
     await setupFixtures();
     await createTestTask({ projectId, userId, columnId: "todo", order: 0 });

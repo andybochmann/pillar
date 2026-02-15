@@ -20,6 +20,11 @@ export interface ISubtask {
   completed: boolean;
 }
 
+export interface IStatusHistoryEntry {
+  columnId: string;
+  timestamp: Date;
+}
+
 export interface ITask extends Document {
   _id: mongoose.Types.ObjectId;
   title: string;
@@ -33,6 +38,7 @@ export interface ITask extends Document {
   order: number;
   labels: string[];
   subtasks: ISubtask[];
+  statusHistory: IStatusHistoryEntry[];
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -57,6 +63,14 @@ const SubtaskSchema = new Schema<ISubtask>(
     completed: { type: Boolean, default: false },
   },
   { _id: true },
+);
+
+const StatusHistoryEntrySchema = new Schema<IStatusHistoryEntry>(
+  {
+    columnId: { type: String, required: true },
+    timestamp: { type: Date, required: true },
+  },
+  { _id: false },
 );
 
 const TaskSchema = new Schema<ITask>(
@@ -89,6 +103,7 @@ const TaskSchema = new Schema<ITask>(
     order: { type: Number, required: true, default: 0 },
     labels: { type: [String], default: [] },
     subtasks: { type: [SubtaskSchema], default: [] },
+    statusHistory: { type: [StatusHistoryEntrySchema], default: [] },
     completedAt: { type: Date },
   },
   { timestamps: true },

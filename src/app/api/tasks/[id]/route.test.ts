@@ -136,6 +136,113 @@ describe("PATCH /api/tasks/[id]", () => {
     expect(cloned!.subtasks[1].completed).toBe(false);
   });
 
+  it("appends statusHistory entry when columnId changes", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      columnId: "todo",
+      statusHistory: [{ columnId: "todo", timestamp: new Date() }],
+    });
+
+    const { request, params } = createRequest(task._id.toString(), {
+      columnId: "done",
+    });
+    const res = await PATCH(request, { params });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.statusHistory).toHaveLength(2);
+    expect(data.statusHistory[1].columnId).toBe("done");
+    expect(data.statusHistory[1].timestamp).toBeDefined();
+  });
+
+  it("does NOT append statusHistory when columnId is the same", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      columnId: "todo",
+      statusHistory: [{ columnId: "todo", timestamp: new Date() }],
+    });
+
+    const { request, params } = createRequest(task._id.toString(), {
+      columnId: "todo",
+    });
+    const res = await PATCH(request, { params });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.statusHistory).toHaveLength(1);
+  });
+
+  it("does NOT touch statusHistory when updating other fields", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      columnId: "todo",
+      statusHistory: [{ columnId: "todo", timestamp: new Date() }],
+    });
+
+    const { request, params } = createRequest(task._id.toString(), {
+      title: "Updated title",
+      priority: "high",
+    });
+    const res = await PATCH(request, { params });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.statusHistory).toHaveLength(1);
+    expect(data.title).toBe("Updated title");
+  });
+
+  it("accumulates multiple column moves in statusHistory", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      columnId: "todo",
+      statusHistory: [{ columnId: "todo", timestamp: new Date() }],
+    });
+
+    // Move to in-progress
+    const move1 = createRequest(task._id.toString(), {
+      columnId: "done",
+    });
+    await PATCH(move1.request, { params: move1.params });
+
+    // Move to done — need to re-read to verify
+    const updated = await Task.findById(task._id);
+    expect(updated!.statusHistory).toHaveLength(2);
+    expect(updated!.statusHistory[0].columnId).toBe("todo");
+    expect(updated!.statusHistory[1].columnId).toBe("done");
+  });
+
+  it("seeds statusHistory on recurring task creation", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      columnId: "todo",
+      dueDate: new Date("2026-03-01"),
+      recurrence: { frequency: "weekly", interval: 1 },
+      statusHistory: [{ columnId: "todo", timestamp: new Date() }],
+    });
+
+    const { request, params } = createRequest(task._id.toString(), {
+      completedAt: new Date().toISOString(),
+    });
+    await PATCH(request, { params });
+
+    // Find the cloned task
+    const allTasks = await Task.find({ userId, projectId });
+    const cloned = allTasks.find((t) => t._id.toString() !== task._id.toString());
+    expect(cloned).toBeDefined();
+    expect(cloned!.statusHistory).toHaveLength(1);
+    expect(cloned!.statusHistory[0].columnId).toBe("todo");
+  });
+
   it("returns 404 for non-existent task", async () => {
     await setupFixtures();
     const fakeId = new mongoose.Types.ObjectId().toString();

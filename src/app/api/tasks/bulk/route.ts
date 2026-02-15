@@ -40,7 +40,14 @@ export async function PATCH(request: Request) {
           { status: 400 },
         );
       }
-      await Task.updateMany(filter, { $set: { columnId } });
+
+      await Task.updateMany(
+        { ...filter, columnId: { $ne: columnId } },
+        {
+          $set: { columnId },
+          $push: { statusHistory: { columnId, timestamp: new Date() } },
+        },
+      );
     } else if (action === "priority") {
       if (!priority) {
         return NextResponse.json(

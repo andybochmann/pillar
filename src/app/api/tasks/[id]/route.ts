@@ -94,9 +94,26 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       };
     }
 
+    const existingTask = result.data.columnId
+      ? await Task.findOne({ _id: id, userId: session.user.id }).select("columnId")
+      : null;
+
+    const shouldPushHistory =
+      existingTask && result.data.columnId && existingTask.columnId !== result.data.columnId;
+
     const task = await Task.findOneAndUpdate(
       { _id: id, userId: session.user.id },
-      updateData,
+      shouldPushHistory
+        ? {
+            ...updateData,
+            $push: {
+              statusHistory: {
+                columnId: result.data.columnId,
+                timestamp: new Date(),
+              },
+            },
+          }
+        : updateData,
       { returnDocument: "after" },
     );
 
@@ -146,6 +163,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
               title: s.title,
               completed: false,
             })),
+            statusHistory: [
+              { columnId: firstColumn.id, timestamp: new Date() },
+            ],
           });
         }
       }

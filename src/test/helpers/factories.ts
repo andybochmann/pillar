@@ -84,6 +84,7 @@ interface CreateTaskInput {
   order?: number;
   labels?: string[];
   subtasks?: { title: string; completed?: boolean }[];
+  statusHistory?: { columnId: string; timestamp: Date }[];
 }
 
 export async function createTestTask(
@@ -101,6 +102,7 @@ export async function createTestTask(
     order: overrides.order ?? 0,
     labels: overrides.labels ?? [],
     subtasks: overrides.subtasks ?? [],
+    statusHistory: overrides.statusHistory ?? [],
   });
 }
 

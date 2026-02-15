@@ -21,6 +21,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
+import { StatusHistory } from "@/components/tasks/status-history";
 import { LabelPicker } from "@/components/tasks/label-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, Plus } from "lucide-react";
@@ -393,6 +394,17 @@ function TaskSheetForm({
               </Button>
             </div>
           </div>
+
+          {/* Status History */}
+          {task.statusHistory?.length > 0 && (
+            <>
+              <Separator />
+              <StatusHistory
+                statusHistory={task.statusHistory}
+                columns={columns}
+              />
+            </>
+          )}
         </div>
 
         {/* Actions pinned to bottom */}

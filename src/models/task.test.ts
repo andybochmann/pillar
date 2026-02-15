@@ -220,6 +220,54 @@ describe("Task Model", () => {
     expect(tasks[2].title).toBe("High task");
   });
 
+  it("defaults statusHistory to empty array", async () => {
+    const task = await Task.create({
+      title: "No history",
+      projectId,
+      userId,
+      columnId: "todo",
+    });
+
+    expect(task.statusHistory).toEqual([]);
+  });
+
+  it("stores statusHistory entries with columnId and timestamp", async () => {
+    const now = new Date("2026-02-14T10:00:00Z");
+    const later = new Date("2026-02-14T14:00:00Z");
+    const task = await Task.create({
+      title: "With history",
+      projectId,
+      userId,
+      columnId: "in-progress",
+      statusHistory: [
+        { columnId: "todo", timestamp: now },
+        { columnId: "in-progress", timestamp: later },
+      ],
+    });
+
+    expect(task.statusHistory).toHaveLength(2);
+    expect(task.statusHistory[0].columnId).toBe("todo");
+    expect(task.statusHistory[0].timestamp).toEqual(now);
+    expect(task.statusHistory[1].columnId).toBe("in-progress");
+    expect(task.statusHistory[1].timestamp).toEqual(later);
+  });
+
+  it("persists and retrieves statusHistory correctly", async () => {
+    const timestamp = new Date("2026-02-14T12:00:00Z");
+    const created = await Task.create({
+      title: "Persist history",
+      projectId,
+      userId,
+      columnId: "todo",
+      statusHistory: [{ columnId: "todo", timestamp }],
+    });
+
+    const retrieved = await Task.findById(created._id);
+    expect(retrieved!.statusHistory).toHaveLength(1);
+    expect(retrieved!.statusHistory[0].columnId).toBe("todo");
+    expect(retrieved!.statusHistory[0].timestamp).toEqual(timestamp);
+  });
+
   it("queries tasks by due date range", async () => {
     const today = new Date("2026-02-13");
     const tomorrow = new Date("2026-02-14");
