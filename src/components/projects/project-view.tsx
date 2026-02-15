@@ -5,10 +5,21 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { KanbanBoard } from "@/components/kanban";
+import { ListView } from "@/components/list/list-view";
 import { ProjectSettings } from "@/components/projects/project-settings";
 import { toast } from "sonner";
 import { Users } from "lucide-react";
-import type { Project, Task, ProjectMember as ProjectMemberType } from "@/types";
+import type { Project, Task, ProjectMember as ProjectMemberType, Column } from "@/types";
+
+function getListTaskCounts(columns: Column[], taskCounts: Record<string, number>): string {
+  const sorted = [...columns].sort((a, b) => a.order - b.order);
+  const lastColId = sorted[sorted.length - 1]?.id;
+  const completed = taskCounts[lastColId] ?? 0;
+  const active = Object.entries(taskCounts)
+    .filter(([id]) => id !== lastColId)
+    .reduce((sum, [, count]) => sum + count, 0);
+  return `${active} active · ${completed} completed`;
+}
 
 interface ProjectViewProps {
   project: Project;
@@ -93,10 +104,12 @@ export function ProjectView({
           )}
           {taskCounts && Object.keys(taskCounts).length > 0 && (
             <p className="mt-1 text-sm text-muted-foreground">
-              {currentProject.columns
-                .filter((col) => taskCounts[col.id])
-                .map((col) => `${taskCounts[col.id]} ${col.name.toLowerCase()}`)
-                .join(" · ")}
+              {currentProject.viewType === "list"
+                ? getListTaskCounts(currentProject.columns, taskCounts)
+                : currentProject.columns
+                    .filter((col) => taskCounts[col.id])
+                    .map((col) => `${taskCounts[col.id]} ${col.name.toLowerCase()}`)
+                    .join(" · ")}
             </p>
           )}
         </div>
@@ -109,12 +122,21 @@ export function ProjectView({
         </Button>
       </div>
 
-      <KanbanBoard
-        projectId={currentProject._id}
-        columns={currentProject.columns}
-        initialTasks={initialTasks}
-        members={members}
-      />
+      {currentProject.viewType === "list" ? (
+        <ListView
+          projectId={currentProject._id}
+          columns={currentProject.columns}
+          initialTasks={initialTasks}
+          members={members}
+        />
+      ) : (
+        <KanbanBoard
+          projectId={currentProject._id}
+          columns={currentProject.columns}
+          initialTasks={initialTasks}
+          members={members}
+        />
+      )}
 
       <ProjectSettings
         project={currentProject}

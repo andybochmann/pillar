@@ -69,6 +69,7 @@ describe("CreateProjectDialog", () => {
       name: "My Project",
       description: "A test project",
       categoryId: "cat-1",
+      viewType: "board",
     });
   });
 

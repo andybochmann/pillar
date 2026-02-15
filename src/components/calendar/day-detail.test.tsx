@@ -15,6 +15,7 @@ const mockProjects: Project[] = [
     categoryId: "cat-1",
     userId: "u1",
     columns: [{ id: "todo", name: "To Do", order: 0 }],
+    viewType: "board",
     archived: false,
     createdAt: "",
     updatedAt: "",

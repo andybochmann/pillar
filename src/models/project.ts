@@ -13,6 +13,7 @@ export interface IProject extends Document {
   categoryId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   columns: IColumn[];
+  viewType: "board" | "list";
   archived: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -51,6 +52,11 @@ const ProjectSchema = new Schema<IProject>(
         { id: "review", name: "Review", order: 2 },
         { id: "done", name: "Done", order: 3 },
       ],
+    },
+    viewType: {
+      type: String,
+      enum: ["board", "list"],
+      default: "board",
     },
     archived: { type: Boolean, default: false },
   },

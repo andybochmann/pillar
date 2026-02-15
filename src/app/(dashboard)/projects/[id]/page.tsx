@@ -57,6 +57,7 @@ export default async function ProjectPage({ params }: PageProps) {
       name: c.name,
       order: c.order,
     })),
+    viewType: project.viewType ?? "board",
     archived: project.archived,
     currentUserRole: role,
     memberCount,

@@ -21,6 +21,7 @@ const UpdateProjectSchema = z.object({
       }),
     )
     .optional(),
+  viewType: z.enum(["board", "list"]).optional(),
   archived: z.boolean().optional(),
 });
 

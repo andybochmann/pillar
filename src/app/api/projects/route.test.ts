@@ -170,5 +170,44 @@ describe("Projects API", () => {
       );
       expect(res.status).toBe(400);
     });
+
+    it("creates a list project with list default columns", async () => {
+      await setupFixtures();
+      const res = await POST(
+        createRequest("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Shopping List",
+            categoryId: categoryId.toString(),
+            viewType: "list",
+          }),
+        }),
+      );
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.viewType).toBe("list");
+      expect(data.columns).toHaveLength(2);
+      expect(data.columns[0].id).toBe("todo");
+      expect(data.columns[1].id).toBe("done");
+    });
+
+    it("creates a board project with default viewType", async () => {
+      await setupFixtures();
+      const res = await POST(
+        createRequest("/api/projects", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: "Board Project",
+            categoryId: categoryId.toString(),
+          }),
+        }),
+      );
+      expect(res.status).toBe(201);
+      const data = await res.json();
+      expect(data.viewType).toBe("board");
+      expect(data.columns).toHaveLength(4);
+    });
   });
 });

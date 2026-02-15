@@ -180,6 +180,27 @@ describe("Projects [id] API", () => {
       expect(res.status).toBe(404);
     });
 
+    it("updates viewType", async () => {
+      await setupFixtures();
+      const proj = await createTestProject({
+        name: "Board",
+        userId,
+        categoryId,
+      });
+
+      const res = await PATCH(
+        new NextRequest(`http://localhost:3000/api/projects/${proj._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ viewType: "list" }),
+        }),
+        makeParams(proj._id.toString()),
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.viewType).toBe("list");
+    });
+
     it("reassigns orphaned tasks when column is removed", async () => {
       await setupFixtures();
       const proj = await createTestProject({

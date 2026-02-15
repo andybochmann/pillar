@@ -57,6 +57,7 @@ interface CreateProjectInput {
   categoryId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
   columns?: { id: string; name: string; order: number }[];
+  viewType?: "board" | "list";
   archived?: boolean;
 }
 
@@ -69,6 +70,7 @@ export async function createTestProject(
     categoryId: overrides.categoryId,
     userId: overrides.userId,
     columns: overrides.columns,
+    viewType: overrides.viewType,
     archived: overrides.archived ?? false,
   });
 }

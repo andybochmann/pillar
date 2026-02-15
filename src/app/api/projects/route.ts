@@ -8,6 +8,11 @@ import { Category } from "@/models/category";
 import { ProjectMember } from "@/models/project-member";
 import { getAccessibleProjectIds } from "@/lib/project-access";
 
+const LIST_DEFAULT_COLUMNS = [
+  { id: "todo", name: "To Do", order: 0 },
+  { id: "done", name: "Done", order: 1 },
+];
+
 const CreateProjectSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional(),
@@ -21,6 +26,7 @@ const CreateProjectSchema = z.object({
       }),
     )
     .optional(),
+  viewType: z.enum(["board", "list"]).optional(),
 });
 
 export async function GET(request: Request) {
@@ -104,8 +110,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const projectData = { ...result.data };
+    if (projectData.viewType === "list" && !projectData.columns) {
+      projectData.columns = LIST_DEFAULT_COLUMNS;
+    }
+
     const project = await Project.create({
-      ...result.data,
+      ...projectData,
       userId: session.user.id,
     });
 

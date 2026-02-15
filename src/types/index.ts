@@ -1,5 +1,6 @@
 export type Priority = "urgent" | "high" | "medium" | "low";
 export type ProjectRole = "owner" | "editor";
+export type ViewType = "board" | "list";
 
 export type RecurrenceFrequency =
   | "daily"
@@ -38,6 +39,7 @@ export interface Project {
   categoryId: string;
   userId: string;
   columns: Column[];
+  viewType: ViewType;
   archived: boolean;
   currentUserRole?: ProjectRole;
   memberCount?: number;

@@ -18,6 +18,7 @@ import { ShareDialog } from "./share-dialog";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
 import { Users } from "lucide-react";
+import { ViewTypeSelector } from "@/components/shared/view-type-selector";
 import type { Project, Column, Task } from "@/types";
 
 interface ProjectSettingsProps {
@@ -60,6 +61,11 @@ export function ProjectSettings({
       await onUpdate({ description });
       toast.success("Description updated");
     }
+  }
+
+  async function handleViewTypeChange(viewType: "board" | "list") {
+    await onUpdate({ viewType });
+    toast.success(`Switched to ${viewType} view`);
   }
 
   async function handleColumnsSave(columns: Column[]) {
@@ -107,11 +113,28 @@ export function ProjectSettings({
 
             <Separator />
 
-            <ColumnManager
-              columns={project.columns}
-              onSave={handleColumnsSave}
-              hasTasksInColumn={hasTasksInColumn}
-            />
+            <div className="space-y-2">
+              <Label>View type</Label>
+              <p className="text-xs text-muted-foreground">
+                Switch between Kanban board and checklist view
+              </p>
+              <ViewTypeSelector
+                value={project.viewType ?? "board"}
+                onChange={handleViewTypeChange}
+              />
+            </div>
+
+            {project.viewType !== "list" && (
+              <>
+                <Separator />
+
+                <ColumnManager
+                  columns={project.columns}
+                  onSave={handleColumnsSave}
+                  hasTasksInColumn={hasTasksInColumn}
+                />
+              </>
+            )}
 
             <Separator />
 

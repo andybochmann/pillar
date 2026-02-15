@@ -20,7 +20,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import type { Category } from "@/types";
+import { ViewTypeSelector } from "@/components/shared/view-type-selector";
+import type { Category, ViewType } from "@/types";
 
 interface CreateProjectDialogProps {
   open: boolean;
@@ -31,6 +32,7 @@ interface CreateProjectDialogProps {
     name: string;
     description?: string;
     categoryId: string;
+    viewType?: ViewType;
   }) => Promise<unknown>;
 }
 
@@ -44,11 +46,13 @@ export function CreateProjectDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [categoryId, setCategoryId] = useState(defaultCategoryId ?? "");
+  const [viewType, setViewType] = useState<ViewType>("board");
   const [submitting, setSubmitting] = useState(false);
 
   function resetForm() {
     setName("");
     setDescription("");
+    setViewType("board");
     setCategoryId(defaultCategoryId ?? "");
   }
 
@@ -62,6 +66,7 @@ export function CreateProjectDialog({
         name: name.trim(),
         description: description.trim() || undefined,
         categoryId,
+        viewType,
       });
       toast.success("Project created");
       resetForm();
@@ -104,6 +109,11 @@ export function CreateProjectDialog({
               maxLength={500}
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>View type</Label>
+            <ViewTypeSelector value={viewType} onChange={setViewType} />
           </div>
 
           <div className="space-y-2">

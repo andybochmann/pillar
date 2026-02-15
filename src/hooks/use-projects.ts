@@ -15,13 +15,14 @@ interface UseProjectsReturn {
     name: string;
     description?: string;
     categoryId: string;
+    viewType?: "board" | "list";
   }) => Promise<Project>;
   updateProject: (
     id: string,
     data: Partial<
       Pick<
         Project,
-        "name" | "description" | "categoryId" | "columns" | "archived"
+        "name" | "description" | "categoryId" | "columns" | "viewType" | "archived"
       >
     >,
   ) => Promise<Project>;
@@ -61,6 +62,7 @@ export function useProjects(): UseProjectsReturn {
       name: string;
       description?: string;
       categoryId: string;
+      viewType?: "board" | "list";
     }) => {
       const res = await offlineFetch("/api/projects", {
         method: "POST",
@@ -84,7 +86,7 @@ export function useProjects(): UseProjectsReturn {
       data: Partial<
         Pick<
           Project,
-          "name" | "description" | "categoryId" | "columns" | "archived"
+          "name" | "description" | "categoryId" | "columns" | "viewType" | "archived"
         >
       >,
     ) => {

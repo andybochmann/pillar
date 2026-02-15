@@ -16,7 +16,6 @@ import {
   Plus,
   LogOut,
   FolderKanban,
-  Users,
 } from "lucide-react";
 import { CategoryActions } from "@/components/categories/category-actions";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { cn } from "@/lib/utils";
+import { cn, getViewIcon } from "@/lib/utils";
 import { CreateCategoryDialog } from "@/components/categories/create-dialog";
 import { CreateProjectDialog } from "@/components/projects/create-dialog";
 import { useCategories } from "@/hooks/use-categories";
@@ -234,27 +233,31 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                       />
                     </div>
                     {!isCatCollapsed &&
-                      cat.projects.map((project) => (
-                        <Link
-                          key={project._id}
-                          href={`/projects/${project._id}`}
-                          onClick={onNavigate}
-                          className={cn(
-                            "flex items-center rounded-md px-3 py-1.5 pl-9 text-sm transition-colors",
-                            pathname === `/projects/${project._id}`
-                              ? "bg-primary/10 text-primary font-medium"
-                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                            project.archived && "opacity-50",
-                          )}
-                        >
-                          {project.name}
-                          {project.archived && (
-                            <span className="ml-auto text-xs text-muted-foreground">
-                              archived
-                            </span>
-                          )}
-                        </Link>
-                      ))}
+                      cat.projects.map((project) => {
+                        const ViewIcon = getViewIcon(project.viewType ?? "board");
+                        return (
+                          <Link
+                            key={project._id}
+                            href={`/projects/${project._id}`}
+                            onClick={onNavigate}
+                            className={cn(
+                              "flex items-center gap-1.5 rounded-md px-3 py-1.5 pl-9 text-sm transition-colors",
+                              pathname === `/projects/${project._id}`
+                                ? "bg-primary/10 text-primary font-medium"
+                                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                              project.archived && "opacity-50",
+                            )}
+                          >
+                            <ViewIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            {project.name}
+                            {project.archived && (
+                              <span className="ml-auto text-xs text-muted-foreground">
+                                archived
+                              </span>
+                            )}
+                          </Link>
+                        );
+                      })}
                   </div>
                 );
               })}
@@ -285,28 +288,31 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                       Shared with me
                     </span>
                   </div>
-                  {sharedProjects.map((project) => (
-                    <Link
-                      key={project._id}
-                      href={`/projects/${project._id}`}
-                      onClick={onNavigate}
-                      className={cn(
-                        "flex items-center gap-2 rounded-md px-3 py-1.5 pl-6 text-sm transition-colors",
-                        pathname === `/projects/${project._id}`
-                          ? "bg-primary/10 text-primary font-medium"
-                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                        project.archived && "opacity-50",
-                      )}
-                    >
-                      <Users className="h-3 w-3 shrink-0" />
-                      {project.name}
-                      {project.archived && (
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          archived
-                        </span>
-                      )}
-                    </Link>
-                  ))}
+                  {sharedProjects.map((project) => {
+                    const ViewIcon = getViewIcon(project.viewType ?? "board");
+                    return (
+                      <Link
+                        key={project._id}
+                        href={`/projects/${project._id}`}
+                        onClick={onNavigate}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md px-3 py-1.5 pl-6 text-sm transition-colors",
+                          pathname === `/projects/${project._id}`
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                          project.archived && "opacity-50",
+                        )}
+                      >
+                        <ViewIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        {project.name}
+                        {project.archived && (
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            archived
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
                 </>
               )}
 
