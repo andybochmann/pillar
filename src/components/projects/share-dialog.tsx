@@ -10,6 +10,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { UserPlus, X, Crown, Users, Loader2 } from "lucide-react";
@@ -38,6 +45,7 @@ export function ShareDialog({
     loading: membersLoading,
     fetchMembers,
     addMember,
+    updateMemberRole,
     removeMember,
   } = useProjectMembers(projectId);
   const { results, loading: searchLoading, search, clear } = useUserSearch();
@@ -60,6 +68,15 @@ export function ShareDialog({
       setEmailInput("");
       clear();
       toast.success("Member added");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleRoleChange(memberId: string, role: ProjectRole) {
+    try {
+      await updateMemberRole(projectId, memberId, role);
+      toast.success("Role updated");
     } catch (err) {
       toast.error((err as Error).message);
     }
@@ -175,6 +192,24 @@ export function ShareDialog({
                         <Crown className="h-3 w-3" />
                         Owner
                       </Badge>
+                    ) : isOwner ? (
+                      <Select
+                        value={member.role}
+                        onValueChange={(value) =>
+                          handleRoleChange(member._id, value as ProjectRole)
+                        }
+                      >
+                        <SelectTrigger
+                          className="h-7 w-24 text-xs"
+                          aria-label={`Role for ${member.userName}`}
+                        >
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="editor">Editor</SelectItem>
+                          <SelectItem value="owner">Owner</SelectItem>
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <Badge variant="outline" className="text-xs">
                         Editor

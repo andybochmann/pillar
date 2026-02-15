@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/user";
@@ -82,34 +81,24 @@ export async function DELETE() {
 
   await connectDB();
 
-  const dbSession = await mongoose.startSession();
   try {
-    dbSession.startTransaction();
-
-    const deleted = await User.findByIdAndDelete(session.user.id, {
-      session: dbSession,
-    });
+    const deleted = await User.findByIdAndDelete(session.user.id);
     if (!deleted) {
-      await dbSession.abortTransaction();
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     await Promise.all([
-      Task.deleteMany({ userId: session.user.id }, { session: dbSession }),
-      Project.deleteMany({ userId: session.user.id }, { session: dbSession }),
-      Category.deleteMany({ userId: session.user.id }, { session: dbSession }),
-      Label.deleteMany({ userId: session.user.id }, { session: dbSession }),
+      Task.deleteMany({ userId: session.user.id }),
+      Project.deleteMany({ userId: session.user.id }),
+      Category.deleteMany({ userId: session.user.id }),
+      Label.deleteMany({ userId: session.user.id }),
     ]);
 
-    await dbSession.commitTransaction();
     return NextResponse.json({ message: "Account deleted" });
   } catch {
-    await dbSession.abortTransaction();
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
     );
-  } finally {
-    dbSession.endSession();
   }
 }

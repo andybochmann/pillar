@@ -16,16 +16,12 @@ export async function getAccessibleProjectIds(
     memberDocs.map((m) => m.projectId.toString()),
   );
 
-  // Fallback: include projects owned by userId that have no ProjectMember records
+  // Always include projects created by this user (Project.userId).
+  // Covers both non-migrated projects and the case where the owner's
+  // own ProjectMember record is missing.
   const ownedProjects = await Project.find({ userId }, { _id: 1 }).lean();
   for (const p of ownedProjects) {
-    const pid = p._id.toString();
-    if (!memberProjectIds.has(pid)) {
-      const hasMember = await ProjectMember.exists({ projectId: p._id });
-      if (!hasMember) {
-        memberProjectIds.add(pid);
-      }
-    }
+    memberProjectIds.add(p._id.toString());
   }
 
   return [...memberProjectIds];
@@ -46,15 +42,13 @@ export async function getProjectRole(
 
   if (member) return member.role;
 
-  // Fallback: check if user is the project creator and no members exist
+  // Fallback: project creator always has owner access, even if their
+  // ProjectMember record is missing (non-migrated or not yet created).
   const project = await Project.findOne(
     { _id: projectId, userId },
     { _id: 1 },
   ).lean();
-  if (project) {
-    const hasMember = await ProjectMember.exists({ projectId });
-    if (!hasMember) return "owner";
-  }
+  if (project) return "owner";
 
   return null;
 }

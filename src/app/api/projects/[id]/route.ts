@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
@@ -157,14 +156,10 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   // Get target user IDs before deleting
   const targetUserIds = await getProjectMemberUserIds(id);
 
-  const dbSession = await mongoose.startSession();
   try {
-    dbSession.startTransaction();
-
-    const project = await Project.findByIdAndDelete(id, { session: dbSession });
+    const project = await Project.findByIdAndDelete(id);
 
     if (!project) {
-      await dbSession.abortTransaction();
       return NextResponse.json(
         { error: "Project not found" },
         { status: 404 },
@@ -172,10 +167,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     // Cascade: delete all tasks and members
-    await Task.deleteMany({ projectId: id }, { session: dbSession });
-    await ProjectMember.deleteMany({ projectId: id }, { session: dbSession });
-
-    await dbSession.commitTransaction();
+    await Task.deleteMany({ projectId: id });
+    await ProjectMember.deleteMany({ projectId: id });
 
     const sessionId = request.headers.get("X-Session-Id") ?? "";
     emitSyncEvent({
@@ -190,12 +183,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch {
-    await dbSession.abortTransaction();
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
     );
-  } finally {
-    dbSession.endSession();
   }
 }

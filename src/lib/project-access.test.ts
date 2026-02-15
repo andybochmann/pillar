@@ -89,6 +89,26 @@ describe("project-access", () => {
       expect(ids).toContain(project._id.toString());
     });
 
+    it("includes owned projects even when only other members have records", async () => {
+      const owner = await createTestUser({ email: "owner-norec@test.com" });
+      const editor = await createTestUser({ email: "editor-norec@test.com" });
+      const category = await createTestCategory({ userId: owner._id });
+      const project = await createTestProject({
+        categoryId: category._id,
+        userId: owner._id,
+      });
+      // Only editor has a ProjectMember record — owner does not
+      await createTestProjectMember({
+        projectId: project._id,
+        userId: editor._id,
+        role: "editor",
+        invitedBy: owner._id,
+      });
+
+      const ids = await getAccessibleProjectIds(owner._id.toString());
+      expect(ids).toContain(project._id.toString());
+    });
+
     it("returns multiple accessible projects", async () => {
       const { owner, category } = await setupFixtures();
       const project2 = await createTestProject({
@@ -142,6 +162,29 @@ describe("project-access", () => {
       const project = await createTestProject({
         categoryId: category._id,
         userId: owner._id,
+      });
+
+      const role = await getProjectRole(
+        owner._id.toString(),
+        project._id.toString(),
+      );
+      expect(role).toBe("owner");
+    });
+
+    it("returns 'owner' for project creator even when only other members have records", async () => {
+      const owner = await createTestUser({ email: "fb-owner-norec@test.com" });
+      const editor = await createTestUser({ email: "fb-editor-norec@test.com" });
+      const category = await createTestCategory({ userId: owner._id });
+      const project = await createTestProject({
+        categoryId: category._id,
+        userId: owner._id,
+      });
+      // Only editor has a ProjectMember record
+      await createTestProjectMember({
+        projectId: project._id,
+        userId: editor._id,
+        role: "editor",
+        invitedBy: owner._id,
       });
 
       const role = await getProjectRole(

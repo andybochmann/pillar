@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
@@ -93,17 +92,13 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   const { id } = await params;
   await connectDB();
 
-  const dbSession = await mongoose.startSession();
   try {
-    dbSession.startTransaction();
-
-    const label = await Label.findOneAndDelete(
-      { _id: id, userId: session.user.id },
-      { session: dbSession },
-    );
+    const label = await Label.findOneAndDelete({
+      _id: id,
+      userId: session.user.id,
+    });
 
     if (!label) {
-      await dbSession.abortTransaction();
       return NextResponse.json(
         { error: "Label not found" },
         { status: 404 },
@@ -113,10 +108,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     await Task.updateMany(
       { userId: session.user.id, labels: label._id },
       { $pull: { labels: label._id } },
-      { session: dbSession },
     );
-
-    await dbSession.commitTransaction();
 
     emitSyncEvent({
       entity: "label",
@@ -129,12 +121,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch {
-    await dbSession.abortTransaction();
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
     );
-  } finally {
-    dbSession.endSession();
   }
 }

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
@@ -102,17 +101,13 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   const { id } = await params;
   await connectDB();
 
-  const dbSession = await mongoose.startSession();
   try {
-    dbSession.startTransaction();
-
-    const category = await Category.findOneAndDelete(
-      { _id: id, userId: session.user.id },
-      { session: dbSession },
-    );
+    const category = await Category.findOneAndDelete({
+      _id: id,
+      userId: session.user.id,
+    });
 
     if (!category) {
-      await dbSession.abortTransaction();
       return NextResponse.json(
         { error: "Category not found" },
         { status: 404 },
@@ -122,19 +117,13 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     const projects = await Project.find(
       { categoryId: id, userId: session.user.id },
       { _id: 1 },
-      { session: dbSession },
     );
     const projectIds = projects.map((p) => p._id);
-    await Task.deleteMany(
-      { projectId: { $in: projectIds }, userId: session.user.id },
-      { session: dbSession },
-    );
-    await Project.deleteMany(
-      { categoryId: id, userId: session.user.id },
-      { session: dbSession },
-    );
-
-    await dbSession.commitTransaction();
+    await Task.deleteMany({
+      projectId: { $in: projectIds },
+      userId: session.user.id,
+    });
+    await Project.deleteMany({ categoryId: id, userId: session.user.id });
 
     const sessionId = request.headers.get("X-Session-Id") ?? "";
     emitSyncEvent({
@@ -148,12 +137,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch {
-    await dbSession.abortTransaction();
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },
     );
-  } finally {
-    dbSession.endSession();
   }
 }
