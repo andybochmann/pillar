@@ -24,7 +24,7 @@ import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
 import { StatusHistory } from "@/components/tasks/status-history";
 import { LabelPicker } from "@/components/tasks/label-picker";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Plus } from "lucide-react";
+import { X, Plus, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type {
   Task,
@@ -125,12 +125,33 @@ function TaskSheetForm({
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks ?? []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [generating, setGenerating] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkAIStatus() {
+      try {
+        const res = await fetch("/api/ai/status");
+        const data: { enabled: boolean } = await res.json();
+        if (!cancelled) setAiEnabled(data.enabled);
+      } catch {
+        // Silently fail - AI will remain disabled
+      }
+    }
+
+    checkAIStatus();
+    return () => {
+      cancelled = true;
     };
   }, []);
 
@@ -234,6 +255,46 @@ function TaskSheetForm({
     if (e.key === "Enter") {
       e.preventDefault();
       handleAddSubtask();
+    }
+  }
+
+  async function handleGenerateSubtasks() {
+    const MAX_SUBTASKS = 50;
+    const REQUESTED_COUNT = 5;
+    const remainingSlots = MAX_SUBTASKS - subtasks.length;
+    const maxCount = Math.min(REQUESTED_COUNT, remainingSlots);
+
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/ai/generate-subtasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: task.title,
+          description: task.description,
+          priority: task.priority,
+          existingSubtasks: subtasks.map((s) => s.title),
+          maxCount,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Generation failed");
+
+      const data = (await res.json()) as { subtasks: string[] };
+      const newSubtasks: Subtask[] = data.subtasks.map((title, i) => ({
+        _id: `temp-${Date.now()}-${i}`,
+        title,
+        completed: false,
+      }));
+
+      const updated = [...subtasks, ...newSubtasks].slice(0, MAX_SUBTASKS);
+      setSubtasks(updated);
+      saveField({ subtasks: updated });
+      toast.success(`Added ${newSubtasks.length} subtasks`);
+    } catch {
+      toast.error("Failed to generate subtasks");
+    } finally {
+      setGenerating(false);
     }
   }
 
@@ -413,6 +474,21 @@ function TaskSheetForm({
                 </div>
               ))}
             </div>
+            {aiEnabled && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleGenerateSubtasks}
+                disabled={generating || subtasks.length >= 50}
+              >
+                {generating ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-2 h-4 w-4" />
+                )}
+                Generate subtasks
+              </Button>
+            )}
             <div className="flex items-center gap-2">
               <Input
                 placeholder="Add a subtask…"

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TaskSheet } from "./task-sheet";
 import type { Task, Column, Label as LabelType } from "@/types";
@@ -7,6 +7,8 @@ import type { Task, Column, Label as LabelType } from "@/types";
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
+
+const mockFetch = vi.fn();
 
 const mockColumns: Column[] = [
   { id: "todo", name: "To Do", order: 0 },
@@ -53,6 +55,16 @@ const mockTask: Task = {
 beforeEach(() => {
   vi.restoreAllMocks();
   vi.useFakeTimers({ shouldAdvanceTime: true });
+  mockFetch.mockReset();
+  vi.stubGlobal("fetch", mockFetch);
+  // Default: AI status returns disabled
+  mockFetch.mockResolvedValue(
+    new Response(JSON.stringify({ enabled: false }), { status: 200 }),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 describe("TaskSheet", () => {
@@ -252,5 +264,136 @@ describe("TaskSheet", () => {
     await user.type(input, "Enter task{Enter}");
 
     expect(screen.getByText("Enter task")).toBeInTheDocument();
+  });
+
+  describe("AI subtask generation", () => {
+    it("does not show generate button when AI is disabled", async () => {
+      mockFetch.mockResolvedValue(
+        new Response(JSON.stringify({ enabled: false }), { status: 200 }),
+      );
+      render(<TaskSheet {...defaultProps} />);
+
+      // Wait for status check to complete
+      await vi.advanceTimersByTimeAsync(100);
+
+      expect(
+        screen.queryByRole("button", { name: /Generate subtasks/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows generate button when AI is enabled", async () => {
+      mockFetch.mockResolvedValue(
+        new Response(JSON.stringify({ enabled: true }), { status: 200 }),
+      );
+      render(<TaskSheet {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Generate subtasks/i }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("generates subtasks when button is clicked", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+
+      // First call: status check, second call: generate
+      mockFetch
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ enabled: true }), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              subtasks: ["Write tests", "Implement feature"],
+            }),
+            { status: 200 },
+          ),
+        );
+
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Generate subtasks/i }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(
+        screen.getByRole("button", { name: /Generate subtasks/i }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText("Write tests")).toBeInTheDocument();
+        expect(screen.getByText("Implement feature")).toBeInTheDocument();
+      });
+
+      vi.advanceTimersByTime(600);
+      expect(onUpdate).toHaveBeenCalledWith(
+        "task-1",
+        expect.objectContaining({
+          subtasks: expect.arrayContaining([
+            expect.objectContaining({ title: "Write tests" }),
+            expect.objectContaining({ title: "Implement feature" }),
+          ]),
+        }),
+      );
+    });
+
+    it("shows error toast when generation fails", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const { toast } = await import("sonner");
+
+      mockFetch
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ enabled: true }), { status: 200 }),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({ error: "Failed to generate" }),
+            { status: 500 },
+          ),
+        );
+
+      render(<TaskSheet {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Generate subtasks/i }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(
+        screen.getByRole("button", { name: /Generate subtasks/i }),
+      );
+
+      await waitFor(() => {
+        expect(toast.error).toHaveBeenCalledWith("Failed to generate subtasks");
+      });
+    });
+
+    it("disables button when at 50 subtask limit", async () => {
+      mockFetch.mockResolvedValue(
+        new Response(JSON.stringify({ enabled: true }), { status: 200 }),
+      );
+
+      const fullTask: Task = {
+        ...mockTask,
+        subtasks: Array.from({ length: 50 }, (_, i) => ({
+          _id: `s${i}`,
+          title: `Subtask ${i}`,
+          completed: false,
+        })),
+      };
+
+      render(<TaskSheet {...defaultProps} task={fullTask} />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: /Generate subtasks/i }),
+        ).toBeDisabled();
+      });
+    });
   });
 });
