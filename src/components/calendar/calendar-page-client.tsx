@@ -9,6 +9,7 @@ import { DayDetail } from "./day-detail";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useTasks } from "@/hooks/use-tasks";
 import { useLabels } from "@/hooks/use-labels";
+import { useCategories } from "@/hooks/use-categories";
 import { toast } from "sonner";
 import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
 import type { Task, Project, CalendarViewType } from "@/types";
@@ -34,6 +35,7 @@ export function CalendarPageClient({
   const searchParams = useSearchParams();
   const { tasks, setTasks, updateTask, deleteTask } = useTasks(initialTasks);
   const { labels } = useLabels();
+  const { categories } = useCategories();
 
   const [viewType, setViewType] = useState<CalendarViewType>(initialViewType);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -46,6 +48,18 @@ export function CalendarPageClient({
   const selectedProject = selectedTask
     ? projects.find((p) => p._id === selectedTask.projectId)
     : null;
+
+  // Create a map of project ID to category color
+  const projectColors = useMemo(() => {
+    const colorMap = new Map<string, string>();
+    for (const project of projects) {
+      const category = categories.find((c) => c._id === project.categoryId);
+      if (category) {
+        colorMap.set(project._id, category.color);
+      }
+    }
+    return colorMap;
+  }, [projects, categories]);
 
   const filteredTasks = useMemo(() => {
     const hasFilters =

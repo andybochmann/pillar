@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { CalendarPageClient } from "./calendar-page-client";
-import type { Task, Project } from "@/types";
+import type { Task, Project, Category } from "@/types";
 import type { CalendarFilters } from "./calendar-filter-bar";
 
 // Mock next/navigation
@@ -36,6 +36,38 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
+// Mock hooks
+vi.mock("@/hooks/use-categories", () => ({
+  useCategories: vi.fn(() => ({
+    categories: [
+      {
+        _id: "cat-1",
+        name: "Work",
+        color: "#3b82f6",
+        userId: "u1",
+        order: 0,
+        createdAt: "",
+        updatedAt: "",
+      },
+      {
+        _id: "cat-2",
+        name: "Personal",
+        color: "#10b981",
+        userId: "u1",
+        order: 1,
+        createdAt: "",
+        updatedAt: "",
+      },
+    ],
+    loading: false,
+    error: null,
+    createCategory: vi.fn(),
+    updateCategory: vi.fn(),
+    deleteCategory: vi.fn(),
+    refresh: vi.fn(),
+  })),
+}));
+
 const mockProject: Project = {
   _id: "proj-1",
   name: "Test Project",
@@ -56,7 +88,7 @@ const mockProject2: Project = {
   _id: "proj-2",
   name: "Other Project",
   userId: "u1",
-  categoryId: "cat-1",
+  categoryId: "cat-2",
   columns: [
     { id: "todo", name: "To Do", order: 0 },
     { id: "in-progress", name: "In Progress", order: 1 },
@@ -325,5 +357,24 @@ describe("CalendarPageClient", () => {
     expect(screen.queryByText("Test task")).not.toBeInTheDocument();
     expect(screen.queryByText("Urgent task")).not.toBeInTheDocument();
     expect(screen.queryByText("Other project task")).not.toBeInTheDocument();
+  });
+
+  it("creates project color mapping from categories", () => {
+    // Test that component renders correctly with projects linked to categories
+    render(
+      <CalendarPageClient
+        {...defaultProps}
+        initialTasks={mockTasks}
+        projects={[mockProject, mockProject2]}
+      />,
+    );
+
+    // Component should render without errors
+    expect(screen.getByText("Test task")).toBeInTheDocument();
+    expect(screen.getByText("Other project task")).toBeInTheDocument();
+
+    // Project 1 is linked to cat-1 (#3b82f6 - blue)
+    // Project 2 is linked to cat-2 (#10b981 - green)
+    // The actual color usage will be tested when task pills are updated
   });
 });
