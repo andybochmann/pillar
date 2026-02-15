@@ -67,6 +67,13 @@ export interface StatusHistoryEntry {
   timestamp: string;
 }
 
+export interface TimeSession {
+  _id: string;
+  startedAt: string;
+  endedAt?: string | null;
+  userId: string;
+}
+
 export interface ProjectMember {
   _id: string;
   projectId: string;
@@ -95,6 +102,7 @@ export interface Task {
   order: number;
   labels: string[];
   subtasks: Subtask[];
+  timeSessions: TimeSession[];
   statusHistory: StatusHistoryEntry[];
   completedAt?: string | null;
   createdAt: string;

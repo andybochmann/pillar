@@ -27,6 +27,7 @@ interface ProjectViewProps {
   categoryName?: string;
   taskCounts?: Record<string, number>;
   members?: ProjectMemberType[];
+  currentUserId?: string;
 }
 
 export function ProjectView({
@@ -35,6 +36,7 @@ export function ProjectView({
   categoryName,
   taskCounts,
   members,
+  currentUserId,
 }: ProjectViewProps) {
   const router = useRouter();
   const [currentProject, setCurrentProject] = useState(project);
@@ -140,6 +142,7 @@ export function ProjectView({
           initialTasks={initialTasks}
           members={members}
           readOnly={readOnly}
+          currentUserId={currentUserId}
         />
       )}
 

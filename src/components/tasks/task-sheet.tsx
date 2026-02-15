@@ -26,6 +26,7 @@ import { LabelPicker } from "@/components/tasks/label-picker";
 import { Checkbox } from "@/components/ui/checkbox";
 import { X, Plus, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { TimeSessionsList } from "@/components/tasks/time-sessions-list";
 import type {
   Task,
   Subtask,
@@ -46,6 +47,10 @@ interface TaskSheetProps {
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
   members?: ProjectMember[];
+  currentUserId?: string;
+  onStartTracking?: (taskId: string) => void;
+  onStopTracking?: (taskId: string) => void;
+  onDeleteSession?: (taskId: string, sessionId: string) => void;
 }
 
 export function TaskSheet({
@@ -58,6 +63,10 @@ export function TaskSheet({
   allLabels,
   onCreateLabel,
   members,
+  currentUserId,
+  onStartTracking,
+  onStopTracking,
+  onDeleteSession,
 }: TaskSheetProps) {
   if (!task) return null;
 
@@ -77,6 +86,10 @@ export function TaskSheet({
           allLabels={allLabels}
           onCreateLabel={onCreateLabel}
           members={members}
+          currentUserId={currentUserId}
+          onStartTracking={onStartTracking}
+          onStopTracking={onStopTracking}
+          onDeleteSession={onDeleteSession}
         />
       </SheetContent>
     </Sheet>
@@ -94,6 +107,10 @@ interface TaskSheetFormProps {
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
   members?: ProjectMember[];
+  currentUserId?: string;
+  onStartTracking?: (taskId: string) => void;
+  onStopTracking?: (taskId: string) => void;
+  onDeleteSession?: (taskId: string, sessionId: string) => void;
 }
 
 function TaskSheetForm({
@@ -105,6 +122,10 @@ function TaskSheetForm({
   allLabels,
   onCreateLabel,
   members,
+  currentUserId,
+  onStartTracking,
+  onStopTracking,
+  onDeleteSession,
 }: TaskSheetFormProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? "");
@@ -510,6 +531,45 @@ function TaskSheetForm({
               </Button>
             </div>
           </div>
+
+          {/* Time Tracking */}
+          {currentUserId && (
+            <>
+              <Separator />
+              <div className="space-y-2">
+                {onStartTracking && onStopTracking && (() => {
+                  const activeSession = task.timeSessions?.find(
+                    (s) => s.userId === currentUserId && !s.endedAt,
+                  );
+                  return activeSession ? (
+                    <Button
+                      variant="outline"
+                      className="w-full text-green-600"
+                      onClick={() => onStopTracking(task._id)}
+                    >
+                      <Square className="mr-2 h-4 w-4 fill-current" />
+                      Stop Tracking
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => onStartTracking(task._id)}
+                    >
+                      <Play className="mr-2 h-4 w-4" />
+                      Start Tracking
+                    </Button>
+                  );
+                })()}
+                <TimeSessionsList
+                  sessions={task.timeSessions ?? []}
+                  onDeleteSession={(sessionId) =>
+                    onDeleteSession?.(task._id, sessionId)
+                  }
+                />
+              </div>
+            </>
+          )}
 
           {/* Status History */}
           {task.statusHistory?.length > 0 && (

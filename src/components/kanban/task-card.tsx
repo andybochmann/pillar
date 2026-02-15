@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, ListChecks } from "lucide-react";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
+import { TimeTrackingButton } from "@/components/tasks/time-tracking-button";
 import type { Task, Priority } from "@/types";
 
 interface TaskCardProps {
@@ -26,6 +27,9 @@ interface TaskCardProps {
   memberNames?: Map<string, string>;
   selected?: boolean;
   onSelect?: (taskId: string) => void;
+  currentUserId?: string;
+  onStartTracking?: (taskId: string) => void;
+  onStopTracking?: (taskId: string) => void;
 }
 
 const priorities: Priority[] = ["urgent", "high", "medium", "low"];
@@ -77,6 +81,9 @@ export function TaskCard({
   memberNames,
   selected,
   onSelect,
+  currentUserId,
+  onStartTracking,
+  onStopTracking,
 }: TaskCardProps) {
   const {
     attributes,
@@ -95,6 +102,13 @@ export function TaskCard({
   const priority = priorityConfig[task.priority];
   const dueDateStyle = getDueDateStyle(task.dueDate);
 
+  const activeSession = task.timeSessions?.find((s) => !s.endedAt);
+  const isCurrentUserActive =
+    !!currentUserId &&
+    !!activeSession &&
+    activeSession.userId === currentUserId;
+  const isOtherUserActive = !!activeSession && !isCurrentUserActive;
+
   return (
     <Card
       ref={setNodeRef}
@@ -103,7 +117,7 @@ export function TaskCard({
       {...listeners}
       onClick={onClick}
       className={cn(
-        "cursor-grab active:cursor-grabbing",
+        "group/card cursor-grab active:cursor-grabbing",
         isDragging && "opacity-50",
         isOverlay && "shadow-lg rotate-2",
         onClick && "cursor-pointer hover:ring-1 hover:ring-primary/20",
@@ -205,6 +219,16 @@ export function TaskCard({
               </span>
             );
           })()}
+          {currentUserId && onStartTracking && onStopTracking && (
+            <TimeTrackingButton
+              taskId={task._id}
+              isActive={isCurrentUserActive}
+              isOtherUserActive={isOtherUserActive}
+              activeStartedAt={isCurrentUserActive ? activeSession?.startedAt : null}
+              onStart={onStartTracking}
+              onStop={onStopTracking}
+            />
+          )}
           {task.labels.map((labelId) => {
             const color = labelColors?.get(labelId);
             const name = labelNames?.get(labelId);

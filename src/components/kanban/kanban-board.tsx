@@ -30,6 +30,7 @@ import { useTasks } from "@/hooks/use-tasks";
 import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
 import { isToday, isBefore, startOfDay, endOfWeek } from "date-fns";
+import { useTimeTracking } from "@/hooks/use-time-tracking";
 import type { Task, Column, Priority, ProjectMember } from "@/types";
 
 interface KanbanBoardProps {
@@ -38,6 +39,7 @@ interface KanbanBoardProps {
   initialTasks: Task[];
   members?: ProjectMember[];
   readOnly?: boolean;
+  currentUserId?: string;
 }
 
 export function KanbanBoard({
@@ -46,6 +48,7 @@ export function KanbanBoard({
   initialTasks,
   members,
   readOnly,
+  currentUserId,
 }: KanbanBoardProps) {
   const { tasks, setTasks, createTask, updateTask, deleteTask } =
     useTasks(initialTasks, projectId);
@@ -57,6 +60,11 @@ export function KanbanBoard({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [newTaskColumnId, setNewTaskColumnId] = useState<string | null>(null);
   const [dndAnnouncement, setDndAnnouncement] = useState("");
+  const { startTracking, stopTracking, deleteSession: deleteTimeSession } = useTimeTracking(
+    tasks,
+    setTasks,
+    currentUserId ?? "",
+  );
 
   const sortedColumns = useMemo(
     () => [...columns].sort((a, b) => a.order - b.order),
@@ -261,6 +269,24 @@ export function KanbanBoard({
     setSelectedTask(null);
   }
 
+  async function handleStartTracking(taskId: string) {
+    try {
+      const updated = await startTracking(taskId);
+      if (selectedTask?._id === taskId) setSelectedTask(updated);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleStopTracking(taskId: string) {
+    try {
+      const updated = await stopTracking(taskId);
+      if (selectedTask?._id === taskId) setSelectedTask(updated);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
   function toggleSelection(taskId: string) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -372,6 +398,9 @@ export function KanbanBoard({
                   if (!open) setNewTaskColumnId(null);
                 }}
                 readOnly={readOnly}
+                currentUserId={readOnly ? undefined : currentUserId}
+                onStartTracking={readOnly ? undefined : handleStartTracking}
+                onStopTracking={readOnly ? undefined : handleStopTracking}
               />
             </SortableContext>
           ))}
@@ -379,7 +408,7 @@ export function KanbanBoard({
 
         <DragOverlay>
           {activeTask ? (
-            <TaskCard task={activeTask} isOverlay labelColors={labelColors} labelNames={labelNames} memberNames={memberNames} />
+            <TaskCard task={activeTask} isOverlay labelColors={labelColors} labelNames={labelNames} memberNames={memberNames} currentUserId={currentUserId} />
           ) : null}
         </DragOverlay>
       </DndContext>
@@ -399,6 +428,21 @@ export function KanbanBoard({
           await createLabel(data);
         }}
         members={members}
+        currentUserId={currentUserId}
+        onStartTracking={readOnly ? undefined : handleStartTracking}
+        onStopTracking={readOnly ? undefined : handleStopTracking}
+        onDeleteSession={
+          readOnly
+            ? undefined
+            : async (taskId: string, sessionId: string) => {
+                try {
+                  const updated = await deleteTimeSession(taskId, sessionId);
+                  setSelectedTask(updated);
+                } catch (err) {
+                  toast.error((err as Error).message);
+                }
+              }
+        }
       />
 
       {/* Screen reader announcements for DnD */}

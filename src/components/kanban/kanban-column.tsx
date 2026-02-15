@@ -23,6 +23,9 @@ interface KanbanColumnProps {
   showForm?: boolean;
   onFormOpenChange?: (open: boolean) => void;
   readOnly?: boolean;
+  currentUserId?: string;
+  onStartTracking?: (taskId: string) => void;
+  onStopTracking?: (taskId: string) => void;
 }
 
 export function KanbanColumn({
@@ -39,6 +42,9 @@ export function KanbanColumn({
   showForm: showFormProp,
   onFormOpenChange,
   readOnly,
+  currentUserId,
+  onStartTracking,
+  onStopTracking,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [localShowForm, setLocalShowForm] = useState(false);
@@ -93,6 +99,9 @@ export function KanbanColumn({
             memberNames={memberNames}
             selected={selectedIds?.has(task._id)}
             onSelect={onSelect}
+            currentUserId={currentUserId}
+            onStartTracking={onStartTracking}
+            onStopTracking={onStopTracking}
           />
         ))}
         {tasks.length === 0 && !showForm && (

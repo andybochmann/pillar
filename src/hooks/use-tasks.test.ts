@@ -15,6 +15,7 @@ const mockTasks = [
     labels: [],
     subtasks: [],
     statusHistory: [],
+    timeSessions: [],
     createdAt: "",
     updatedAt: "",
   },
@@ -29,6 +30,7 @@ const mockTasks = [
     labels: ["lbl-testing"],
     subtasks: [],
     statusHistory: [],
+    timeSessions: [],
     createdAt: "",
     updatedAt: "",
   },
@@ -91,6 +93,7 @@ describe("useTasks", () => {
       priority: "medium" as const,
       order: 2,
       labels: [],
+      timeSessions: [],
       createdAt: "",
       updatedAt: "",
     };
@@ -219,6 +222,7 @@ describe("useTasks", () => {
         labels: [],
         subtasks: [],
         statusHistory: [],
+        timeSessions: [],
         createdAt: "",
         updatedAt: "",
       };

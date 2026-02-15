@@ -16,6 +16,7 @@ const baseTask: Task = {
   labels: [],
   subtasks: [],
   statusHistory: [],
+  timeSessions: [],
   createdAt: "2025-01-01T00:00:00.000Z",
   updatedAt: "2025-01-01T00:00:00.000Z",
 };

@@ -91,6 +91,11 @@ interface CreateTaskInput {
   order?: number;
   labels?: (mongoose.Types.ObjectId | string)[];
   subtasks?: { title: string; completed?: boolean }[];
+  timeSessions?: {
+    startedAt: Date;
+    endedAt?: Date;
+    userId: mongoose.Types.ObjectId;
+  }[];
   statusHistory?: { columnId: string; timestamp: Date }[];
 }
 
@@ -109,6 +114,7 @@ export async function createTestTask(
     order: overrides.order ?? 0,
     labels: overrides.labels ?? [],
     subtasks: overrides.subtasks ?? [],
+    timeSessions: overrides.timeSessions ?? [],
     statusHistory: overrides.statusHistory ?? [],
   });
 }

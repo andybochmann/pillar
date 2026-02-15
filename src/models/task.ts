@@ -25,6 +25,13 @@ export interface IStatusHistoryEntry {
   timestamp: Date;
 }
 
+export interface ITimeSession {
+  _id: mongoose.Types.ObjectId;
+  startedAt: Date;
+  endedAt?: Date;
+  userId: mongoose.Types.ObjectId;
+}
+
 export interface ITask extends Document {
   _id: mongoose.Types.ObjectId;
   title: string;
@@ -39,6 +46,7 @@ export interface ITask extends Document {
   order: number;
   labels: mongoose.Types.ObjectId[];
   subtasks: ISubtask[];
+  timeSessions: ITimeSession[];
   statusHistory: IStatusHistoryEntry[];
   completedAt?: Date;
   createdAt: Date;
@@ -62,6 +70,19 @@ const SubtaskSchema = new Schema<ISubtask>(
   {
     title: { type: String, required: true, trim: true, maxlength: 200 },
     completed: { type: Boolean, default: false },
+  },
+  { _id: true },
+);
+
+const TimeSessionSchema = new Schema<ITimeSession>(
+  {
+    startedAt: { type: Date, required: true },
+    endedAt: { type: Date },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
   },
   { _id: true },
 );
@@ -116,6 +137,14 @@ const TaskSchema = new Schema<ITask>(
         message: "A task cannot have more than 50 subtasks",
       },
     },
+    timeSessions: {
+      type: [TimeSessionSchema],
+      default: [],
+      validate: {
+        validator: (v: ITimeSession[]) => v.length <= 100,
+        message: "A task cannot have more than 100 time sessions",
+      },
+    },
     statusHistory: { type: [StatusHistoryEntrySchema], default: [] },
     completedAt: { type: Date },
   },
@@ -126,6 +155,7 @@ TaskSchema.index({ projectId: 1, columnId: 1, order: 1 });
 TaskSchema.index({ userId: 1, dueDate: 1 });
 TaskSchema.index({ userId: 1, priority: 1 });
 TaskSchema.index({ title: "text", description: "text" });
+TaskSchema.index({ "timeSessions.userId": 1, "timeSessions.endedAt": 1 });
 
 export const Task: Model<ITask> =
   mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema);

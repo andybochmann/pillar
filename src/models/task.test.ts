@@ -327,6 +327,84 @@ describe("Task Model", () => {
     expect(task.subtasks).toHaveLength(50);
   });
 
+  it("defaults timeSessions to empty array", async () => {
+    const task = await Task.create({
+      title: "No sessions",
+      projectId,
+      userId,
+      columnId: "todo",
+    });
+
+    expect(task.timeSessions).toEqual([]);
+  });
+
+  it("creates task with time sessions", async () => {
+    const start = new Date("2026-02-14T09:00:00Z");
+    const end = new Date("2026-02-14T10:30:00Z");
+    const task = await Task.create({
+      title: "With sessions",
+      projectId,
+      userId,
+      columnId: "todo",
+      timeSessions: [
+        { startedAt: start, endedAt: end, userId },
+      ],
+    });
+
+    expect(task.timeSessions).toHaveLength(1);
+    expect(task.timeSessions[0].startedAt).toEqual(start);
+    expect(task.timeSessions[0].endedAt).toEqual(end);
+    expect(task.timeSessions[0].userId.toString()).toBe(userId.toString());
+    expect(task.timeSessions[0]._id).toBeDefined();
+  });
+
+  it("allows active time session with no endedAt", async () => {
+    const task = await Task.create({
+      title: "Active session",
+      projectId,
+      userId,
+      columnId: "todo",
+      timeSessions: [
+        { startedAt: new Date(), userId },
+      ],
+    });
+
+    expect(task.timeSessions[0].endedAt).toBeUndefined();
+  });
+
+  it("rejects more than 100 time sessions", async () => {
+    const sessions = Array.from({ length: 101 }, () => ({
+      startedAt: new Date(),
+      endedAt: new Date(),
+      userId,
+    }));
+    await expect(
+      Task.create({
+        title: "Too many sessions",
+        projectId,
+        userId,
+        columnId: "todo",
+        timeSessions: sessions,
+      }),
+    ).rejects.toThrow(/more than 100 time sessions/i);
+  });
+
+  it("allows exactly 100 time sessions", async () => {
+    const sessions = Array.from({ length: 100 }, () => ({
+      startedAt: new Date(),
+      endedAt: new Date(),
+      userId,
+    }));
+    const task = await Task.create({
+      title: "Max sessions",
+      projectId,
+      userId,
+      columnId: "todo",
+      timeSessions: sessions,
+    });
+    expect(task.timeSessions).toHaveLength(100);
+  });
+
   it("queries tasks by due date range", async () => {
     const today = new Date("2026-02-13");
     const tomorrow = new Date("2026-02-14");

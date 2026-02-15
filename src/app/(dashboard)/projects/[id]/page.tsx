@@ -103,6 +103,12 @@ export default async function ProjectPage({ params }: PageProps) {
       title: s.title,
       completed: s.completed,
     })),
+    timeSessions: (t.timeSessions ?? []).map((ts) => ({
+      _id: ts._id.toString(),
+      startedAt: ts.startedAt.toISOString(),
+      endedAt: ts.endedAt?.toISOString() ?? null,
+      userId: ts.userId.toString(),
+    })),
     recurrence: t.recurrence
       ? {
           frequency: t.recurrence.frequency,
@@ -126,6 +132,7 @@ export default async function ProjectPage({ params }: PageProps) {
       categoryName={category?.name}
       taskCounts={taskCountsByColumn}
       members={serializedMembers}
+      currentUserId={session.user.id}
     />
   );
 }

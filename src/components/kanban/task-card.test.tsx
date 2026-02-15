@@ -31,6 +31,7 @@ describe("TaskCard", () => {
     order: 0,
     labels: [],
     subtasks: [],
+    timeSessions: [],
   };
 
   it("renders task title", () => {
