@@ -35,6 +35,7 @@ const WEEKDAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "
 interface CalendarWeekViewProps {
   tasks: Task[];
   labels: Label[];
+  projectColors?: Map<string, string>;
   currentWeek: Date;
   viewType: CalendarViewType;
   filters: CalendarFilters;
@@ -50,6 +51,7 @@ interface CalendarWeekViewProps {
 export function CalendarWeekView({
   tasks,
   labels,
+  projectColors,
   currentWeek,
   viewType,
   filters,
@@ -210,6 +212,7 @@ export function CalendarWeekView({
                   date={day}
                   tasks={dayTasks}
                   labels={labels}
+                  projectColors={projectColors}
                   isCurrentMonth={true}
                   onDateClick={onDateClick}
                   onTaskClick={onTaskClick}

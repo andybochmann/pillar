@@ -227,6 +227,7 @@ export function CalendarPageClient({
         <CalendarView
           tasks={filteredTasks}
           labels={labels}
+          projectColors={projectColors}
           currentMonth={currentMonth}
           viewType={viewType}
           filters={filters}
@@ -242,6 +243,7 @@ export function CalendarPageClient({
         <CalendarWeekView
           tasks={filteredTasks}
           labels={labels}
+          projectColors={projectColors}
           currentWeek={currentMonth}
           viewType={viewType}
           filters={filters}

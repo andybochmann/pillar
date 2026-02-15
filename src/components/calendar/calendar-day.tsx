@@ -19,6 +19,7 @@ interface CalendarDayProps {
   date: Date;
   tasks: Task[];
   labels: Label[];
+  projectColors?: Map<string, string>;
   isCurrentMonth: boolean;
   onDateClick: (date: Date) => void;
   onTaskClick: (task: Task) => void;
@@ -28,6 +29,7 @@ export function CalendarDay({
   date,
   tasks,
   labels,
+  projectColors,
   isCurrentMonth,
   onDateClick,
   onTaskClick,
@@ -66,6 +68,7 @@ export function CalendarDay({
             key={task._id}
             task={task}
             labels={labels}
+            projectColors={projectColors}
             onClick={() => onTaskClick(task)}
           />
         ))}
@@ -86,13 +89,16 @@ export function CalendarDay({
 interface DraggableTaskPillProps {
   task: Task;
   labels: Label[];
+  projectColors?: Map<string, string>;
   onClick: () => void;
 }
 
-function DraggableTaskPill({ task, labels, onClick }: DraggableTaskPillProps) {
+function DraggableTaskPill({ task, labels, projectColors, onClick }: DraggableTaskPillProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: task._id,
   });
+
+  const projectColor = projectColors?.get(task.projectId);
 
   return (
     <TaskHoverCard task={task} labels={labels}>
@@ -103,10 +109,11 @@ function DraggableTaskPill({ task, labels, onClick }: DraggableTaskPillProps) {
         type="button"
         onClick={onClick}
         className={cn(
-          "flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-xs hover:bg-accent truncate cursor-grab active:cursor-grabbing",
+          "flex w-full items-center gap-1 rounded px-1 py-0.5 text-left text-xs hover:bg-accent truncate cursor-grab active:cursor-grabbing border-l-2",
           task.completedAt && "line-through opacity-60",
           isDragging && "opacity-50",
         )}
+        style={projectColor ? { borderLeftColor: projectColor } : undefined}
         title={task.title}
       >
         <span
