@@ -2,9 +2,8 @@ name: Update Docker Hub Description
 
 on:
   push:
-    branches:
-      - main
-      - master
+    tags:
+      - "v*.*.*"
     paths:
       - DOCKER_README.md
 
