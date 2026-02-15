@@ -97,6 +97,72 @@ test.describe("Authentication", () => {
 
     await expect(page.getByText("Passwords do not match")).toBeVisible();
   });
+
+  test("password visibility toggle works on login page", async ({ page }) => {
+    await page.goto("/login");
+
+    const passwordInput = page.getByLabel("Password");
+
+    // Initially password should be hidden (type="password")
+    await expect(passwordInput).toHaveAttribute("type", "password");
+
+    // Fill in password
+    await passwordInput.fill("TestPassword123!");
+
+    // Find and click toggle button - query by aria-label
+    const toggleButton = page.locator('button[aria-label="Show password"]');
+    await expect(toggleButton).toBeVisible({ timeout: 10000 });
+    await toggleButton.click();
+
+    // Password should now be visible
+    await expect(passwordInput).toHaveAttribute("type", "text");
+    await expect(passwordInput).toHaveValue("TestPassword123!");
+
+    // Click toggle to hide password again
+    const hideButton = page.locator('button[aria-label="Hide password"]');
+    await expect(hideButton).toBeVisible();
+    await hideButton.click();
+    await expect(passwordInput).toHaveAttribute("type", "password");
+  });
+
+  test("password visibility toggle works on register page", async ({ page }) => {
+    await page.goto("/register");
+
+    const passwordInput = page.getByLabel("Password", { exact: true });
+    const confirmPasswordInput = page.getByLabel("Confirm Password");
+
+    // Initially both passwords should be hidden
+    await expect(passwordInput).toHaveAttribute("type", "password");
+    await expect(confirmPasswordInput).toHaveAttribute("type", "password");
+
+    // Fill in both password fields
+    await passwordInput.fill("TestPassword123!");
+    await confirmPasswordInput.fill("TestPassword123!");
+
+    // Find both toggle buttons by aria-label
+    const toggleButtons = page.locator('button[aria-label="Show password"]');
+    await expect(toggleButtons).toHaveCount(2, { timeout: 10000 });
+
+    // Toggle password visibility for first field
+    await toggleButtons.nth(0).click();
+    await expect(passwordInput).toHaveAttribute("type", "text");
+    await expect(passwordInput).toHaveValue("TestPassword123!");
+    // Second field should still be hidden
+    await expect(confirmPasswordInput).toHaveAttribute("type", "password");
+
+    // Toggle password visibility for second field
+    await toggleButtons.nth(1).click();
+    await expect(confirmPasswordInput).toHaveAttribute("type", "text");
+    await expect(confirmPasswordInput).toHaveValue("TestPassword123!");
+
+    // Hide both passwords
+    const hideButtons = page.locator('button[aria-label="Hide password"]');
+    await expect(hideButtons).toHaveCount(2);
+    await hideButtons.nth(0).click();
+    await expect(passwordInput).toHaveAttribute("type", "password");
+    await hideButtons.nth(1).click();
+    await expect(confirmPasswordInput).toHaveAttribute("type", "password");
+  });
 });
 
 test.describe("Dashboard (authenticated)", () => {
