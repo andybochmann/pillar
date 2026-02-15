@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { isAIEnabled } from "@/lib/ai";
+import { isAIEnabled, isAIAllowedForUser } from "@/lib/ai";
 
 export async function GET() {
   const session = await auth();
@@ -8,5 +8,7 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  return NextResponse.json({ enabled: isAIEnabled() });
+  return NextResponse.json({
+    enabled: isAIEnabled() && isAIAllowedForUser(session.user.email),
+  });
 }

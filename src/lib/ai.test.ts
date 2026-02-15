@@ -104,4 +104,62 @@ describe("ai", () => {
       expect(() => getAIModel()).toThrow("AI_API_KEY is not configured");
     });
   });
+
+  describe("isAIAllowedForUser", () => {
+    it("returns true for any email when AI_ALLOWED_EMAILS is not set", async () => {
+      delete process.env.AI_ALLOWED_EMAILS;
+      const { isAIAllowedForUser } = await import("./ai");
+      expect(isAIAllowedForUser("anyone@example.com")).toBe(true);
+    });
+
+    it("returns true when AI_ALLOWED_EMAILS is empty string", async () => {
+      process.env.AI_ALLOWED_EMAILS = "";
+      const { isAIAllowedForUser } = await import("./ai");
+      expect(isAIAllowedForUser("anyone@example.com")).toBe(true);
+    });
+
+    it("returns false when email is null and whitelist is set", async () => {
+      process.env.AI_ALLOWED_EMAILS = "allowed@example.com";
+      const { isAIAllowedForUser } = await import("./ai");
+      expect(isAIAllowedForUser(null)).toBe(false);
+    });
+
+    it("returns false when email is undefined and whitelist is set", async () => {
+      process.env.AI_ALLOWED_EMAILS = "allowed@example.com";
+      const { isAIAllowedForUser } = await import("./ai");
+      expect(isAIAllowedForUser(undefined)).toBe(false);
+    });
+
+    it("returns true when email matches whitelist", async () => {
+      process.env.AI_ALLOWED_EMAILS = "allowed@example.com";
+      const { isAIAllowedForUser } = await import("./ai");
+      expect(isAIAllowedForUser("allowed@example.com")).toBe(true);
+    });
+
+    it("returns false when email does not match whitelist", async () => {
+      process.env.AI_ALLOWED_EMAILS = "allowed@example.com";
+      const { isAIAllowedForUser } = await import("./ai");
+      expect(isAIAllowedForUser("other@example.com")).toBe(false);
+    });
+
+    it("is case insensitive", async () => {
+      process.env.AI_ALLOWED_EMAILS = "Allowed@Example.COM";
+      const { isAIAllowedForUser } = await import("./ai");
+      expect(isAIAllowedForUser("allowed@example.com")).toBe(true);
+    });
+
+    it("handles whitespace around emails", async () => {
+      process.env.AI_ALLOWED_EMAILS = " allowed@example.com , other@test.com ";
+      const { isAIAllowedForUser } = await import("./ai");
+      expect(isAIAllowedForUser("allowed@example.com")).toBe(true);
+      expect(isAIAllowedForUser("other@test.com")).toBe(true);
+    });
+
+    it("supports multiple emails in whitelist", async () => {
+      process.env.AI_ALLOWED_EMAILS = "a@test.com,b@test.com,c@test.com";
+      const { isAIAllowedForUser } = await import("./ai");
+      expect(isAIAllowedForUser("b@test.com")).toBe(true);
+      expect(isAIAllowedForUser("d@test.com")).toBe(false);
+    });
+  });
 });

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { KanbanBoard } from "@/components/kanban";
 import { ListView } from "@/components/list/list-view";
 import { ProjectSettings } from "@/components/projects/project-settings";
+import { GenerateTasksDialog } from "@/components/tasks/generate-tasks-dialog";
 import { toast } from "sonner";
-import { Users } from "lucide-react";
+import { Users, Sparkles } from "lucide-react";
 import type { Project, Task, ProjectMember as ProjectMemberType, Column } from "@/types";
 
 function getListTaskCounts(columns: Column[], taskCounts: Record<string, number>): string {
@@ -41,6 +42,27 @@ export function ProjectView({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const readOnly = currentProject.currentUserRole === "viewer";
   const [liveTasks, setLiveTasks] = useState<Task[]>(initialTasks);
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function checkAIStatus() {
+      try {
+        const res = await fetch("/api/ai/status");
+        const data: { enabled: boolean } = await res.json();
+        if (!cancelled) setAiEnabled(data.enabled);
+      } catch {
+        // Silently fail - AI will remain disabled
+      }
+    }
+
+    checkAIStatus();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const liveTaskCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -123,15 +145,28 @@ export function ProjectView({
             </p>
           )}
         </div>
-        {!readOnly && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSettingsOpen(true)}
-          >
-            Settings
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {aiEnabled && !readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setGenerateDialogOpen(true)}
+              className="gap-1"
+            >
+              <Sparkles className="h-4 w-4" />
+              Generate Tasks
+            </Button>
+          )}
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSettingsOpen(true)}
+            >
+              Settings
+            </Button>
+          )}
+        </div>
       </div>
 
       {currentProject.viewType === "list" ? (
@@ -163,6 +198,16 @@ export function ProjectView({
         onUpdate={handleUpdate}
         onDelete={handleDelete}
       />
+
+      {aiEnabled && !readOnly && (
+        <GenerateTasksDialog
+          open={generateDialogOpen}
+          onOpenChange={setGenerateDialogOpen}
+          projectId={currentProject._id}
+          columns={currentProject.columns}
+          onTasksAdded={() => setGenerateDialogOpen(false)}
+        />
+      )}
     </div>
   );
 }

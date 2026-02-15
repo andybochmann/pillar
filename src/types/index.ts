@@ -109,6 +109,16 @@ export interface Task {
   updatedAt: string;
 }
 
+export interface TaskDraft {
+  id: string;
+  title: string;
+  description?: string;
+  priority: Priority;
+  columnId: string;
+  subtasks: string[];
+  selected: boolean;
+}
+
 export interface QueuedMutation {
   id: string;
   method: "POST" | "PATCH" | "DELETE";

@@ -10,6 +10,14 @@ export function isAIEnabled(): boolean {
   return !!process.env.AI_API_KEY;
 }
 
+export function isAIAllowedForUser(email?: string | null): boolean {
+  const allowedEmails = process.env.AI_ALLOWED_EMAILS;
+  if (!allowedEmails) return true;
+  if (!email) return false;
+  const list = allowedEmails.split(",").map((e) => e.trim().toLowerCase());
+  return list.includes(email.toLowerCase());
+}
+
 export function getAIModel() {
   const apiKey = process.env.AI_API_KEY;
   if (!apiKey) throw new Error("AI_API_KEY is not configured");

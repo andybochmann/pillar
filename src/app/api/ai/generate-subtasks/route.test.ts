@@ -15,6 +15,7 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/ai", () => ({
   isAIEnabled: vi.fn(() => true),
+  isAIAllowedForUser: vi.fn(() => true),
   getAIModel: vi.fn(() => "mock-model"),
 }));
 
@@ -25,7 +26,7 @@ vi.mock("ai", () => ({
 
 import { POST } from "./route";
 import { auth } from "@/lib/auth";
-import { isAIEnabled } from "@/lib/ai";
+import { isAIEnabled, isAIAllowedForUser } from "@/lib/ai";
 import { generateObject } from "ai";
 
 function makeRequest(body: Record<string, unknown>) {
@@ -40,6 +41,7 @@ describe("POST /api/ai/generate-subtasks", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.mocked(isAIEnabled).mockReturnValue(true);
+    vi.mocked(isAIAllowedForUser).mockReturnValue(true);
     vi.mocked(auth).mockResolvedValue(session);
   });
 
@@ -55,6 +57,14 @@ describe("POST /api/ai/generate-subtasks", () => {
     expect(res.status).toBe(503);
     const data = await res.json();
     expect(data.error).toContain("not configured");
+  });
+
+  it("returns 403 when user is not whitelisted", async () => {
+    vi.mocked(isAIAllowedForUser).mockReturnValue(false);
+    const res = await POST(makeRequest({ title: "Test" }));
+    expect(res.status).toBe(403);
+    const data = await res.json();
+    expect(data.error).toContain("not available");
   });
 
   it("returns 400 when title is missing", async () => {

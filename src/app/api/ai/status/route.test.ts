@@ -15,10 +15,11 @@ vi.mock("@/lib/auth", () => ({
 
 vi.mock("@/lib/ai", () => ({
   isAIEnabled: vi.fn(() => false),
+  isAIAllowedForUser: vi.fn(() => true),
 }));
 
 import { GET } from "./route";
-import { isAIEnabled } from "@/lib/ai";
+import { isAIEnabled, isAIAllowedForUser } from "@/lib/ai";
 import { auth } from "@/lib/auth";
 
 describe("GET /api/ai/status", () => {
@@ -48,9 +49,26 @@ describe("GET /api/ai/status", () => {
 
   it("returns enabled: true when AI is configured", async () => {
     vi.mocked(isAIEnabled).mockReturnValue(true);
+    vi.mocked(isAIAllowedForUser).mockReturnValue(true);
     const res = await GET();
     const data = await res.json();
     expect(res.status).toBe(200);
     expect(data).toEqual({ enabled: true });
+  });
+
+  it("returns enabled: false when AI is configured but user is not whitelisted", async () => {
+    vi.mocked(isAIEnabled).mockReturnValue(true);
+    vi.mocked(isAIAllowedForUser).mockReturnValue(false);
+    const res = await GET();
+    const data = await res.json();
+    expect(res.status).toBe(200);
+    expect(data).toEqual({ enabled: false });
+  });
+
+  it("passes session email to isAIAllowedForUser", async () => {
+    vi.mocked(isAIEnabled).mockReturnValue(true);
+    vi.mocked(isAIAllowedForUser).mockReturnValue(true);
+    await GET();
+    expect(isAIAllowedForUser).toHaveBeenCalledWith("test@example.com");
   });
 });

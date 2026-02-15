@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateObject, jsonSchema } from "ai";
 import { auth } from "@/lib/auth";
-import { isAIEnabled, getAIModel } from "@/lib/ai";
+import { isAIEnabled, isAIAllowedForUser, getAIModel } from "@/lib/ai";
 
 const RequestSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -37,6 +37,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "AI is not configured" },
       { status: 503 },
+    );
+  }
+
+  if (!isAIAllowedForUser(session.user.email)) {
+    return NextResponse.json(
+      { error: "AI is not available for this user" },
+      { status: 403 },
     );
   }
 
