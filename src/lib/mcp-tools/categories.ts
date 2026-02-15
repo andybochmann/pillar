@@ -6,11 +6,28 @@ import { Category } from "@/models/category";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { ProjectMember } from "@/models/project-member";
+import type { LeanCategory, SerializedCategory } from "./types";
 
 function errorResponse(message: string) {
   return {
     content: [{ type: "text" as const, text: message }],
     isError: true,
+  };
+}
+
+/**
+ * Converts a LeanCategory (with ObjectId and Date) to SerializedCategory (with strings)
+ */
+function serializeCategory(category: LeanCategory): SerializedCategory {
+  return {
+    _id: category._id.toString(),
+    name: category.name,
+    color: category.color,
+    icon: category.icon,
+    userId: category.userId.toString(),
+    order: category.order,
+    createdAt: category.createdAt.toISOString(),
+    updatedAt: category.updatedAt.toISOString(),
   };
 }
 
@@ -23,21 +40,13 @@ export function registerCategoryTools(server: McpServer) {
       const userId = getMcpUserId();
       const categories = await Category.find({ userId })
         .sort({ order: 1 })
-        .lean();
+        .lean<LeanCategory[]>();
 
       return {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(
-              categories.map((c) => ({
-                _id: c._id.toString(),
-                name: c.name,
-                color: c.color,
-                icon: c.icon,
-                order: c.order,
-              })),
-            ),
+            text: JSON.stringify(categories.map(serializeCategory)),
           },
         ],
       };
@@ -51,7 +60,7 @@ export function registerCategoryTools(server: McpServer) {
     async ({ name, color, icon }) => {
       const userId = getMcpUserId();
       const count = await Category.countDocuments({ userId });
-      const category = await Category.create({
+      const categoryDoc = await Category.create({
         name,
         color: color ?? "#6366f1",
         icon,
@@ -59,22 +68,16 @@ export function registerCategoryTools(server: McpServer) {
         order: count,
       });
 
+      const category = categoryDoc.toObject() as LeanCategory;
+      const serialized = serializeCategory(category);
+
       emitSyncEvent({
         entity: "category",
         action: "created",
         userId,
         sessionId: "mcp",
-        entityId: category._id.toString(),
-        data: {
-          _id: category._id.toString(),
-          name: category.name,
-          color: category.color,
-          icon: category.icon,
-          order: category.order,
-          userId,
-          createdAt: category.createdAt.toISOString(),
-          updatedAt: category.updatedAt.toISOString(),
-        },
+        entityId: serialized._id,
+        data: serialized,
         timestamp: Date.now(),
       });
 
@@ -82,13 +85,7 @@ export function registerCategoryTools(server: McpServer) {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify({
-              _id: category._id.toString(),
-              name: category.name,
-              color: category.color,
-              icon: category.icon,
-              order: category.order,
-            }),
+            text: JSON.stringify(serialized),
           },
         ],
       };
@@ -109,13 +106,16 @@ export function registerCategoryTools(server: McpServer) {
       if (name !== undefined) update.name = name;
       if (order !== undefined) update.order = order;
 
-      const category = await Category.findOneAndUpdate(
+      const categoryDoc = await Category.findOneAndUpdate(
         { _id: categoryId, userId },
         { $set: update },
         { returnDocument: "after" },
       );
 
-      if (!category) return errorResponse("Category not found");
+      if (!categoryDoc) return errorResponse("Category not found");
+
+      const category = categoryDoc.toObject() as LeanCategory;
+      const serialized = serializeCategory(category);
 
       emitSyncEvent({
         entity: "category",
@@ -123,16 +123,7 @@ export function registerCategoryTools(server: McpServer) {
         userId,
         sessionId: "mcp",
         entityId: categoryId,
-        data: {
-          _id: category._id.toString(),
-          name: category.name,
-          color: category.color,
-          icon: category.icon,
-          order: category.order,
-          userId,
-          createdAt: category.createdAt.toISOString(),
-          updatedAt: category.updatedAt.toISOString(),
-        },
+        data: serialized,
         timestamp: Date.now(),
       });
 
@@ -140,12 +131,7 @@ export function registerCategoryTools(server: McpServer) {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify({
-              _id: category._id.toString(),
-              name: category.name,
-              color: category.color,
-              order: category.order,
-            }),
+            text: JSON.stringify(serialized),
           },
         ],
       };
