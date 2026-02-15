@@ -2,15 +2,22 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { TaskFilters } from "./task-filters";
-import type { Project } from "@/types";
+import type { Project, Column } from "@/types";
 
 const mockProjects: Project[] = [
   {
     _id: "proj-1",
     name: "Project Alpha",
     description: "",
+    categoryId: "cat-1",
     userId: "u1",
-    columns: ["todo", "in-progress", "done"],
+    columns: [
+      { id: "todo", name: "To Do", order: 0 },
+      { id: "in-progress", name: "In Progress", order: 1 },
+      { id: "done", name: "Done", order: 2 },
+    ],
+    viewType: "board",
+    archived: false,
     createdAt: "",
     updatedAt: "",
   },
@@ -18,8 +25,15 @@ const mockProjects: Project[] = [
     _id: "proj-2",
     name: "Project Beta",
     description: "",
+    categoryId: "cat-1",
     userId: "u1",
-    columns: ["todo", "in-progress", "done"],
+    columns: [
+      { id: "todo", name: "To Do", order: 0 },
+      { id: "in-progress", name: "In Progress", order: 1 },
+      { id: "done", name: "Done", order: 2 },
+    ],
+    viewType: "board",
+    archived: false,
     createdAt: "",
     updatedAt: "",
   },
