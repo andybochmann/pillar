@@ -96,7 +96,7 @@ describe("POST /api/auth/register", () => {
     expect(res.status).toBe(400);
   });
 
-  it("returns 409 for duplicate email", async () => {
+  it("returns 400 for duplicate email with generic error", async () => {
     await createTestUser({ email: "dupe@example.com" });
 
     const res = await POST(
@@ -107,9 +107,31 @@ describe("POST /api/auth/register", () => {
       }),
     );
 
-    expect(res.status).toBe(409);
+    expect(res.status).toBe(400);
     const data = await res.json();
-    expect(data.error).toBe("Email already registered");
+    expect(data.error).toBe("Invalid registration data");
+  });
+
+  it("does not reveal email existence in error messages", async () => {
+    // Create a user with a known email
+    await createTestUser({ email: "exists@example.com" });
+
+    // Try to register with duplicate email
+    const duplicateRes = await POST(
+      createRequest({
+        name: "Test User",
+        email: "exists@example.com",
+        password: "SecurePass123!",
+      }),
+    );
+
+    // Should return 400 with generic error, not revealing the email exists
+    expect(duplicateRes.status).toBe(400);
+    const duplicateData = await duplicateRes.json();
+    expect(duplicateData.error).toBe("Invalid registration data");
+    expect(duplicateData.error).not.toContain("already");
+    expect(duplicateData.error).not.toContain("exists");
+    expect(duplicateData.error).not.toContain("registered");
   });
 
   it("lowercases email on registration", async () => {
