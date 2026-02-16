@@ -90,8 +90,55 @@ describe("CommandPalette", () => {
     await user.type(screen.getByPlaceholderText("Search tasks…"), "xyz");
 
     await waitFor(() => {
-      expect(screen.getByText("No tasks found.")).toBeInTheDocument();
+      expect(screen.getByText("No tasks found")).toBeInTheDocument();
     });
+  });
+
+  it("shows SearchX icon in empty state", async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: async () => [],
+    } as Response);
+
+    render(<CommandPalette />);
+    await user.keyboard("/");
+    await user.type(screen.getByPlaceholderText("Search tasks…"), "xyz");
+
+    await waitFor(() => {
+      const emptyText = screen.getByText("No tasks found");
+      expect(emptyText).toBeInTheDocument();
+      // Verify SearchX icon is present by checking for SVG with specific size classes
+      const icon = emptyText.parentElement?.querySelector("svg.h-12.w-12");
+      expect(icon).toBeInTheDocument();
+    });
+  });
+
+  it("shows loading state with icon when searching", async () => {
+    const user = userEvent.setup();
+    let resolvePromise: (value: Response) => void;
+    const fetchPromise = new Promise<Response>((resolve) => {
+      resolvePromise = resolve;
+    });
+    vi.mocked(fetch).mockReturnValue(fetchPromise);
+
+    render(<CommandPalette />);
+    await user.keyboard("/");
+    await user.type(screen.getByPlaceholderText("Search tasks…"), "test");
+
+    await waitFor(() => {
+      const loadingText = screen.getByText("Searching...");
+      expect(loadingText).toBeInTheDocument();
+      // Verify Loader2 icon is present by checking for SVG with animate-spin class
+      const icon = loadingText.parentElement?.querySelector("svg.animate-spin");
+      expect(icon).toBeInTheDocument();
+    });
+
+    // Clean up
+    resolvePromise!({
+      ok: true,
+      json: async () => [],
+    } as Response);
   });
 
   it("navigates to project on select", async () => {
