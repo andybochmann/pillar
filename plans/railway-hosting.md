@@ -99,3 +99,49 @@ mongorestore --uri="<railway-mongodb-uri>" ./backup
 | **Fastest to set up** | **Railway (~$5-7/mo, 15-min deploy)** |
 
 Railway was chosen for the **fastest path to production** with zero code changes and minimal ops overhead. The ~$5-7/month cost is acceptable for a production app with full real-time sync, background jobs, and managed infrastructure.
+
+## Free Trial Limitations
+
+Railway's free tier is **not viable** for running Pillar long-term:
+
+| Phase | Credits | Duration | Outcome |
+|---|---|---|---|
+| Trial | $5 one-time | 30 days | ~2 weeks actual runtime (resource costs burn through $5 fast) |
+| Post-trial (Free plan) | $1/month | Ongoing | ~2-3 days of runtime per month before services shut down |
+
+**Trial resource limits** (per service): 1 GB RAM, 2 shared vCPU, 0.5 GB volume storage, 5 services/project.
+
+**Critical**: Railway deletes volumes 30 days after trial credits expire if you don't upgrade — MongoDB data would be lost. The Hobby plan ($5/month) is the real minimum.
+
+## Subscription Pricing Strategy
+
+### Competitive Landscape
+
+| App | Free Tier | Personal Plan | Team Plan |
+|---|---|---|---|
+| Todoist | Yes (limited) | $4-5/mo | $6-8/user/mo |
+| TickTick | No | $3-4/mo | — |
+| Asana | Yes (limited) | — | $11/user/mo |
+
+### Recommended Pricing: $5/month (or $48/year)
+
+- **Market-aligned** — same range as Todoist Pro ($4-5/mo) and TickTick Premium ($3-4/mo)
+- **Covers costs** — 2 paying users cover Railway hosting; 5 users provides comfortable margin
+- **Strong value** — Pillar offers Kanban, time tracking, recurring tasks, AI subtasks, real-time collaboration, and offline PWA
+
+### Suggested Tiers
+
+| Tier | Price | Includes |
+|---|---|---|
+| **Free** | $0 | 1 project, limited tasks, no sharing |
+| **Pro** | $5/mo ($48/yr) | Unlimited projects, sharing, AI subtasks, time tracking |
+
+Keep it to one paid tier at launch. Annual option ($48/yr = 20% discount) encourages commitment.
+
+### Revenue Projections
+
+| Users | Monthly Revenue | After Railway (~$7) |
+|---|---|---|
+| 5 | $25 | $18 profit |
+| 20 | $100 | $93 profit |
+| 50 | $250 | ~$230 profit |
