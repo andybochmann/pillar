@@ -4,6 +4,21 @@ import { getMcpUserId } from "@/lib/mcp-server";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Label } from "@/models/label";
 import { Task } from "@/models/task";
+import type {
+  LeanLabel,
+  SerializedLabel,
+} from "@/lib/mcp-tools/types";
+
+function serializeLabel(label: LeanLabel): SerializedLabel {
+  return {
+    _id: label._id.toString(),
+    name: label.name,
+    color: label.color,
+    userId: label.userId.toString(),
+    createdAt: label.createdAt.toISOString(),
+    updatedAt: label.updatedAt.toISOString(),
+  };
+}
 
 function errorResponse(message: string) {
   return {
@@ -25,13 +40,7 @@ export function registerLabelTools(server: McpServer) {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(
-              labels.map((l) => ({
-                _id: l._id.toString(),
-                name: l.name,
-                color: l.color,
-              })),
-            ),
+            text: JSON.stringify(labels.map(serializeLabel)),
           },
         ],
       };
@@ -48,6 +57,15 @@ export function registerLabelTools(server: McpServer) {
     async ({ name, color }) => {
       const userId = getMcpUserId();
       const label = await Label.create({ name, color, userId });
+      const leanLabel: LeanLabel = {
+        _id: label._id,
+        name: label.name,
+        color: label.color,
+        userId: label.userId,
+        createdAt: label.createdAt,
+        updatedAt: label.updatedAt,
+      };
+      const serialized = serializeLabel(leanLabel);
 
       emitSyncEvent({
         entity: "label",
@@ -55,14 +73,7 @@ export function registerLabelTools(server: McpServer) {
         userId,
         sessionId: "mcp",
         entityId: label._id.toString(),
-        data: {
-          _id: label._id.toString(),
-          name: label.name,
-          color: label.color,
-          userId,
-          createdAt: label.createdAt.toISOString(),
-          updatedAt: label.updatedAt.toISOString(),
-        },
+        data: serialized,
         timestamp: Date.now(),
       });
 
@@ -70,11 +81,7 @@ export function registerLabelTools(server: McpServer) {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify({
-              _id: label._id.toString(),
-              name: label.name,
-              color: label.color,
-            }),
+            text: JSON.stringify(serialized),
           },
         ],
       };

@@ -11,24 +11,34 @@ import {
   requireProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
+import type {
+  LeanProject,
+  SerializedProject,
+  SerializedColumn,
+} from "./types";
 
-function serializeDate(date: unknown): string {
-  return date instanceof Date ? date.toISOString() : String(date);
+function serializeDate(date: Date): string {
+  return date.toISOString();
 }
 
-function serializeProject(project: unknown) {
-  const p = project as Record<string, unknown>;
+function serializeProject(project: LeanProject): SerializedProject {
   return {
-    _id: String(p._id),
-    name: p.name,
-    description: p.description,
-    categoryId: String(p.categoryId),
-    userId: String(p.userId),
-    columns: p.columns,
-    viewType: p.viewType,
-    archived: p.archived,
-    createdAt: serializeDate(p.createdAt),
-    updatedAt: serializeDate(p.updatedAt),
+    _id: project._id.toString(),
+    name: project.name,
+    description: project.description,
+    categoryId: project.categoryId.toString(),
+    userId: project.userId.toString(),
+    columns: project.columns.map(
+      (col): SerializedColumn => ({
+        id: col.id,
+        name: col.name,
+        order: col.order,
+      }),
+    ),
+    viewType: project.viewType,
+    archived: project.archived,
+    createdAt: serializeDate(project.createdAt),
+    updatedAt: serializeDate(project.updatedAt),
   };
 }
 
@@ -139,7 +149,7 @@ export function registerProjectTools(server: McpServer) {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(serializeProject(project.toObject() as unknown as Record<string, unknown>)),
+            text: JSON.stringify(serializeProject(project.toObject())),
           },
         ],
       };
@@ -197,7 +207,7 @@ export function registerProjectTools(server: McpServer) {
         sessionId: "mcp",
         entityId: projectId,
         targetUserIds,
-        data: serializeProject(project as unknown as Record<string, unknown>),
+        data: serializeProject(project),
         timestamp: Date.now(),
       });
 
