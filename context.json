@@ -1,50 +1,38 @@
 {
   "files_to_modify": {
     "frontend": [
-      ".env.example",
-      "docs/ai-features.md",
-      "README.md",
-      "DOCKER_README.md"
+      "src/components/calendar/calendar-view.tsx",
+      "src/components/calendar/calendar-day-view.tsx",
+      "src/components/calendar/calendar-week-view.tsx"
     ]
   },
   "files_to_create": {
-    "frontend": [
-      "docs/environment-variables.md"
-    ]
+    "frontend": []
   },
   "files_to_reference": [
-    "src/lib/ai.ts",
-    "src/lib/db.ts",
-    "docs/ai-features.md",
-    "DOCKER_README.md",
-    ".env.example"
+    "src/components/calendar/calendar-view-toggle.tsx"
   ],
   "patterns": {
-    "documentation_pattern": "Markdown files in docs/ folder follow consistent structure with Overview, Key Files, Configuration sections",
-    "env_var_pattern": "Environment variables accessed via process.env.VAR_NAME, documented with purpose, valid values, defaults",
-    "table_format": "Documentation uses markdown tables for structured information (Variable | Required | Description | Default)"
+    "icon_import_pattern": "Import Lucide icons as named imports: import { ChevronLeft, ChevronRight } from 'lucide-react'",
+    "icon_usage_pattern": "Icons use className for sizing: <Icon className=\"h-4 w-4\" />",
+    "component_pattern": "Named exports only (no default exports), 'use client' directive when using hooks/browser APIs",
+    "test_pattern": "Vitest with React Testing Library - tests query by aria-label, not text content"
   },
   "existing_implementations": {
-    "description": "Environment variables scattered across multiple files: .env.example (4 vars), DOCKER_README.md (4 auth vars), docs/ai-features.md (2 AI vars with incorrect info)",
+    "description": "Calendar navigation buttons currently use Unicode text characters (‹ U+2039 and › U+203A) instead of Lucide icons",
     "relevant_files": [
-      ".env.example",
-      "src/lib/ai.ts",
-      "src/lib/db.ts",
-      "DOCKER_README.md",
-      "docs/ai-features.md"
+      "src/components/calendar/calendar-view.tsx",
+      "src/components/calendar/calendar-day-view.tsx",
+      "src/components/calendar/calendar-week-view.tsx"
     ],
-    "environment_variables_found": {
-      "required": ["MONGODB_URI", "AUTH_SECRET"],
-      "required_in_docker": ["AUTH_URL"],
-      "optional": ["AUTH_TRUST_HOST", "AI_API_KEY", "AI_PROVIDER", "AI_MODEL", "AI_ALLOWED_EMAILS"],
-      "internal": ["NODE_ENV", "CI"]
+    "text_chevrons_locations": {
+      "calendar-view.tsx": "Lines 180 (‹ Previous month) and 188 (› Next month)",
+      "calendar-day-view.tsx": "Lines 206 (‹ Previous day) and 214 (› Next day)",
+      "calendar-week-view.tsx": "Lines 172 (‹ Previous week) and 180 (› Next week)"
     },
-    "documentation_gaps": [
-      ".env.example missing AUTH_URL and AUTH_TRUST_HOST",
-      "docs/ai-features.md has incorrect information about AI_PROVIDER and AI_MODEL requirements",
-      "No comprehensive environment variables documentation",
-      "README.md doesn't reference environment configuration",
-      "Inconsistent documentation across DOCKER_README.md and .env.example"
-    ]
+    "reference_implementation": {
+      "file": "src/components/calendar/calendar-view-toggle.tsx",
+      "pattern": "Shows proper Lucide icon import and usage with className=\"h-4 w-4\" sizing (line 37)"
+    }
   }
 }

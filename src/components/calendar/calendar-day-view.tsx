@@ -14,6 +14,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { addDays, subDays, format, isToday } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CalendarViewToggle } from "./calendar-view-toggle";
 import { TaskHoverCard } from "./task-hover-card";
@@ -203,7 +204,7 @@ export function CalendarDayView({
               onClick={() => navigateDay(-1)}
               aria-label="Previous day"
             >
-              ‹
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
@@ -211,7 +212,7 @@ export function CalendarDayView({
               onClick={() => navigateDay(1)}
               aria-label="Next day"
             >
-              ›
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

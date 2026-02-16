@@ -22,6 +22,7 @@ import {
   subMonths,
   format,
 } from "date-fns";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CalendarDay } from "./calendar-day";
 import { CalendarViewToggle } from "./calendar-view-toggle";
@@ -177,7 +178,7 @@ export function CalendarView({
               onClick={() => navigateMonth(-1)}
               aria-label="Previous month"
             >
-              ‹
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
@@ -185,7 +186,7 @@ export function CalendarView({
               onClick={() => navigateMonth(1)}
               aria-label="Next month"
             >
-              ›
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>

@@ -20,6 +20,7 @@ import {
   format,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CalendarDay } from "./calendar-day";
 import { CalendarViewToggle } from "./calendar-view-toggle";
 import {
@@ -169,7 +170,7 @@ export function CalendarWeekView({
               onClick={() => navigateWeek(-1)}
               aria-label="Previous week"
             >
-              ‹
+              <ChevronLeft className="h-4 w-4" />
             </Button>
             <Button
               variant="outline"
@@ -177,7 +178,7 @@ export function CalendarWeekView({
               onClick={() => navigateWeek(1)}
               aria-label="Next week"
             >
-              ›
+              <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </div>
