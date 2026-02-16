@@ -50,6 +50,7 @@ function serializeTask(task: LeanTask) {
     columnId: task.columnId,
     priority: task.priority,
     dueDate: task.dueDate instanceof Date ? task.dueDate.toISOString() : null,
+    reminderAt: task.reminderAt instanceof Date ? task.reminderAt.toISOString() : null,
     recurrence: {
       frequency: task.recurrence.frequency,
       interval: task.recurrence.interval,
@@ -359,6 +360,35 @@ describe("MCP Serializers", () => {
       expect(serialized.statusHistory[1].timestamp).toBe(
         timestamp2.toISOString(),
       );
+    });
+
+    it("serializes reminderAt when present", async () => {
+      const reminderAt = new Date("2026-02-28T09:00:00Z");
+      const task = await Task.create({
+        title: "Task with reminder",
+        userId,
+        projectId,
+        columnId: "todo",
+        order: 0,
+        dueDate: new Date("2026-03-01T00:00:00Z"),
+        reminderAt,
+      });
+      const lean = await Task.findById(task._id).lean<LeanTask>();
+      if (!lean) throw new Error("Task not found");
+
+      const serialized = serializeTask(lean);
+
+      expect(serialized.reminderAt).toBe(reminderAt.toISOString());
+    });
+
+    it("handles undefined reminderAt", async () => {
+      const task = await createTestTask({ userId, projectId });
+      const lean = await Task.findById(task._id).lean<LeanTask>();
+      if (!lean) throw new Error("Task not found");
+
+      const serialized = serializeTask(lean);
+
+      expect(serialized.reminderAt).toBeNull();
     });
 
     it("preserves priority enum value", async () => {

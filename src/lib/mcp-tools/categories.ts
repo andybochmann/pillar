@@ -11,7 +11,7 @@ import { ProjectMember } from "@/models/project-member";
 export function registerCategoryTools(server: McpServer) {
   server.tool(
     "list_categories",
-    "List all categories for the current user",
+    "List all categories for the current user, sorted by order. Returns _id, name, color, icon, and order for each category.",
     {},
     async () => {
       const userId = getMcpUserId();
@@ -33,7 +33,7 @@ export function registerCategoryTools(server: McpServer) {
 
   server.tool(
     "create_category",
-    "Create a new category",
+    "Create a new category. Defaults color to '#6366f1' (indigo) if not provided. Order is auto-assigned based on existing count.",
     { name: z.string().min(1).max(50), color: z.string().optional(), icon: z.string().optional() },
     async ({ name, color, icon }) => {
       const userId = getMcpUserId();
@@ -77,7 +77,7 @@ export function registerCategoryTools(server: McpServer) {
 
   server.tool(
     "update_category",
-    "Update a category",
+    "Update a category's name or display order. Only name and order can be changed.",
     {
       categoryId: z.string(),
       name: z.string().min(1).max(50).optional(),
@@ -127,7 +127,7 @@ export function registerCategoryTools(server: McpServer) {
 
   server.tool(
     "delete_category",
-    "Delete a category and all its projects and tasks",
+    "Delete a category and cascade-delete all its projects, tasks, and project memberships.",
     { categoryId: z.string() },
     async ({ categoryId }) => {
       const userId = getMcpUserId();

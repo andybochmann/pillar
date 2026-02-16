@@ -9,7 +9,7 @@ import { Task } from "@/models/task";
 export function registerLabelTools(server: McpServer) {
   server.tool(
     "list_labels",
-    "List all labels for the current user",
+    "List all labels for the current user, sorted by name. Labels are user-scoped (not project-scoped).",
     {},
     async () => {
       const userId = getMcpUserId();
@@ -27,7 +27,7 @@ export function registerLabelTools(server: McpServer) {
 
   server.tool(
     "create_label",
-    "Create a new label",
+    "Create a new label. Color must be a hex string like '#ef4444'. Labels are user-scoped and can be applied to tasks in any project.",
     {
       name: z.string().min(1).max(50),
       color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Must be a hex color like #ef4444"),
@@ -63,7 +63,7 @@ export function registerLabelTools(server: McpServer) {
 
   server.tool(
     "delete_label",
-    "Delete a label and remove it from all tasks",
+    "Delete a label and automatically remove it from all tasks that reference it.",
     { labelId: z.string() },
     async ({ labelId }) => {
       const userId = getMcpUserId();

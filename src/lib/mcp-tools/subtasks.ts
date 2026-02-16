@@ -12,7 +12,7 @@ import { errorResponse, mcpTextResponse } from "@/lib/mcp-helpers";
 export function registerSubtaskTools(server: McpServer) {
   server.tool(
     "add_subtask",
-    "Add a subtask to a task",
+    "Add a subtask to a task. The subtask starts as not completed. Requires editor role on the task's project.",
     {
       taskId: z.string(),
       title: z.string().min(1).max(200),
@@ -61,7 +61,7 @@ export function registerSubtaskTools(server: McpServer) {
 
   server.tool(
     "update_subtask",
-    "Update a subtask's title or completed status",
+    "Update a subtask's title or mark it as completed/incomplete. Requires editor role on the task's project.",
     {
       taskId: z.string(),
       subtaskId: z.string(),
@@ -118,7 +118,7 @@ export function registerSubtaskTools(server: McpServer) {
 
   server.tool(
     "delete_subtask",
-    "Delete a subtask from a task",
+    "Remove a subtask from a task. Requires editor role on the task's project.",
     {
       taskId: z.string(),
       subtaskId: z.string(),

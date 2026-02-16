@@ -54,6 +54,7 @@ export interface LeanTask {
   columnId: string;
   priority: Priority;
   dueDate?: Date;
+  reminderAt?: Date;
   recurrence: LeanRecurrence;
   order: number;
   labels: mongoose.Types.ObjectId[];
@@ -143,6 +144,7 @@ export interface SerializedTask {
   columnId: string;
   priority: Priority;
   dueDate?: string | null;
+  reminderAt?: string | null;
   recurrence: SerializedRecurrence;
   order: number;
   labels: string[];

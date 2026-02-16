@@ -13,6 +13,7 @@ import {
   errorResponse,
   mcpTextResponse,
 } from "@/lib/mcp-helpers";
+import { scheduleNextReminder } from "@/lib/reminder-scheduler";
 
 function serializeTask(task: unknown) {
   const t = task as Record<string, unknown>;
@@ -26,6 +27,7 @@ function serializeTask(task: unknown) {
     columnId: t.columnId,
     priority: t.priority,
     dueDate: serializeDate(t.dueDate),
+    reminderAt: serializeDate(t.reminderAt),
     recurrence: t.recurrence,
     order: t.order,
     labels: Array.isArray(t.labels) ? t.labels.map(String) : [],
@@ -40,7 +42,7 @@ function serializeTask(task: unknown) {
 export function registerTaskTools(server: McpServer) {
   server.tool(
     "list_tasks",
-    "List tasks in a project",
+    "List tasks in a project, sorted by order. Filter by columnId, priority (urgent/high/medium/low), assigneeId, or full-text search. Requires at least viewer access to the project.",
     {
       projectId: z.string(),
       columnId: z.string().optional(),
@@ -72,7 +74,7 @@ export function registerTaskTools(server: McpServer) {
 
   server.tool(
     "get_task",
-    "Get a task by ID",
+    "Get a single task by ID with all details including subtasks, labels, status history, and reminder time.",
     { taskId: z.string() },
     async ({ taskId }) => {
       const userId = getMcpUserId();
@@ -91,7 +93,7 @@ export function registerTaskTools(server: McpServer) {
 
   server.tool(
     "create_task",
-    "Create a new task in a project",
+    "Create a new task in a project. Defaults to 'todo' column with 'medium' priority. If dueDate is provided without reminderAt, a reminder is auto-scheduled based on user notification preferences. Pass subtasks as an array of title strings. dueDate and reminderAt accept ISO 8601 datetime strings.",
     {
       title: z.string().min(1).max(200),
       projectId: z.string(),
@@ -99,10 +101,11 @@ export function registerTaskTools(server: McpServer) {
       description: z.string().max(2000).optional(),
       priority: z.enum(["urgent", "high", "medium", "low"]).optional(),
       dueDate: z.string().optional(),
+      reminderAt: z.string().optional(),
       assigneeId: z.string().optional(),
       subtasks: z.array(z.string()).optional(),
     },
-    async ({ title, projectId, columnId, description, priority, dueDate, assigneeId, subtasks }) => {
+    async ({ title, projectId, columnId, description, priority, dueDate, reminderAt, assigneeId, subtasks }) => {
       const userId = getMcpUserId();
       try {
         await requireProjectRole(userId, projectId, "editor");
@@ -124,11 +127,17 @@ export function registerTaskTools(server: McpServer) {
         description,
         priority: priority ?? "medium",
         dueDate: dueDate ? new Date(dueDate) : undefined,
+        reminderAt: reminderAt ? new Date(reminderAt) : undefined,
         assigneeId: assigneeId ?? undefined,
         subtasks: subtasks?.map((s) => ({ title: s, completed: false })) ?? [],
         order: taskCount,
         statusHistory: [{ columnId: columnId ?? "todo", timestamp: new Date() }],
       });
+
+      // Auto-schedule reminder when dueDate is set but reminderAt is not
+      if (dueDate && !reminderAt) {
+        scheduleNextReminder(task._id.toString()).catch(() => {});
+      }
 
       const targetUserIds = await getProjectMemberUserIds(projectId);
       emitSyncEvent({
@@ -149,7 +158,7 @@ export function registerTaskTools(server: McpServer) {
 
   server.tool(
     "update_task",
-    "Update a task",
+    "Update task fields. Set dueDate or reminderAt to null to clear them. Changing columnId automatically records a status history entry. If dueDate is changed without explicitly setting reminderAt, the reminder is auto-rescheduled from user preferences.",
     {
       taskId: z.string(),
       title: z.string().min(1).max(200).optional(),
@@ -157,6 +166,7 @@ export function registerTaskTools(server: McpServer) {
       columnId: z.string().optional(),
       priority: z.enum(["urgent", "high", "medium", "low"]).optional(),
       dueDate: z.string().nullable().optional(),
+      reminderAt: z.string().nullable().optional(),
       assigneeId: z.string().nullable().optional(),
       completedAt: z.string().nullable().optional(),
     },
@@ -181,6 +191,9 @@ export function registerTaskTools(server: McpServer) {
       if (updates.dueDate !== undefined) {
         update.dueDate = updates.dueDate ? new Date(updates.dueDate) : null;
       }
+      if (updates.reminderAt !== undefined) {
+        update.reminderAt = updates.reminderAt ? new Date(updates.reminderAt) : null;
+      }
       if (updates.assigneeId !== undefined) {
         update.assigneeId = updates.assigneeId ?? null;
       }
@@ -204,6 +217,16 @@ export function registerTaskTools(server: McpServer) {
 
       if (!task) return errorResponse("Task not found");
 
+      // Auto-schedule reminder when dueDate changed but reminderAt not explicitly set
+      if (
+        updates.dueDate !== undefined &&
+        updates.dueDate !== null &&
+        updates.reminderAt === undefined
+      ) {
+        await Task.updateOne({ _id: taskId }, { $unset: { reminderAt: 1 } });
+        scheduleNextReminder(taskId).catch(() => {});
+      }
+
       const targetUserIds = await getProjectMemberUserIds(
         existing.projectId.toString(),
       );
@@ -225,7 +248,7 @@ export function registerTaskTools(server: McpServer) {
 
   server.tool(
     "delete_task",
-    "Delete a task (requires editor role or higher)",
+    "Delete a task. Requires editor role or higher on the project.",
     { taskId: z.string() },
     async ({ taskId }) => {
       const userId = getMcpUserId();
@@ -262,7 +285,7 @@ export function registerTaskTools(server: McpServer) {
 
   server.tool(
     "move_task",
-    "Move a task to a different column",
+    "Move a task to a different column (e.g., 'todo' to 'in-progress'). Records a status history entry. Requires editor role.",
     { taskId: z.string(), columnId: z.string() },
     async ({ taskId, columnId }) => {
       const userId = getMcpUserId();
@@ -309,7 +332,7 @@ export function registerTaskTools(server: McpServer) {
 
   server.tool(
     "complete_task",
-    "Mark a task as completed. If the task has recurrence, creates the next occurrence.",
+    "Mark a task as completed by setting completedAt and moving it to the 'done' column. If the task has recurrence configured, automatically creates the next occurrence with the same settings.",
     { taskId: z.string() },
     async ({ taskId }) => {
       const userId = getMcpUserId();

@@ -32,7 +32,7 @@ function serializeProject(project: unknown) {
 export function registerProjectTools(server: McpServer) {
   server.tool(
     "list_projects",
-    "List projects accessible to the current user",
+    "List all projects accessible to the current user (owned or shared). Filter by categoryId. Excludes archived projects by default — set includeArchived to true to include them.",
     {
       categoryId: z.string().optional(),
       includeArchived: z.boolean().optional(),
@@ -57,7 +57,7 @@ export function registerProjectTools(server: McpServer) {
 
   server.tool(
     "get_project",
-    "Get a project by ID",
+    "Get a single project by ID. Returns project details including the current user's role (owner/editor/viewer).",
     { projectId: z.string() },
     async ({ projectId }) => {
       const userId = getMcpUserId();
@@ -76,7 +76,7 @@ export function registerProjectTools(server: McpServer) {
 
   server.tool(
     "create_project",
-    "Create a new project",
+    "Create a new project in a category. Defaults to board view with columns: todo, in-progress, review, done. The creating user is automatically added as the project owner.",
     {
       name: z.string().min(1).max(100),
       categoryId: z.string(),
@@ -117,7 +117,7 @@ export function registerProjectTools(server: McpServer) {
 
   server.tool(
     "update_project",
-    "Update a project (requires editor role or higher)",
+    "Update a project's name, description, view type, archived status, or columns. Requires editor role or higher.",
     {
       projectId: z.string(),
       name: z.string().min(1).max(100).optional(),
@@ -176,7 +176,7 @@ export function registerProjectTools(server: McpServer) {
 
   server.tool(
     "delete_project",
-    "Delete a project and all its tasks (requires owner role)",
+    "Delete a project and cascade-delete all its tasks and memberships. Requires owner role.",
     { projectId: z.string() },
     async ({ projectId }) => {
       const userId = getMcpUserId();
