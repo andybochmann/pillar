@@ -79,6 +79,8 @@ describe("/api/notifications/preferences", () => {
       expect(body.enableOverdueSummary).toBe(true);
       expect(body.enableDailySummary).toBe(true);
       expect(body.dailySummaryTime).toBe("09:00");
+      expect(body.enableBrowserPush).toBe(false);
+      expect(body.reminderTimings).toEqual([1440, 60, 15]);
       expect(body.timezone).toBe("UTC");
       expect(body.createdAt).toBeDefined();
       expect(body.updatedAt).toBeDefined();
@@ -184,6 +186,54 @@ describe("/api/notifications/preferences", () => {
       const saved = await NotificationPreference.findOne({ userId: user._id });
       expect(saved).toBeTruthy();
       expect(saved?.enableInAppNotifications).toBe(false);
+    });
+
+    it("persists enableBrowserPush", async () => {
+      const user = await seedUser();
+
+      await NotificationPreference.create({ userId: user._id });
+
+      const req = new NextRequest(
+        "http://localhost/api/notifications/preferences",
+        {
+          method: "PATCH",
+          body: JSON.stringify({ enableBrowserPush: true }),
+        },
+      );
+
+      const res = await PATCH(req);
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.enableBrowserPush).toBe(true);
+
+      // Verify persisted in DB
+      const saved = await NotificationPreference.findOne({ userId: user._id });
+      expect(saved?.enableBrowserPush).toBe(true);
+    });
+
+    it("persists reminderTimings", async () => {
+      const user = await seedUser();
+
+      await NotificationPreference.create({ userId: user._id });
+
+      const req = new NextRequest(
+        "http://localhost/api/notifications/preferences",
+        {
+          method: "PATCH",
+          body: JSON.stringify({ reminderTimings: [60, 15] }),
+        },
+      );
+
+      const res = await PATCH(req);
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.reminderTimings).toEqual([60, 15]);
+
+      // Verify persisted in DB
+      const saved = await NotificationPreference.findOne({ userId: user._id });
+      expect(saved?.reminderTimings).toEqual([60, 15]);
     });
 
     it("validates quietHoursStart format", async () => {

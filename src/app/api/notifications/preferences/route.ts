@@ -15,12 +15,14 @@ const UpdatePreferencesSchema = z.object({
     .string()
     .regex(/^([0-1]\d|2[0-3]):[0-5]\d$/, "Must be in HH:mm format")
     .optional(),
+  enableBrowserPush: z.boolean().optional(),
   enableOverdueSummary: z.boolean().optional(),
   enableDailySummary: z.boolean().optional(),
   dailySummaryTime: z
     .string()
     .regex(/^([0-1]\d|2[0-3]):[0-5]\d$/, "Must be in HH:mm format")
     .optional(),
+  reminderTimings: z.array(z.number().int().positive()).optional(),
   timezone: z.string().min(1).max(100).optional(),
 });
 
@@ -29,12 +31,14 @@ function serializePreferences(preferences: InstanceType<typeof NotificationPrefe
     id: preferences._id.toString(),
     userId: preferences.userId.toString(),
     enableInAppNotifications: preferences.enableInAppNotifications,
+    enableBrowserPush: preferences.enableBrowserPush,
     quietHoursEnabled: preferences.quietHoursEnabled,
     quietHoursStart: preferences.quietHoursStart,
     quietHoursEnd: preferences.quietHoursEnd,
     enableOverdueSummary: preferences.enableOverdueSummary,
     enableDailySummary: preferences.enableDailySummary,
     dailySummaryTime: preferences.dailySummaryTime,
+    reminderTimings: preferences.reminderTimings,
     timezone: preferences.timezone,
     createdAt: preferences.createdAt.toISOString(),
     updatedAt: preferences.updatedAt.toISOString(),
