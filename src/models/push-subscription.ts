@@ -1,13 +1,17 @@
 import mongoose, { Schema, type Document, type Model } from "mongoose";
 
+export type PushPlatform = "web" | "android" | "ios";
+
 export interface IPushSubscription extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
-  endpoint: string;
-  keys: {
+  platform: PushPlatform;
+  endpoint?: string;
+  keys?: {
     p256dh: string;
     auth: string;
   };
+  deviceToken?: string;
   userAgent?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -21,14 +25,25 @@ const PushSubscriptionSchema = new Schema<IPushSubscription>(
       required: true,
       index: true,
     },
+    platform: {
+      type: String,
+      enum: ["web", "android", "ios"],
+      default: "web",
+      required: true,
+    },
     endpoint: {
       type: String,
-      required: true,
+      sparse: true,
       unique: true,
     },
     keys: {
-      p256dh: { type: String, required: true },
-      auth: { type: String, required: true },
+      p256dh: { type: String },
+      auth: { type: String },
+    },
+    deviceToken: {
+      type: String,
+      sparse: true,
+      unique: true,
     },
     userAgent: { type: String },
   },

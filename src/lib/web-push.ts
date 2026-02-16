@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { PushSubscription } from "@/models/push-subscription";
+import { isFirebaseConfigured, sendFcmNotification } from "@/lib/firebase-admin";
 
 /**
  * Check if VAPID environment variables are configured.
@@ -44,6 +45,7 @@ interface PushPayload {
 
 /**
  * Send a push notification to all subscriptions for a user.
+ * Routes web subscriptions via Web Push and native subscriptions via FCM.
  * Handles 410 Gone by deleting expired subscriptions.
  * Returns the number of successfully sent notifications.
  */
@@ -51,36 +53,72 @@ export async function sendPushToUser(
   userId: string,
   payload: PushPayload,
 ): Promise<number> {
-  if (!isWebPushConfigured()) return 0;
+  const webPushReady = isWebPushConfigured();
+  const fcmReady = isFirebaseConfigured();
 
-  ensureVapidInitialized();
+  if (!webPushReady && !fcmReady) return 0;
 
   const subscriptions = await PushSubscription.find({ userId });
   if (subscriptions.length === 0) return 0;
 
-  const payloadStr = JSON.stringify(payload);
+  if (webPushReady) {
+    ensureVapidInitialized();
+  }
 
-  const results = await Promise.allSettled(
-    subscriptions.map(async (sub) => {
-      try {
-        await webpush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth },
-          },
-          payloadStr,
-        );
-        return true;
-      } catch (err: unknown) {
-        const statusCode = (err as { statusCode?: number }).statusCode;
-        // 404 or 410 means the subscription is no longer valid
-        if (statusCode === 410 || statusCode === 404) {
-          await PushSubscription.deleteOne({ _id: sub._id });
-        }
-        throw err;
-      }
-    }),
+  const webSubs = subscriptions.filter(
+    (s) => s.platform === "web" && s.endpoint && s.keys,
+  );
+  const nativeSubs = subscriptions.filter(
+    (s) => s.platform !== "web" && s.deviceToken,
   );
 
-  return results.filter((r) => r.status === "fulfilled").length;
+  const payloadStr = JSON.stringify(payload);
+
+  // Send to web subscriptions via Web Push
+  const webResults = webPushReady
+    ? await Promise.allSettled(
+        webSubs.map(async (sub) => {
+          try {
+            await webpush.sendNotification(
+              {
+                endpoint: sub.endpoint!,
+                keys: { p256dh: sub.keys!.p256dh, auth: sub.keys!.auth },
+              },
+              payloadStr,
+            );
+            return true;
+          } catch (err: unknown) {
+            const statusCode = (err as { statusCode?: number }).statusCode;
+            if (statusCode === 410 || statusCode === 404) {
+              await PushSubscription.deleteOne({ _id: sub._id });
+            }
+            throw err;
+          }
+        }),
+      )
+    : [];
+
+  // Send to native subscriptions via FCM
+  const nativeResults = fcmReady
+    ? await Promise.allSettled(
+        nativeSubs.map(async (sub) => {
+          try {
+            await sendFcmNotification(sub.deviceToken!, payload);
+            return true;
+          } catch (err: unknown) {
+            const errorCode = (err as { code?: string }).code;
+            if (
+              errorCode === "messaging/registration-token-not-registered" ||
+              errorCode === "messaging/invalid-registration-token"
+            ) {
+              await PushSubscription.deleteOne({ _id: sub._id });
+            }
+            throw err;
+          }
+        }),
+      )
+    : [];
+
+  const allResults = [...webResults, ...nativeResults];
+  return allResults.filter((r) => r.status === "fulfilled").length;
 }

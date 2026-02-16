@@ -4,7 +4,8 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { PushSubscription } from "@/models/push-subscription";
 
-const SubscribeSchema = z.object({
+const WebSubscribeSchema = z.object({
+  platform: z.literal("web").optional().default("web"),
   endpoint: z.string().url("Invalid endpoint URL"),
   keys: z.object({
     p256dh: z.string().min(1, "p256dh key is required"),
@@ -13,9 +14,18 @@ const SubscribeSchema = z.object({
   userAgent: z.string().optional(),
 });
 
-const UnsubscribeSchema = z.object({
-  endpoint: z.string().url("Invalid endpoint URL"),
+const NativeSubscribeSchema = z.object({
+  platform: z.enum(["android", "ios"]),
+  deviceToken: z.string().min(1, "Device token is required"),
+  userAgent: z.string().optional(),
 });
+
+const SubscribeSchema = z.union([WebSubscribeSchema, NativeSubscribeSchema]);
+
+const UnsubscribeSchema = z.union([
+  z.object({ endpoint: z.string().url("Invalid endpoint URL") }),
+  z.object({ deviceToken: z.string().min(1, "Device token is required") }),
+]);
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -34,14 +44,47 @@ export async function POST(request: Request) {
 
   await connectDB();
 
-  // Upsert by endpoint — transfers ownership if a different user re-subscribes
+  const data = result.data;
+
+  if ("endpoint" in data) {
+    // Web subscription — upsert by endpoint
+    const sub = await PushSubscription.findOneAndUpdate(
+      { endpoint: data.endpoint },
+      {
+        userId: session.user.id,
+        platform: "web",
+        endpoint: data.endpoint,
+        keys: data.keys,
+        userAgent: data.userAgent,
+      },
+      { upsert: true, returnDocument: "after" },
+    );
+
+    if (!sub) {
+      return NextResponse.json(
+        { error: "Failed to create subscription" },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json(
+      {
+        _id: sub._id.toString(),
+        endpoint: sub.endpoint,
+        createdAt: sub.createdAt.toISOString(),
+      },
+      { status: 201 },
+    );
+  }
+
+  // Native subscription — upsert by deviceToken
   const sub = await PushSubscription.findOneAndUpdate(
-    { endpoint: result.data.endpoint },
+    { deviceToken: data.deviceToken },
     {
       userId: session.user.id,
-      endpoint: result.data.endpoint,
-      keys: result.data.keys,
-      userAgent: result.data.userAgent,
+      platform: data.platform,
+      deviceToken: data.deviceToken,
+      userAgent: data.userAgent,
     },
     { upsert: true, returnDocument: "after" },
   );
@@ -56,7 +99,7 @@ export async function POST(request: Request) {
   return NextResponse.json(
     {
       _id: sub._id.toString(),
-      endpoint: sub.endpoint,
+      deviceToken: sub.deviceToken,
       createdAt: sub.createdAt.toISOString(),
     },
     { status: 201 },
@@ -80,10 +123,19 @@ export async function DELETE(request: Request) {
 
   await connectDB();
 
-  await PushSubscription.deleteOne({
-    endpoint: result.data.endpoint,
-    userId: session.user.id,
-  });
+  const data = result.data;
+
+  if ("endpoint" in data) {
+    await PushSubscription.deleteOne({
+      endpoint: data.endpoint,
+      userId: session.user.id,
+    });
+  } else {
+    await PushSubscription.deleteOne({
+      deviceToken: data.deviceToken,
+      userId: session.user.id,
+    });
+  }
 
   return NextResponse.json({ success: true });
 }

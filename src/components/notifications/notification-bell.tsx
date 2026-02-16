@@ -14,6 +14,8 @@ import {
 } from "@/components/ui/popover";
 import { useNotifications } from "@/hooks/use-notifications";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
+import { useNativePush } from "@/hooks/use-native-push";
+import { isNativePlatform } from "@/lib/capacitor";
 import { NotificationItem } from "./notification-item";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,7 +30,9 @@ export function NotificationBell({
   iconSize = 18,
 }: NotificationBellProps) {
   const { subscribe: pushSubscribe } = usePushSubscription();
+  const { subscribe: nativePushSubscribe } = useNativePush();
   const autoSubscribeAttempted = useRef(false);
+  const isNative = isNativePlatform();
 
   // On mount: fetch preferences, auto-subscribe to push if permission is
   // already granted but enableBrowserPush is false, and auto-detect timezone
@@ -49,9 +53,24 @@ export function NotificationBell({
           }).catch(() => {});
         }
 
-        // Auto-subscribe to push if notification permission is granted
+        // Native Capacitor: auto-register for push on mount
+        if (isNative && !data.enableBrowserPush && !autoSubscribeAttempted.current) {
+          autoSubscribeAttempted.current = true;
+          const subscribed = await nativePushSubscribe();
+          if (subscribed) {
+            fetch("/api/notifications/preferences", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ enableBrowserPush: true }),
+            }).catch(() => {});
+          }
+          return;
+        }
+
+        // Web: auto-subscribe to push if notification permission is granted
         // but the preference hasn't been enabled yet
         if (
+          !isNative &&
           !data.enableBrowserPush &&
           !autoSubscribeAttempted.current &&
           typeof Notification !== "undefined" &&
@@ -70,7 +89,7 @@ export function NotificationBell({
         }
       })
       .catch(() => {});
-  }, [pushSubscribe]);
+  }, [pushSubscribe, nativePushSubscribe, isNative]);
 
   const {
     notifications,

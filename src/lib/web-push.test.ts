@@ -13,6 +13,14 @@ vi.mock("web-push", () => ({
   },
 }));
 
+// Mock firebase-admin module
+const mockSendFcmNotification = vi.fn();
+const mockIsFirebaseConfigured = vi.fn(() => false);
+vi.mock("@/lib/firebase-admin", () => ({
+  isFirebaseConfigured: () => mockIsFirebaseConfigured(),
+  sendFcmNotification: (...args: unknown[]) => mockSendFcmNotification(...args),
+}));
+
 // Store original env
 const originalEnv = { ...process.env };
 
@@ -41,7 +49,6 @@ describe("web-push helpers", () => {
       delete process.env.VAPID_PRIVATE_KEY;
       delete process.env.VAPID_SUBJECT;
 
-      // Re-import to get fresh module state
       vi.resetModules();
       const { isWebPushConfigured } = await import("@/lib/web-push");
       expect(isWebPushConfigured()).toBe(false);
@@ -93,10 +100,11 @@ describe("web-push helpers", () => {
       process.env.VAPID_SUBJECT = "mailto:test@example.com";
     });
 
-    it("returns 0 when web push is not configured", async () => {
+    it("returns 0 when neither web push nor FCM is configured", async () => {
       delete process.env.VAPID_PUBLIC_KEY;
       delete process.env.VAPID_PRIVATE_KEY;
       delete process.env.VAPID_SUBJECT;
+      mockIsFirebaseConfigured.mockReturnValue(false);
 
       vi.resetModules();
       const { sendPushToUser } = await import("@/lib/web-push");
@@ -107,6 +115,7 @@ describe("web-push helpers", () => {
       });
       expect(count).toBe(0);
       expect(mockSendNotification).not.toHaveBeenCalled();
+      expect(mockSendFcmNotification).not.toHaveBeenCalled();
     });
 
     it("returns 0 when user has no subscriptions", async () => {
@@ -120,7 +129,7 @@ describe("web-push helpers", () => {
       expect(count).toBe(0);
     });
 
-    it("sends push to all user subscriptions", async () => {
+    it("sends push to all web subscriptions", async () => {
       await createTestPushSubscription({
         userId,
         endpoint: "https://fcm.googleapis.com/fcm/send/device1",
@@ -145,7 +154,97 @@ describe("web-push helpers", () => {
       expect(mockSendNotification).toHaveBeenCalledTimes(2);
     });
 
-    it("deletes subscription on 410 Gone", async () => {
+    it("sends push to native subscriptions via FCM", async () => {
+      mockIsFirebaseConfigured.mockReturnValue(true);
+      mockSendFcmNotification.mockResolvedValue(true);
+
+      await createTestPushSubscription({
+        userId,
+        platform: "android",
+        deviceToken: "native-token-1",
+      });
+      await createTestPushSubscription({
+        userId,
+        platform: "android",
+        deviceToken: "native-token-2",
+      });
+
+      vi.resetModules();
+      const { sendPushToUser } = await import("@/lib/web-push");
+
+      const count = await sendPushToUser(userId.toString(), {
+        title: "Reminder",
+        message: "Task is due",
+      });
+
+      expect(count).toBe(2);
+      expect(mockSendFcmNotification).toHaveBeenCalledTimes(2);
+      expect(mockSendFcmNotification).toHaveBeenCalledWith(
+        "native-token-1",
+        expect.objectContaining({ title: "Reminder", message: "Task is due" }),
+      );
+    });
+
+    it("sends to both web and native subscriptions", async () => {
+      mockIsFirebaseConfigured.mockReturnValue(true);
+      mockSendNotification.mockResolvedValue({});
+      mockSendFcmNotification.mockResolvedValue(true);
+
+      await createTestPushSubscription({
+        userId,
+        endpoint: "https://fcm.googleapis.com/fcm/send/web-device",
+      });
+      await createTestPushSubscription({
+        userId,
+        platform: "android",
+        deviceToken: "android-token",
+      });
+
+      vi.resetModules();
+      const { sendPushToUser } = await import("@/lib/web-push");
+
+      const count = await sendPushToUser(userId.toString(), {
+        title: "Test",
+        message: "Both platforms",
+      });
+
+      expect(count).toBe(2);
+      expect(mockSendNotification).toHaveBeenCalledTimes(1);
+      expect(mockSendFcmNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it("sends only FCM when VAPID is not configured but Firebase is", async () => {
+      delete process.env.VAPID_PUBLIC_KEY;
+      delete process.env.VAPID_PRIVATE_KEY;
+      delete process.env.VAPID_SUBJECT;
+      mockIsFirebaseConfigured.mockReturnValue(true);
+      mockSendFcmNotification.mockResolvedValue(true);
+
+      await createTestPushSubscription({
+        userId,
+        endpoint: "https://fcm.googleapis.com/fcm/send/web-only",
+      });
+      await createTestPushSubscription({
+        userId,
+        platform: "android",
+        deviceToken: "native-only-token",
+      });
+
+      vi.resetModules();
+      const { sendPushToUser } = await import("@/lib/web-push");
+
+      const count = await sendPushToUser(userId.toString(), {
+        title: "Test",
+        message: "FCM only",
+      });
+
+      // Only the native sub should succeed (web push not configured)
+      expect(count).toBe(1);
+      expect(mockSendNotification).not.toHaveBeenCalled();
+      expect(mockSendFcmNotification).toHaveBeenCalledTimes(1);
+    });
+
+    it("deletes web subscription on 410 Gone", async () => {
       const sub = await createTestPushSubscription({
         userId,
         endpoint: "https://fcm.googleapis.com/fcm/send/expired",
@@ -168,7 +267,7 @@ describe("web-push helpers", () => {
       expect(remaining).toBeNull();
     });
 
-    it("deletes subscription on 404 Not Found", async () => {
+    it("deletes web subscription on 404 Not Found", async () => {
       await createTestPushSubscription({
         userId,
         endpoint: "https://fcm.googleapis.com/fcm/send/not-found",
@@ -189,6 +288,31 @@ describe("web-push helpers", () => {
       expect(count).toBe(0);
       const remaining = await PushSubscription.find({ userId });
       expect(remaining).toHaveLength(0);
+    });
+
+    it("deletes native subscription on token-not-registered error", async () => {
+      mockIsFirebaseConfigured.mockReturnValue(true);
+      const sub = await createTestPushSubscription({
+        userId,
+        platform: "android",
+        deviceToken: "expired-token",
+      });
+
+      const error = new Error("Token not registered") as Error & { code: string };
+      error.code = "messaging/registration-token-not-registered";
+      mockSendFcmNotification.mockRejectedValue(error);
+
+      vi.resetModules();
+      const { sendPushToUser } = await import("@/lib/web-push");
+
+      const count = await sendPushToUser(userId.toString(), {
+        title: "Test",
+        message: "Hello",
+      });
+
+      expect(count).toBe(0);
+      const remaining = await PushSubscription.findById(sub._id);
+      expect(remaining).toBeNull();
     });
 
     it("does not delete subscription on other errors", async () => {

@@ -4,7 +4,7 @@
 
 ## Project Summary
 
-Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, real-time sync via SSE, and offline PWA mode. Deployed via Docker Compose.
+Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, real-time sync via SSE, offline PWA mode, and a Capacitor Android app with Firebase push notifications. Deployed via Docker Compose.
 
 ## Architecture
 
@@ -16,6 +16,7 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 - **Real-time sync** via SSE + in-memory EventEmitter — see `docs/realtime-sync.md`
 - **Project sharing** via `ProjectMember` model with role-based access — see `docs/project-sharing.md`
 - **Kanban DnD** via @dnd-kit with optimistic updates — see `docs/kanban-dnd.md`
+- **Capacitor Android**: remote URL mode WebView + Firebase Cloud Messaging for native push — see `docs/capacitor-android.md`
 - **State**: no SWR/React Query — custom hooks in `src/hooks/` with `useState` + `useCallback` + `fetch`/`offlineFetch`
 - **Types duality**: Mongoose models use `ObjectId`/`Date` (`I<Model>` in `src/models/`), components use `string` IDs/dates (`src/types/index.ts`). Conversion happens at JSON serialization boundary.
 
@@ -29,6 +30,8 @@ pnpm test:watch       # Tests in watch mode
 pnpm test:coverage    # Tests with coverage report
 pnpm test:e2e         # Playwright E2E tests (requires running dev server)
 pnpm lint             # ESLint
+pnpm cap:sync         # Sync Capacitor Android platform
+pnpm cap:open         # Open Android project in Android Studio
 docker compose up -d  # Full stack in Docker (app + MongoDB)
 ```
 

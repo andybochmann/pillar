@@ -23,6 +23,8 @@ import {
 import { toast } from "sonner";
 import { useNotificationPermission } from "@/hooks/use-notification-permission";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
+import { useNativePush } from "@/hooks/use-native-push";
+import { isNativePlatform } from "@/lib/capacitor";
 import type { NotificationPreference } from "@/types";
 
 const REMINDER_OPTIONS = [
@@ -80,6 +82,9 @@ export function NotificationSettingsCard() {
     useNotificationPermission();
   const { subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } =
     usePushSubscription();
+  const { subscribe: nativePushSubscribe, unsubscribe: nativePushUnsubscribe } =
+    useNativePush();
+  const isNative = isNativePlatform();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState<NotificationPreference | null>(
@@ -135,6 +140,23 @@ export function NotificationSettingsCard() {
   }
 
   async function handleBrowserPushToggle(enabled: boolean) {
+    if (isNative) {
+      if (!enabled) {
+        await nativePushUnsubscribe();
+        await updatePreferences({ enableBrowserPush: false });
+        return;
+      }
+
+      const subscribed = await nativePushSubscribe();
+      if (!subscribed) {
+        toast.error("Failed to subscribe to push notifications");
+        return;
+      }
+
+      await updatePreferences({ enableBrowserPush: true });
+      return;
+    }
+
     if (!enabled) {
       await pushUnsubscribe();
       await updatePreferences({ enableBrowserPush: false });
@@ -199,21 +221,23 @@ export function NotificationSettingsCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Browser Push Notifications */}
+        {/* Push Notifications */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="browser-push">Browser Push Notifications</Label>
+              <Label htmlFor="browser-push">
+                {isNative ? "Push Notifications" : "Browser Push Notifications"}
+              </Label>
               <p className="text-muted-foreground text-sm">
                 Receive notifications even when the app is closed
-                {!isSupported && " (Not supported in this browser)"}
+                {!isNative && !isSupported && " (Not supported in this browser)"}
               </p>
             </div>
             <Switch
               id="browser-push"
               checked={preferences.enableBrowserPush}
               onCheckedChange={handleBrowserPushToggle}
-              disabled={saving || !isSupported}
+              disabled={saving || (!isNative && !isSupported)}
             />
           </div>
         </div>
@@ -367,32 +391,34 @@ export function NotificationSettingsCard() {
 
         {/* Test Notification Buttons */}
         <div className="border-muted-foreground/20 space-y-2 border-t pt-4">
-          <Button
-            variant="outline"
-            onClick={() => {
-              if (isSupported && permission === "granted") {
-                if (navigator.serviceWorker?.controller) {
-                  navigator.serviceWorker.controller.postMessage({
-                    type: "SHOW_NOTIFICATION",
-                    title: "Test Local Notification",
-                    body: "Browser notification display is working!",
-                  });
+          {!isNative && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (isSupported && permission === "granted") {
+                  if (navigator.serviceWorker?.controller) {
+                    navigator.serviceWorker.controller.postMessage({
+                      type: "SHOW_NOTIFICATION",
+                      title: "Test Local Notification",
+                      body: "Browser notification display is working!",
+                    });
+                  } else {
+                    new Notification("Test Local Notification", {
+                      body: "Browser notification display is working!",
+                      icon: "/icons/icon-192x192.png",
+                    });
+                  }
+                  toast.success("Local notification sent");
                 } else {
-                  new Notification("Test Local Notification", {
-                    body: "Browser notification display is working!",
-                    icon: "/icons/icon-192x192.png",
-                  });
+                  toast.error("Browser notifications not enabled");
                 }
-                toast.success("Local notification sent");
-              } else {
-                toast.error("Browser notifications not enabled");
-              }
-            }}
-            disabled={!isSupported || permission !== "granted"}
-          >
-            <Bell className="mr-2 h-4 w-4" />
-            Test Local Notification
-          </Button>
+              }}
+              disabled={!isSupported || permission !== "granted"}
+            >
+              <Bell className="mr-2 h-4 w-4" />
+              Test Local Notification
+            </Button>
+          )}
           {preferences.enableBrowserPush && (
             <Button
               variant="outline"

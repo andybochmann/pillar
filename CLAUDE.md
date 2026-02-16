@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, real-time sync via SSE, and offline PWA mode. Deployed via Docker Compose.
+Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, real-time sync via SSE, offline PWA mode, and a Capacitor Android app with Firebase push notifications. Deployed via Docker Compose.
 
 ## Tech Stack
 
@@ -17,6 +17,7 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 - **Validation**: Zod v4
 - **Toasts**: sonner (named import: `import { toast } from "sonner"`)
 - **PWA/Offline**: vanilla service worker + IndexedDB via `idb`
+- **Native App**: Capacitor 8 (Android, remote URL mode) + Firebase Cloud Messaging
 - **Testing**: Vitest + React Testing Library + Playwright + mongodb-memory-server + fake-indexeddb
 - **Package Manager**: pnpm
 
@@ -30,6 +31,8 @@ pnpm test:watch       # Tests in watch mode
 pnpm test:coverage    # Tests with coverage report
 pnpm test:e2e         # Playwright E2E tests (requires running dev server)
 pnpm lint             # ESLint
+pnpm cap:sync         # Sync Capacitor Android platform
+pnpm cap:open         # Open Android project in Android Studio
 docker compose up -d  # Full stack in Docker (app + MongoDB)
 ```
 
@@ -46,6 +49,7 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 - **Project sharing** via `ProjectMember` model with role-based access — see [docs/project-sharing.md](docs/project-sharing.md)
 - **Kanban DnD** via @dnd-kit with optimistic updates — see [docs/kanban-dnd.md](docs/kanban-dnd.md)
 - **PWA/Offline**: vanilla service worker (`public/sw.js`), IndexedDB queue, `offlineFetch()` wrapper — see [docs/offline-pwa.md](docs/offline-pwa.md)
+- **Capacitor Android**: remote URL mode WebView + Firebase Cloud Messaging for native push — see [docs/capacitor-android.md](docs/capacitor-android.md)
 - **Time tracking**: per-task stopwatch with history — see [docs/time-tracking.md](docs/time-tracking.md)
 - **AI features**: Claude-powered subtask generation — see [docs/ai-features.md](docs/ai-features.md)
 - **State**: no SWR/React Query — custom hooks in `src/hooks/` with `useState` + `useCallback` + `fetch`/`offlineFetch`
@@ -161,6 +165,10 @@ import { GET, POST } from "./route";
 | ProjectMember model       | `src/models/project-member.ts`              |
 | Test helpers              | `src/test/helpers/`                         |
 | Service worker            | `public/sw.js`                              |
+| Capacitor config          | `capacitor.config.ts`                       |
+| Capacitor platform detect | `src/lib/capacitor.ts`                      |
+| Firebase Admin SDK        | `src/lib/firebase-admin.ts`                 |
+| Native push hook          | `src/hooks/use-native-push.ts`              |
 
 ## Feature Documentation
 
@@ -174,6 +182,7 @@ Detailed documentation for each major feature lives in the `docs/` folder:
 | Offline/PWA | [docs/offline-pwa.md](docs/offline-pwa.md) |
 | AI features | [docs/ai-features.md](docs/ai-features.md) |
 | Kanban drag & drop | [docs/kanban-dnd.md](docs/kanban-dnd.md) |
+| Capacitor Android | [docs/capacitor-android.md](docs/capacitor-android.md) |
 
 ## Test Credentials (Dev/E2E)
 

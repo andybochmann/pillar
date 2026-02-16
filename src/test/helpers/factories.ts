@@ -16,6 +16,7 @@ import {
 import {
   PushSubscription,
   type IPushSubscription,
+  type PushPlatform,
 } from "@/models/push-subscription";
 import { hash } from "bcryptjs";
 import { generateToken, hashToken } from "@/lib/mcp-auth";
@@ -190,23 +191,38 @@ export async function createTestAccessToken(
 
 interface CreatePushSubscriptionInput {
   userId: mongoose.Types.ObjectId;
+  platform?: PushPlatform;
   endpoint?: string;
   keys?: { p256dh: string; auth: string };
+  deviceToken?: string;
   userAgent?: string;
 }
 
 export async function createTestPushSubscription(
   overrides: CreatePushSubscriptionInput,
 ): Promise<IPushSubscription> {
+  const platform = overrides.platform ?? "web";
+
+  if (platform === "web") {
+    return PushSubscription.create({
+      userId: overrides.userId,
+      platform,
+      endpoint:
+        overrides.endpoint ??
+        `https://fcm.googleapis.com/fcm/send/${new mongoose.Types.ObjectId()}`,
+      keys: overrides.keys ?? {
+        p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8REfWJ4=",
+        auth: "tBHItJI5svbpC7htQ-VNRQ==",
+      },
+      userAgent: overrides.userAgent,
+    });
+  }
+
   return PushSubscription.create({
     userId: overrides.userId,
-    endpoint:
-      overrides.endpoint ??
-      `https://fcm.googleapis.com/fcm/send/${new mongoose.Types.ObjectId()}`,
-    keys: overrides.keys ?? {
-      p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8REfWJ4=",
-      auth: "tBHItJI5svbpC7htQ-VNRQ==",
-    },
+    platform,
+    deviceToken:
+      overrides.deviceToken ?? `native-token-${new mongoose.Types.ObjectId()}`,
     userAgent: overrides.userAgent,
   });
 }

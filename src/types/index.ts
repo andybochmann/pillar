@@ -174,10 +174,14 @@ export interface Notification {
   updatedAt: string;
 }
 
+export type PushPlatform = "web" | "android" | "ios";
+
 export interface PushSubscriptionRecord {
   _id: string;
   userId: string;
-  endpoint: string;
+  platform: PushPlatform;
+  endpoint?: string;
+  deviceToken?: string;
   userAgent?: string;
   createdAt: string;
   updatedAt: string;

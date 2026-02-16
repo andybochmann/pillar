@@ -54,3 +54,11 @@ next-env.d.ts
 .worktrees/
 .security-key
 logs/security/
+
+# Capacitor / Android
+android/app/build/
+android/.gradle/
+android/build/
+*.apk
+*.aab
+google-services.json
