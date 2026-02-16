@@ -82,10 +82,12 @@ export async function PATCH(request: Request) {
     );
   }
 
+  const userId = session.user.id;
+
   await connectDB();
 
   const preferences = await NotificationPreference.findOneAndUpdate(
-    { userId: session.user.id },
+    { userId },
     { $set: result.data },
     { returnDocument: "after", upsert: true },
   );
@@ -99,8 +101,8 @@ export async function PATCH(request: Request) {
 
   // Recalculate reminders for existing tasks when timings change
   if (result.data.reminderTimings) {
-    recalculateRemindersForUser(session.user.id).catch((err) => {
-      console.error(`[preferences/PATCH] Failed to recalculate reminders for user ${session.user.id}:`, err);
+    recalculateRemindersForUser(userId).catch((err) => {
+      console.error(`[preferences/PATCH] Failed to recalculate reminders for user ${userId}:`, err);
     });
   }
 
