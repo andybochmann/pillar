@@ -25,11 +25,105 @@ interface UseNotificationsReturn {
   }) => Promise<void>;
   markAsRead: (id: string) => Promise<Notification>;
   markAsDismissed: (id: string) => Promise<Notification>;
-  dismissAll: () => Promise<void>;
   snoozeNotification: (id: string, snoozedUntil: string) => Promise<Notification>;
   deleteNotification: (id: string) => Promise<void>;
 }
 
+/**
+ * Manages notification state with CRUD operations, real-time synchronization, and offline support.
+ *
+ * This hook provides a complete interface for managing user notifications, including:
+ * - Local state management with optimistic updates
+ * - Real-time notification delivery via Server-Sent Events (SSE)
+ * - Offline mutation queuing via offlineFetch
+ * - Automatic refetch on network reconnection
+ * - Support for filtering notifications by read status, type, and task
+ *
+ * **SSE-Based Notification Subscription:**
+ * - Listens to `pillar:notification` custom events dispatched by the event bus
+ * - Automatically adds new notifications to the top of the list
+ * - Prevents duplicate notifications by checking notification ID before adding
+ *
+ * **Automatic Refetch:**
+ * - Automatically refetches all notifications when network reconnects after being offline
+ * - Uses `useRefetchOnReconnect` hook to listen for `pillar:reconnected` events
+ *
+ * @param {Notification[]} [initialNotifications=[]] - Initial notifications to populate state (typically from server-side props)
+ *
+ * @returns {UseNotificationsReturn} Object containing:
+ *   - `notifications`: Array of notifications in current state
+ *   - `loading`: Boolean indicating if a fetch operation is in progress
+ *   - `error`: Error message string or null
+ *   - `setNotifications`: State setter for external optimistic updates
+ *   - `fetchNotifications`: Function to fetch notifications with optional filters (read, dismissed, type, taskId, limit)
+ *   - `markAsRead`: Function to mark a notification as read with optimistic update
+ *   - `markAsDismissed`: Function to mark a notification as dismissed with optimistic update
+ *   - `snoozeNotification`: Function to snooze a notification until a specific date/time with optimistic update
+ *   - `deleteNotification`: Function to delete a notification with optimistic update
+ *
+ * @example
+ * ```tsx
+ * function NotificationCenter() {
+ *   const {
+ *     notifications,
+ *     loading,
+ *     error,
+ *     fetchNotifications,
+ *     markAsRead,
+ *     markAsDismissed,
+ *     snoozeNotification,
+ *     deleteNotification
+ *   } = useNotifications();
+ *
+ *   useEffect(() => {
+ *     // Fetch unread, non-dismissed notifications
+ *     fetchNotifications({ read: false, dismissed: false, limit: 50 });
+ *   }, []);
+ *
+ *   const handleMarkAsRead = async (id: string) => {
+ *     try {
+ *       await markAsRead(id);
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   const handleSnooze = async (id: string) => {
+ *     const snoozedUntil = new Date();
+ *     snoozedUntil.setHours(snoozedUntil.getHours() + 1);
+ *     try {
+ *       await snoozeNotification(id, snoozedUntil.toISOString());
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   return (
+ *     <div>
+ *       {loading && <Spinner />}
+ *       {error && <ErrorMessage>{error}</ErrorMessage>}
+ *       {notifications.map(notification => (
+ *         <NotificationItem
+ *           key={notification._id}
+ *           notification={notification}
+ *           onMarkAsRead={() => handleMarkAsRead(notification._id)}
+ *           onSnooze={() => handleSnooze(notification._id)}
+ *           onDismiss={() => markAsDismissed(notification._id)}
+ *           onDelete={() => deleteNotification(notification._id)}
+ *         />
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ *
+ * @remarks
+ * - All mutation operations (markAsRead, markAsDismissed, snoozeNotification, deleteNotification) use `offlineFetch` for offline support
+ * - Mutations update local state optimistically before the server responds
+ * - Real-time notifications are received via the event bus and automatically added to state
+ * - The hook automatically prevents duplicate notifications from being added
+ * - Automatically refetches notifications when reconnecting to network
+ */
 export function useNotifications(
   initialNotifications: Notification[] = []
 ): UseNotificationsReturn {
@@ -122,19 +216,6 @@ export function useNotifications(
     return updated;
   }, []);
 
-  const dismissAll = useCallback(async () => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.dismissed ? n : { ...n, dismissed: true }))
-    );
-    const res = await offlineFetch("/api/notifications", {
-      method: "DELETE",
-    });
-    if (!res.ok) {
-      const body = await res.json();
-      throw new Error(body.error || "Failed to dismiss all notifications");
-    }
-  }, []);
-
   const snoozeNotification = useCallback(
     async (id: string, snoozedUntil: string) => {
       const res = await offlineFetch(`/api/notifications/${id}`, {
@@ -166,14 +247,6 @@ export function useNotifications(
     setNotifications((prev) => prev.filter((n) => n._id !== id));
   }, []);
 
-  // Polling fallback — refetch unread notifications every 2 minutes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      fetchNotifications();
-    }, 2 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [fetchNotifications]);
-
   // Listen for notification events from event bus
   useEffect(() => {
     function handler(e: Event) {
@@ -198,27 +271,6 @@ export function useNotifications(
         if (prev.some((n) => n._id === newNotification._id)) return prev;
         return [newNotification, ...prev];
       });
-
-      // Show OS notification via Service Worker when tab is not focused
-      const swController =
-        typeof Notification !== "undefined" &&
-        Notification.permission === "granted" &&
-        !document.hasFocus()
-          ? navigator.serviceWorker?.controller
-          : null;
-
-      if (swController) {
-        swController.postMessage({
-          type: "SHOW_NOTIFICATION",
-          title: event.title,
-          body: event.message,
-          data: {
-            notificationId: event.notificationId,
-            taskId: event.taskId,
-            url: "/",
-          },
-        });
-      }
     }
 
     window.addEventListener("pillar:notification", handler);
@@ -239,7 +291,6 @@ export function useNotifications(
     fetchNotifications,
     markAsRead,
     markAsDismissed,
-    dismissAll,
     snoozeNotification,
     deleteNotification,
   };

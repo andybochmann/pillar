@@ -24,6 +24,66 @@ interface UseCategoriesReturn {
   refresh: () => Promise<void>;
 }
 
+/**
+ * Manages category state with CRUD operations, real-time synchronization, and offline support.
+ *
+ * This hook provides a complete interface for managing categories (project groupings), including:
+ * - Automatic fetching of categories on mount
+ * - Local state management with optimistic updates
+ * - Real-time synchronization via Server-Sent Events (SSE)
+ * - Offline mutation queuing via offlineFetch
+ * - Automatic refetch on network reconnection
+ *
+ * @returns {UseCategoriesReturn} Object containing:
+ *   - `categories`: Array of categories in current state
+ *   - `loading`: Boolean indicating if a fetch operation is in progress
+ *   - `error`: Error message string or null
+ *   - `createCategory`: Function to create a new category with optimistic update
+ *   - `updateCategory`: Function to update a category with optimistic update
+ *   - `deleteCategory`: Function to delete a category with optimistic update
+ *   - `refresh`: Function to manually refetch categories
+ *
+ * @example
+ * ```tsx
+ * function CategoryManager() {
+ *   const {
+ *     categories,
+ *     loading,
+ *     error,
+ *     createCategory,
+ *     updateCategory,
+ *     deleteCategory
+ *   } = useCategories();
+ *
+ *   const handleCreateCategory = async () => {
+ *     try {
+ *       await createCategory({
+ *         name: "Work",
+ *         color: "#3b82f6",
+ *         icon: "briefcase"
+ *       });
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   const handleUpdateOrder = async (categoryId: string, newOrder: number) => {
+ *     await updateCategory(categoryId, { order: newOrder });
+ *   };
+ *
+ *   if (loading) return <Spinner />;
+ *   return <div>{categories.map(c => <CategoryCard key={c._id} category={c} />)}</div>;
+ * }
+ * ```
+ *
+ * @remarks
+ * **Side Effects:**
+ * - Automatically fetches all categories on component mount
+ * - Subscribes to real-time category events (created, updated, deleted) via SSE
+ * - Automatically refetches categories on network reconnection
+ * - All mutations use `offlineFetch` to queue operations when offline
+ * - Optimistic updates are applied immediately; SSE events reconcile state across tabs/users
+ */
 export function useCategories(): UseCategoriesReturn {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);

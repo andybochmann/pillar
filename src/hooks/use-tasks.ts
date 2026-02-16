@@ -20,7 +20,6 @@ type TaskUpdateFields = Pick<
   | "subtasks"
   | "completedAt"
   | "assigneeId"
-  | "reminderAt"
 >;
 
 interface UseTasksReturn {
@@ -36,7 +35,6 @@ interface UseTasksReturn {
     priority?: string;
     description?: string;
     assigneeId?: string | null;
-    reminderAt?: string | null;
   }) => Promise<Task>;
   updateTask: (
     id: string,
@@ -45,6 +43,77 @@ interface UseTasksReturn {
   deleteTask: (id: string) => Promise<void>;
 }
 
+/**
+ * Manages task state with CRUD operations, real-time synchronization, and offline support.
+ *
+ * This hook provides a complete interface for managing tasks within a project, including:
+ * - Local state management with optimistic updates
+ * - Real-time synchronization via Server-Sent Events (SSE)
+ * - Offline mutation queuing via offlineFetch
+ * - Automatic refetch on network reconnection
+ * - Support for bulk task creation events (e.g., AI-generated tasks)
+ *
+ * @param {Task[]} [initialTasks=[]] - Initial tasks to populate state (typically from server-side props)
+ * @param {string} [projectId] - Optional project ID to filter real-time events and enable auto-refetch
+ *
+ * @returns {UseTasksReturn} Object containing:
+ *   - `tasks`: Array of tasks in current state
+ *   - `loading`: Boolean indicating if a fetch operation is in progress
+ *   - `error`: Error message string or null
+ *   - `setTasks`: State setter for external optimistic updates (e.g., drag-and-drop reordering)
+ *   - `fetchTasks`: Function to fetch tasks for a specific project
+ *   - `createTask`: Function to create a new task with optimistic update
+ *   - `updateTask`: Function to update a task with optimistic update
+ *   - `deleteTask`: Function to delete a task with optimistic update
+ *
+ * @example
+ * ```tsx
+ * function ProjectBoard({ projectId }: { projectId: string }) {
+ *   const {
+ *     tasks,
+ *     loading,
+ *     error,
+ *     createTask,
+ *     updateTask,
+ *     deleteTask,
+ *     setTasks,
+ *     fetchTasks
+ *   } = useTasks([], projectId);
+ *
+ *   useEffect(() => {
+ *     fetchTasks(projectId);
+ *   }, [projectId]);
+ *
+ *   const handleCreateTask = async () => {
+ *     try {
+ *       await createTask({
+ *         title: "New Task",
+ *         projectId,
+ *         columnId: "todo",
+ *         priority: "medium"
+ *       });
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   // External optimistic update for drag-and-drop
+ *   const handleDragEnd = (result: DragResult) => {
+ *     setTasks(reorderedTasks);
+ *   };
+ *
+ *   return <TaskList tasks={tasks} />;
+ * }
+ * ```
+ *
+ * @remarks
+ * **Side Effects:**
+ * - Subscribes to real-time task events (created, updated, deleted, reordered) via SSE
+ * - Listens to `pillar:tasks-created` window event for bulk task creation
+ * - Automatically refetches tasks on network reconnection (if projectId is provided)
+ * - All mutations use `offlineFetch` to queue operations when offline
+ * - Optimistic updates are applied immediately; SSE events reconcile state across tabs/users
+ */
 export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTasksReturn {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [loading, setLoading] = useState(false);
@@ -75,7 +144,6 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
       priority?: string;
       description?: string;
       assigneeId?: string | null;
-      reminderAt?: string | null;
     }) => {
       const res = await offlineFetch("/api/tasks", {
         method: "POST",

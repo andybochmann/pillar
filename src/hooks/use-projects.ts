@@ -30,6 +30,70 @@ interface UseProjectsReturn {
   refresh: (includeArchived?: boolean) => Promise<void>;
 }
 
+/**
+ * Manages project state with CRUD operations, real-time synchronization, and offline support.
+ *
+ * This hook provides a complete interface for managing projects across the application, including:
+ * - Automatic fetching of projects on mount
+ * - Local state management with optimistic updates
+ * - Real-time synchronization via Server-Sent Events (SSE)
+ * - Offline mutation queuing via offlineFetch
+ * - Automatic refetch on network reconnection
+ * - Support for filtering archived projects
+ *
+ * @returns {UseProjectsReturn} Object containing:
+ *   - `projects`: Array of projects in current state
+ *   - `loading`: Boolean indicating if a fetch operation is in progress
+ *   - `error`: Error message string or null
+ *   - `createProject`: Function to create a new project with optimistic update
+ *   - `updateProject`: Function to update a project with optimistic update
+ *   - `deleteProject`: Function to delete a project with optimistic update
+ *   - `refresh`: Function to manually refetch projects (optionally including archived)
+ *
+ * @example
+ * ```tsx
+ * function ProjectList() {
+ *   const {
+ *     projects,
+ *     loading,
+ *     error,
+ *     createProject,
+ *     updateProject,
+ *     deleteProject,
+ *     refresh
+ *   } = useProjects();
+ *
+ *   const handleCreateProject = async () => {
+ *     try {
+ *       await createProject({
+ *         name: "New Project",
+ *         categoryId: "cat-123",
+ *         viewType: "board"
+ *       });
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   const handleArchiveToggle = async (projectId: string, archived: boolean) => {
+ *     await updateProject(projectId, { archived });
+ *     // Refresh to show/hide archived projects
+ *     refresh(true);
+ *   };
+ *
+ *   if (loading) return <Spinner />;
+ *   return <div>{projects.map(p => <ProjectCard key={p._id} project={p} />)}</div>;
+ * }
+ * ```
+ *
+ * @remarks
+ * **Side Effects:**
+ * - Automatically fetches all projects on component mount
+ * - Subscribes to real-time project events (created, updated, deleted) via SSE
+ * - Automatically refetches projects on network reconnection
+ * - All mutations use `offlineFetch` to queue operations when offline
+ * - Optimistic updates are applied immediately; SSE events reconcile state across tabs/users
+ */
 export function useProjects(): UseProjectsReturn {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);

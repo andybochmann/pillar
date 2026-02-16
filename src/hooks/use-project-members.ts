@@ -20,6 +20,84 @@ interface UseProjectMembersReturn {
   removeMember: (projectId: string, memberId: string) => Promise<void>;
 }
 
+/**
+ * Manages project member state with CRUD operations, real-time synchronization, and offline support.
+ *
+ * This hook provides a complete interface for managing project members and their roles, including:
+ * - Local state management with optimistic updates
+ * - Real-time synchronization via Server-Sent Events (SSE)
+ * - Offline mutation queuing via offlineFetch
+ * - Support for adding members by email with role assignment
+ * - Role-based access control updates
+ *
+ * @param {string} [projectId] - Optional project ID to filter real-time events to only this project's members
+ *
+ * @returns {UseProjectMembersReturn} Object containing:
+ *   - `members`: Array of project members in current state
+ *   - `loading`: Boolean indicating if a fetch operation is in progress
+ *   - `error`: Error message string or null
+ *   - `fetchMembers`: Function to fetch members for a specific project
+ *   - `addMember`: Function to add a new member by email with optimistic update
+ *   - `updateMemberRole`: Function to update a member's role with optimistic update
+ *   - `removeMember`: Function to remove a member with optimistic update
+ *
+ * @example
+ * ```tsx
+ * function ProjectMembersDialog({ projectId }: { projectId: string }) {
+ *   const {
+ *     members,
+ *     loading,
+ *     error,
+ *     fetchMembers,
+ *     addMember,
+ *     updateMemberRole,
+ *     removeMember
+ *   } = useProjectMembers(projectId);
+ *
+ *   useEffect(() => {
+ *     fetchMembers(projectId);
+ *   }, [projectId]);
+ *
+ *   const handleAddMember = async (email: string) => {
+ *     try {
+ *       await addMember(projectId, email);
+ *       toast.success("Member added successfully");
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   const handleRoleChange = async (memberId: string, newRole: ProjectRole) => {
+ *     try {
+ *       await updateMemberRole(projectId, memberId, newRole);
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   return (
+ *     <div>
+ *       {members.map(member => (
+ *         <MemberRow
+ *           key={member._id}
+ *           member={member}
+ *           onRoleChange={handleRoleChange}
+ *           onRemove={() => removeMember(projectId, member._id)}
+ *         />
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ *
+ * @remarks
+ * **Side Effects:**
+ * - Subscribes to real-time member events (created, updated, deleted) via SSE
+ * - Filters SSE events by projectId if provided (only processes events for this project)
+ * - All mutations use `offlineFetch` to queue operations when offline
+ * - Optimistic updates are applied immediately; SSE events reconcile state across tabs/users
+ * - Adding a member sends an invitation if the user doesn't exist or grants access if they do
+ */
 export function useProjectMembers(projectId?: string): UseProjectMembersReturn {
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(false);

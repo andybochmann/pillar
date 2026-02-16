@@ -22,6 +22,66 @@ interface UseLabelsReturn {
   refresh: () => Promise<void>;
 }
 
+/**
+ * Manages label state with CRUD operations, real-time synchronization, and offline support.
+ *
+ * This hook provides a complete interface for managing labels (task tags), including:
+ * - Automatic fetching of labels on mount
+ * - Local state management with optimistic updates and auto-sorting by name
+ * - Real-time synchronization via Server-Sent Events (SSE)
+ * - Offline mutation queuing via offlineFetch
+ * - Automatic refetch on network reconnection
+ *
+ * @returns {UseLabelsReturn} Object containing:
+ *   - `labels`: Array of labels sorted alphabetically by name
+ *   - `loading`: Boolean indicating if a fetch operation is in progress
+ *   - `error`: Error message string or null
+ *   - `createLabel`: Function to create a new label with optimistic update
+ *   - `updateLabel`: Function to update a label with optimistic update
+ *   - `deleteLabel`: Function to delete a label with optimistic update
+ *   - `refresh`: Function to manually refetch labels
+ *
+ * @example
+ * ```tsx
+ * function LabelManager() {
+ *   const {
+ *     labels,
+ *     loading,
+ *     error,
+ *     createLabel,
+ *     updateLabel,
+ *     deleteLabel
+ *   } = useLabels();
+ *
+ *   const handleCreateLabel = async () => {
+ *     try {
+ *       await createLabel({
+ *         name: "urgent",
+ *         color: "#ef4444"
+ *       });
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   const handleUpdateLabel = async (labelId: string) => {
+ *     await updateLabel(labelId, { color: "#10b981" });
+ *   };
+ *
+ *   if (loading) return <Spinner />;
+ *   return <div>{labels.map(l => <LabelBadge key={l._id} label={l} />)}</div>;
+ * }
+ * ```
+ *
+ * @remarks
+ * **Side Effects:**
+ * - Automatically fetches all labels on component mount
+ * - Subscribes to real-time label events (created, updated, deleted) via SSE
+ * - Automatically refetches labels on network reconnection
+ * - All mutations use `offlineFetch` to queue operations when offline
+ * - Labels are always sorted alphabetically by name after any state change
+ * - Optimistic updates are applied immediately; SSE events reconcile state across tabs/users
+ */
 export function useLabels(): UseLabelsReturn {
   const [labels, setLabels] = useState<Label[]>([]);
   const [loading, setLoading] = useState(true);

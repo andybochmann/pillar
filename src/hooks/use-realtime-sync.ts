@@ -7,6 +7,35 @@ const MAX_RECONNECT_DELAY_MS = 30_000;
 const BASE_RECONNECT_DELAY_MS = 1_000;
 const MAX_CONSECUTIVE_FAILURES = 10;
 
+/**
+ * Manages real-time synchronization via Server-Sent Events (SSE).
+ *
+ * **SSE Connection Management:**
+ * - Establishes an EventSource connection to `/api/events` with a unique session ID
+ * - Listens for "sync" events and dispatches them as `pillar:sync` custom events
+ * - Dispatches `pillar:reconnected` event after successful reconnection (not on first connection)
+ *
+ * **Automatic Reconnection:**
+ * - Reconnects automatically on connection failure with exponential backoff (1s to 30s)
+ * - Adds 10% random jitter to prevent thundering herd
+ * - Stops retrying after 10 consecutive failures
+ * - Respects online/offline state via `navigator.onLine`
+ *
+ * **Network Awareness:**
+ * - Listens to `online`/`offline` events to pause/resume connection
+ * - Closes connection when offline, reconnects when back online
+ *
+ * **Memory Management:**
+ * - Closes EventSource and removes all event listeners on unmount
+ * - Prevents reconnection attempts after component unmounts
+ * - Uses refs to avoid memory leaks from stale closures
+ *
+ * @example
+ * function MyComponent() {
+ *   useRealtimeSync(); // Starts SSE connection
+ *   return <div>...</div>;
+ * }
+ */
 export function useRealtimeSync(): void {
   const esRef = useRef<EventSource | null>(null);
   const retriesRef = useRef(0);
@@ -32,13 +61,6 @@ export function useRealtimeSync(): void {
     es.addEventListener("sync", (event: MessageEvent) => {
       const data = JSON.parse(event.data);
       window.dispatchEvent(new CustomEvent("pillar:sync", { detail: data }));
-    });
-
-    es.addEventListener("notification", (event: MessageEvent) => {
-      const data = JSON.parse(event.data);
-      window.dispatchEvent(
-        new CustomEvent("pillar:notification", { detail: data }),
-      );
     });
 
     es.onerror = () => {

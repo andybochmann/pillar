@@ -11,6 +11,88 @@ interface UseTimeTrackingReturn {
   activeTaskId: string | null;
 }
 
+/**
+ * Manages time tracking operations for tasks with automatic session conflict resolution.
+ *
+ * This hook provides a complete interface for managing time tracking sessions, including:
+ * - Starting time sessions with automatic stop of conflicting sessions
+ * - Stopping active time sessions
+ * - Deleting historical time sessions
+ * - Tracking which task is currently active for the current user
+ * - Offline mutation queuing via offlineFetch
+ * - Optimistic local state updates for immediate UI feedback
+ *
+ * @param {Task[]} tasks - Array of tasks to track time for
+ * @param {React.Dispatch<React.SetStateAction<Task[]>>} setTasks - State setter for tasks (from parent hook)
+ * @param {string} currentUserId - ID of the current user to filter sessions
+ *
+ * @returns {UseTimeTrackingReturn} Object containing:
+ *   - `startTracking`: Function to start a new time session (auto-stops other active sessions)
+ *   - `stopTracking`: Function to stop the active time session for a task
+ *   - `deleteSession`: Function to delete a specific historical time session
+ *   - `activeTaskId`: ID of the task currently being tracked by the user, or null
+ *
+ * @example
+ * ```tsx
+ * function TaskTimer({ projectId }: { projectId: string }) {
+ *   const { data: session } = useSession();
+ *   const { tasks, setTasks } = useTasks([], projectId);
+ *   const {
+ *     startTracking,
+ *     stopTracking,
+ *     deleteSession,
+ *     activeTaskId
+ *   } = useTimeTracking(tasks, setTasks, session?.user?.id || "");
+ *
+ *   const handleStart = async (taskId: string) => {
+ *     try {
+ *       await startTracking(taskId); // Auto-stops other tasks
+ *       toast.success("Timer started");
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   const handleStop = async (taskId: string) => {
+ *     try {
+ *       await stopTracking(taskId);
+ *       toast.success("Timer stopped");
+ *     } catch (err) {
+ *       toast.error((err as Error).message);
+ *     }
+ *   };
+ *
+ *   return (
+ *     <div>
+ *       {tasks.map(task => (
+ *         <div key={task._id}>
+ *           {activeTaskId === task._id ? (
+ *             <Button onClick={() => handleStop(task._id)}>Stop</Button>
+ *           ) : (
+ *             <Button onClick={() => handleStart(task._id)}>Start</Button>
+ *           )}
+ *         </div>
+ *       ))}
+ *     </div>
+ *   );
+ * }
+ * ```
+ *
+ * @remarks
+ * **Auto-Stop Behavior:**
+ * - When `startTracking` is called, the API automatically stops any other active session for the current user
+ * - The hook optimistically updates local state to close all other active sessions immediately
+ * - This ensures only one task can be tracked at a time per user
+ *
+ * **Derived State:**
+ * - `activeTaskId` is computed via `useMemo` by finding the first task with an open session for the current user
+ * - Recalculates whenever `tasks` or `currentUserId` changes
+ *
+ * **Side Effects:**
+ * - All mutations use `offlineFetch` to queue operations when offline
+ * - Optimistic updates are applied immediately to the local task list
+ * - Changes are reflected across tabs/users via real-time sync (managed by parent `useTasks` hook)
+ */
 export function useTimeTracking(
   tasks: Task[],
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>,
