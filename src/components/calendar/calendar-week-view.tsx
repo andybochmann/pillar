@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import type { Task, CalendarViewType, Label, Project } from "@/types";
 
 const WEEKDAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface CalendarWeekViewProps {
   tasks: Task[];
@@ -151,11 +152,11 @@ export function CalendarWeekView({
       />
 
       {/* Week navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold">
           {format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
         </h2>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-4">
           <CalendarViewToggle
             viewType={viewType}
             onChange={onViewTypeChange}
@@ -196,9 +197,10 @@ export function CalendarWeekView({
             {WEEKDAYS_FULL.map((day, i) => (
               <div
                 key={day}
-                className="py-2 text-center text-sm font-medium text-muted-foreground"
+                className="py-1 text-center text-xs font-medium text-muted-foreground sm:py-2 sm:text-sm"
               >
-                {day}
+                <span className="hidden sm:inline">{day}</span>
+                <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
               </div>
             ))}
           </div>

@@ -159,11 +159,11 @@ export function CalendarView({
       />
 
       {/* Month navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold">
           {format(currentMonth, "MMMM yyyy")}
         </h2>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-4">
           <CalendarViewToggle
             viewType={viewType}
             onChange={onViewTypeChange}

@@ -185,11 +185,12 @@ export function CalendarDayView({
       />
 
       {/* Day navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold">
-          {format(currentDay, "EEEE, MMMM d, yyyy")}
+          <span className="sm:hidden">{format(currentDay, "EEE, MMM d, yyyy")}</span>
+          <span className="hidden sm:inline">{format(currentDay, "EEEE, MMMM d, yyyy")}</span>
         </h2>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-4">
           <CalendarViewToggle
             viewType={viewType}
             onChange={onViewTypeChange}

@@ -34,8 +34,8 @@ export function CalendarViewToggle({
             aria-pressed={isActive}
             aria-label={`Switch to ${option.label} view`}
           >
-            <Icon className="mr-1 h-4 w-4" />
-            {option.label}
+            <Icon className="h-4 w-4 sm:mr-1" />
+            <span className="hidden sm:inline">{option.label}</span>
           </Button>
         );
       })}
