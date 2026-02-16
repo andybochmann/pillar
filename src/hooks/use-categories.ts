@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import { useSyncSubscription } from "./use-sync-subscription";
 import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
@@ -88,8 +88,10 @@ export function useCategories(): UseCategoriesReturn {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasData = useRef(false);
 
   const fetchCategories = useCallback(async () => {
+    if (!navigator.onLine && hasData.current) return;
     try {
       setLoading(true);
       setError(null);
@@ -99,8 +101,11 @@ export function useCategories(): UseCategoriesReturn {
         throw new Error(data.error || "Failed to fetch categories");
       }
       setCategories(await res.json());
+      hasData.current = true;
     } catch (err) {
-      setError((err as Error).message);
+      if (!hasData.current) {
+        setError((err as Error).message);
+      }
     } finally {
       setLoading(false);
     }

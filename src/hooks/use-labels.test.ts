@@ -173,6 +173,56 @@ describe("useLabels", () => {
     expect(result.current.labels).toHaveLength(1);
   });
 
+  describe("offline resilience", () => {
+    it("skips fetch when offline and data exists", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockLabels,
+      } as Response);
+
+      const { result } = renderHook(() => useLabels());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+      vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result.current.labels).toEqual(mockLabels);
+    });
+
+    it("keeps existing data on fetch error", async () => {
+      vi.spyOn(global, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockLabels,
+        } as Response)
+        .mockRejectedValueOnce(new Error("Network error"));
+
+      const { result } = renderHook(() => useLabels());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+
+      expect(result.current.labels).toEqual(mockLabels);
+      expect(result.current.error).toBeNull();
+    });
+
+    it("sets error on first fetch failure when no data", async () => {
+      vi.spyOn(global, "fetch").mockRejectedValueOnce(new Error("Network error"));
+
+      const { result } = renderHook(() => useLabels());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.error).toBe("Network error");
+    });
+  });
+
   describe("sync subscription", () => {
     function emitSync(detail: Record<string, unknown>) {
       window.dispatchEvent(new CustomEvent("pillar:sync", { detail }));

@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { SwRegistrar } from "@/components/layout/sw-registrar";
 import { OfflineBanner } from "@/components/layout/offline-banner";
 import { RealtimeProvider } from "@/components/layout/realtime-provider";
+import { PrecacheProvider } from "@/components/layout/precache-provider";
 
 export default function DashboardLayout({
   children,
@@ -21,6 +22,7 @@ export default function DashboardLayout({
       </a>
       <OfflineBanner />
       <RealtimeProvider />
+      <PrecacheProvider />
       <DashboardShell>{children}</DashboardShell>
       <CommandPalette />
       <KeyboardShortcutsDialog />

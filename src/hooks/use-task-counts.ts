@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { TaskCounts } from "@/types";
 
 interface UseTaskCountsReturn {
@@ -66,8 +66,10 @@ export function useTaskCounts(): UseTaskCountsReturn {
   const [counts, setCounts] = useState<TaskCounts | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasData = useRef(false);
 
   const fetchCounts = useCallback(async () => {
+    if (!navigator.onLine && hasData.current) return;
     try {
       setLoading(true);
       setError(null);
@@ -77,8 +79,11 @@ export function useTaskCounts(): UseTaskCountsReturn {
         throw new Error(data.error || "Failed to fetch task counts");
       }
       setCounts(await res.json());
+      hasData.current = true;
     } catch (err) {
-      setError((err as Error).message);
+      if (!hasData.current) {
+        setError((err as Error).message);
+      }
     } finally {
       setLoading(false);
     }

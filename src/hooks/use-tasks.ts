@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import { useSyncSubscription } from "./use-sync-subscription";
 import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
@@ -48,8 +48,10 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasData = useRef(initialTasks.length > 0);
 
   const fetchTasks = useCallback(async (pid: string) => {
+    if (!navigator.onLine && hasData.current) return;
     try {
       setLoading(true);
       setError(null);
@@ -59,8 +61,11 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
         throw new Error(data.error || "Failed to fetch tasks");
       }
       setTasks(await res.json());
+      hasData.current = true;
     } catch (err) {
-      setError((err as Error).message);
+      if (!hasData.current) {
+        setError((err as Error).message);
+      }
     } finally {
       setLoading(false);
     }

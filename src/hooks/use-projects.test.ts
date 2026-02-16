@@ -146,6 +146,58 @@ describe("useProjects", () => {
     ).rejects.toThrow("Name is required");
   });
 
+  describe("offline resilience", () => {
+    it("skips fetch when offline and data exists", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockProjects,
+      } as Response);
+
+      const { result } = renderHook(() => useProjects());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+      vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result.current.projects).toEqual(mockProjects);
+    });
+
+    it("keeps existing data on fetch error", async () => {
+      vi.spyOn(global, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockProjects,
+        } as Response)
+        .mockRejectedValueOnce(new Error("Network error"));
+
+      const { result } = renderHook(() => useProjects());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+
+      expect(result.current.projects).toEqual(mockProjects);
+      expect(result.current.error).toBeNull();
+    });
+
+    it("sets error on first fetch failure when no data", async () => {
+      vi.spyOn(global, "fetch").mockRejectedValueOnce(new Error("Network error"));
+
+      const { result } = renderHook(() => useProjects());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.error).toBe("Network error");
+    });
+  });
+
   describe("sync subscription", () => {
     function emitSync(detail: Record<string, unknown>) {
       window.dispatchEvent(

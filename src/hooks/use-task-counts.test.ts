@@ -68,6 +68,56 @@ describe("useTaskCounts", () => {
     expect(result.current.counts).toEqual(refreshed);
   });
 
+  describe("offline resilience", () => {
+    it("skips fetch when offline and data exists", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce({
+        ok: true,
+        json: async () => mockCounts,
+      } as Response);
+
+      const { result } = renderHook(() => useTaskCounts());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+      vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+
+      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(result.current.counts).toEqual(mockCounts);
+    });
+
+    it("keeps existing data on fetch error", async () => {
+      vi.spyOn(global, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockCounts,
+        } as Response)
+        .mockRejectedValueOnce(new Error("Network error"));
+
+      const { result } = renderHook(() => useTaskCounts());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      await act(async () => {
+        await result.current.refresh();
+      });
+
+      expect(result.current.counts).toEqual(mockCounts);
+      expect(result.current.error).toBeNull();
+    });
+
+    it("sets error on first fetch failure when no data", async () => {
+      vi.spyOn(global, "fetch").mockRejectedValueOnce(new Error("Network error"));
+
+      const { result } = renderHook(() => useTaskCounts());
+      await waitFor(() => expect(result.current.loading).toBe(false));
+
+      expect(result.current.error).toBe("Network error");
+    });
+  });
+
   it("calls correct API endpoint", async () => {
     const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: true,

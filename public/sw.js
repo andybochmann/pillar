@@ -4,6 +4,7 @@
 const PRECACHE_NAME = "pillar-precache-v1";
 const API_CACHE_NAME = "pillar-api-v1";
 const STATIC_CACHE_NAME = "pillar-static-v1";
+const PAGE_CACHE_NAME = "pillar-pages-v1";
 
 const PRECACHE_URLS = [
   "/offline.html",
@@ -26,6 +27,7 @@ self.addEventListener("activate", (event) => {
     PRECACHE_NAME,
     API_CACHE_NAME,
     STATIC_CACHE_NAME,
+    PAGE_CACHE_NAME,
   ]);
   event.waitUntil(
     caches
@@ -73,6 +75,9 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(networkFirstNavigation(request));
     return;
   }
+
+  // Remaining same-origin GET requests (RSC payloads, etc.): network-first
+  event.respondWith(networkFirst(request, PAGE_CACHE_NAME));
 });
 
 async function cacheFirst(request, cacheName) {
@@ -116,7 +121,12 @@ async function networkFirst(request, cacheName) {
 
 async function networkFirstNavigation(request) {
   try {
-    return await fetch(request);
+    const response = await fetch(request);
+    if (response.ok) {
+      const cache = await caches.open(PAGE_CACHE_NAME);
+      cache.put(request, response.clone());
+    }
+    return response;
   } catch {
     const cached = await caches.match(request);
     if (cached) return cached;

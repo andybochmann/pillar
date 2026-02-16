@@ -338,6 +338,57 @@ describe("useTasks", () => {
     ).rejects.toThrow("Failed to create task");
   });
 
+  describe("offline resilience", () => {
+    it("skips fetchTasks when offline and has initial data", async () => {
+      const fetchSpy = vi.spyOn(global, "fetch");
+      vi.spyOn(navigator, "onLine", "get").mockReturnValue(false);
+
+      const { result } = renderHook(() => useTasks(mockTasks, "proj-1"));
+
+      await act(async () => {
+        await result.current.fetchTasks("proj-1");
+      });
+
+      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(result.current.tasks).toEqual(mockTasks);
+    });
+
+    it("keeps existing data on fetch error", async () => {
+      vi.spyOn(global, "fetch")
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => mockTasks,
+        } as Response)
+        .mockRejectedValueOnce(new Error("Network error"));
+
+      const { result } = renderHook(() => useTasks([], "proj-1"));
+
+      await act(async () => {
+        await result.current.fetchTasks("proj-1");
+      });
+      expect(result.current.tasks).toEqual(mockTasks);
+
+      await act(async () => {
+        await result.current.fetchTasks("proj-1");
+      });
+
+      expect(result.current.tasks).toEqual(mockTasks);
+      expect(result.current.error).toBeNull();
+    });
+
+    it("sets error on first fetch failure when no data", async () => {
+      vi.spyOn(global, "fetch").mockRejectedValueOnce(new Error("Network error"));
+
+      const { result } = renderHook(() => useTasks());
+
+      await act(async () => {
+        await result.current.fetchTasks("proj-1");
+      });
+
+      expect(result.current.error).toBe("Network error");
+    });
+  });
+
   describe("sync subscription", () => {
     function emitSync(detail: Partial<SyncEvent>) {
       window.dispatchEvent(
