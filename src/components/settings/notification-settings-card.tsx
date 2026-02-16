@@ -1,11 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell } from "lucide-react";
+import { Bell, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
@@ -23,6 +30,50 @@ const REMINDER_OPTIONS = [
   { value: 60, label: "1 hour before" },
   { value: 15, label: "15 minutes before" },
 ];
+
+const COMMON_TIMEZONES = [
+  "America/New_York",
+  "America/Chicago",
+  "America/Denver",
+  "America/Los_Angeles",
+  "America/Anchorage",
+  "Pacific/Honolulu",
+  "America/Toronto",
+  "America/Vancouver",
+  "America/Sao_Paulo",
+  "America/Argentina/Buenos_Aires",
+  "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
+  "Europe/Moscow",
+  "Africa/Cairo",
+  "Africa/Johannesburg",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Bangkok",
+  "Asia/Shanghai",
+  "Asia/Tokyo",
+  "Asia/Seoul",
+  "Australia/Sydney",
+  "Australia/Perth",
+  "Pacific/Auckland",
+  "UTC",
+];
+
+function formatTimezoneLabel(tz: string): string {
+  try {
+    const now = new Date();
+    const offset = now.toLocaleString("en-US", {
+      timeZone: tz,
+      timeZoneName: "shortOffset",
+    });
+    const match = offset.match(/GMT([+-]\d{1,2}(:\d{2})?)/);
+    const offsetStr = match ? ` (${match[0]})` : "";
+    return `${tz.replace(/_/g, " ")}${offsetStr}`;
+  } catch {
+    return tz;
+  }
+}
 
 export function NotificationSettingsCard() {
   const { permission, requestPermission, isSupported } =
@@ -213,6 +264,38 @@ export function NotificationSettingsCard() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Timezone */}
+        <div className="space-y-3">
+          <div className="space-y-0.5">
+            <Label htmlFor="timezone">Timezone</Label>
+            <p className="text-muted-foreground text-sm">
+              Used for quiet hours and daily summary scheduling
+            </p>
+          </div>
+          <Select
+            value={preferences.timezone}
+            onValueChange={(value) => updatePreferences({ timezone: value })}
+            disabled={saving}
+          >
+            <SelectTrigger id="timezone" className="w-full">
+              <Globe className="mr-2 h-4 w-4 shrink-0" />
+              <SelectValue placeholder="Select timezone" />
+            </SelectTrigger>
+            <SelectContent>
+              {(() => {
+                const timezones = COMMON_TIMEZONES.includes(preferences.timezone)
+                  ? COMMON_TIMEZONES
+                  : [preferences.timezone, ...COMMON_TIMEZONES];
+                return timezones.map((tz) => (
+                  <SelectItem key={tz} value={tz}>
+                    {formatTimezoneLabel(tz)}
+                  </SelectItem>
+                ));
+              })()}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Quiet Hours */}

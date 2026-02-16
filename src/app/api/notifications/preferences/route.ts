@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { NotificationPreference } from "@/models/notification-preference";
+import { recalculateRemindersForUser } from "@/lib/reminder-scheduler";
 
 const UpdatePreferencesSchema = z.object({
   enableInAppNotifications: z.boolean().optional(),
@@ -94,6 +95,11 @@ export async function PATCH(request: Request) {
       { error: "Failed to update preferences" },
       { status: 500 },
     );
+  }
+
+  // Recalculate reminders for existing tasks when timings change
+  if (result.data.reminderTimings) {
+    recalculateRemindersForUser(session.user.id).catch(() => {});
   }
 
   return NextResponse.json(serializePreferences(preferences));

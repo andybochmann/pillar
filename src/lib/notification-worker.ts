@@ -9,6 +9,7 @@ import {
 import { emitNotificationEvent } from "@/lib/event-bus";
 import { isWithinQuietHours } from "@/lib/notification-scheduler";
 import { sendPushToUser } from "@/lib/web-push";
+import { scheduleNextReminder } from "@/lib/reminder-scheduler";
 
 const WORKER_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -26,8 +27,12 @@ function shouldSkipUser(
   now: Date,
   options?: { requireOverdueEnabled?: boolean },
 ): boolean {
-  if (!prefs || !prefs.enableInAppNotifications) return true;
-  if (options?.requireOverdueEnabled && !prefs.enableOverdueSummary) return true;
+  if (!prefs) return true;
+  const notificationsEnabled =
+    prefs.enableInAppNotifications || prefs.enableBrowserPush;
+  if (!notificationsEnabled) return true;
+  if (options?.requireOverdueEnabled && !prefs.enableOverdueSummary)
+    return true;
   return isWithinQuietHours(
     now,
     prefs.quietHoursEnabled,
@@ -228,12 +233,19 @@ async function processReminders(
         },
       });
 
-      emitNotification(notification, userId, taskId, prefs?.enableBrowserPush, task.projectId.toString());
+      emitNotification(
+        notification,
+        userId,
+        taskId,
+        prefs?.enableBrowserPush,
+        task.projectId.toString(),
+      );
       created++;
     }
 
-    // Clear reminderAt (one-shot)
+    // Clear reminderAt (one-shot) then schedule next timing
     await Task.updateOne({ _id: task._id }, { $unset: { reminderAt: 1 } });
+    scheduleNextReminder(taskId).catch(() => {});
   }
 
   return created;
@@ -282,8 +294,7 @@ async function processOverdue(
 
     for (const userId of usersToNotify) {
       const prefs = prefsMap.get(userId);
-      if (shouldSkipUser(prefs, now, { requireOverdueEnabled: true }))
-        continue;
+      if (shouldSkipUser(prefs, now, { requireOverdueEnabled: true })) continue;
 
       const dedupKey = `${taskId}_${userId}`;
       if (existingSet.has(dedupKey)) continue;
@@ -301,7 +312,13 @@ async function processOverdue(
         },
       });
 
-      emitNotification(notification, userId, taskId, prefs?.enableBrowserPush, task.projectId.toString());
+      emitNotification(
+        notification,
+        userId,
+        taskId,
+        prefs?.enableBrowserPush,
+        task.projectId.toString(),
+      );
       created++;
     }
   }
@@ -324,7 +341,7 @@ export async function processDailySummary(
 
   const prefFilter: Record<string, unknown> = {
     enableDailySummary: true,
-    enableInAppNotifications: true,
+    $or: [{ enableInAppNotifications: true }, { enableBrowserPush: true }],
   };
   if (scopeUserId) {
     prefFilter.userId = scopeUserId;
@@ -465,6 +482,14 @@ export async function processNotifications(scopeUserId?: string): Promise<{
   const overdue = await processOverdue(now, scopeUserId);
   const dailySummaries = await processDailySummary(now, scopeUserId);
 
+  const total = reminders + overdue + dailySummaries;
+  if (total > 0) {
+    console.log(
+      `[notification-worker] Created ${total} notifications`,
+      { reminders, overdue, dailySummaries },
+    );
+  }
+
   return { reminders, overdue, dailySummaries };
 }
 
@@ -475,6 +500,7 @@ export async function processNotifications(scopeUserId?: string): Promise<{
 export function startNotificationWorker(): void {
   if (global.notificationWorkerStarted) return;
   global.notificationWorkerStarted = true;
+  console.log("[notification-worker] Started (interval: 2m)");
 
   // Clear any stale interval from previous module load
   if (global.notificationWorkerInterval) {

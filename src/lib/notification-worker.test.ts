@@ -1,9 +1,13 @@
-import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from "vitest";
 import {
-  setupTestDB,
-  teardownTestDB,
-  clearTestDB,
-} from "@/test/helpers/db";
+  describe,
+  it,
+  expect,
+  vi,
+  beforeAll,
+  afterAll,
+  afterEach,
+} from "vitest";
+import { setupTestDB, teardownTestDB, clearTestDB } from "@/test/helpers/db";
 import {
   createTestUser,
   createTestCategory,
@@ -31,7 +35,10 @@ vi.mock("@/lib/event-bus", () => ({
   emitNotificationEvent: vi.fn(),
 }));
 
-import { processNotifications, processDailySummary } from "./notification-worker";
+import {
+  processNotifications,
+  processDailySummary,
+} from "./notification-worker";
 
 beforeAll(async () => {
   await setupTestDB();
@@ -97,6 +104,7 @@ describe("notification-worker push URL", () => {
       enableInAppNotifications: true,
       enableBrowserPush: true,
       enableOverdueSummary: true,
+      enableDailySummary: false,
       quietHoursEnabled: false,
     });
 
@@ -135,5 +143,72 @@ describe("notification-worker push URL", () => {
 
     expect(pushPayloads).toHaveLength(1);
     expect(pushPayloads[0].payload.url).toBe("/");
+  });
+});
+
+describe("notification-worker preference gating", () => {
+  it("creates reminder notifications when in-app is disabled but browser push is enabled", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    await createTestTask({
+      title: "Reminder via push",
+      userId: user._id,
+      projectId: project._id,
+      reminderAt: new Date(Date.now() - 60_000),
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: false,
+      enableBrowserPush: true,
+      quietHoursEnabled: false,
+    });
+
+    await processNotifications(user._id.toString());
+
+    const created = await Notification.find({ userId: user._id });
+    expect(created).toHaveLength(1);
+    expect(created[0].type).toBe("reminder");
+    expect(pushPayloads).toHaveLength(1);
+  });
+
+  it("sends daily summaries when in-app is disabled but browser push is enabled", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    await createTestTask({
+      title: "Due today",
+      userId: user._id,
+      projectId: project._id,
+      dueDate: new Date(),
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: false,
+      enableBrowserPush: true,
+      enableDailySummary: true,
+      dailySummaryTime: "00:00",
+      timezone: "UTC",
+      quietHoursEnabled: false,
+    });
+
+    await processDailySummary(new Date(), user._id.toString());
+
+    const created = await Notification.find({
+      userId: user._id,
+      type: "daily-summary",
+    });
+    expect(created).toHaveLength(1);
+    expect(pushPayloads).toHaveLength(1);
   });
 });

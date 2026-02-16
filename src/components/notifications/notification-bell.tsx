@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Bell, CheckCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import {
   PopoverDescription,
 } from "@/components/ui/popover";
 import { useNotifications } from "@/hooks/use-notifications";
+import { usePushSubscription } from "@/hooks/use-push-subscription";
 import { NotificationItem } from "./notification-item";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -26,17 +27,50 @@ export function NotificationBell({
   className,
   iconSize = 18,
 }: NotificationBellProps) {
-  const [enableBrowserPush, setEnableBrowserPush] = useState(false);
+  const { subscribe: pushSubscribe } = usePushSubscription();
+  const autoSubscribeAttempted = useRef(false);
 
-  // Fetch browser push preference once on mount
+  // On mount: fetch preferences, auto-subscribe to push if permission is
+  // already granted but enableBrowserPush is false, and auto-detect timezone
   useEffect(() => {
     fetch("/api/notifications/preferences")
       .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.enableBrowserPush) setEnableBrowserPush(true);
+      .then(async (data) => {
+        if (!data) return;
+
+        // Auto-detect timezone on first use (when still the default "UTC")
+        // Once a user selects a timezone in settings, we respect their choice
+        const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (detectedTz && data.timezone === "UTC" && detectedTz !== "UTC") {
+          fetch("/api/notifications/preferences", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ timezone: detectedTz }),
+          }).catch(() => {});
+        }
+
+        // Auto-subscribe to push if notification permission is granted
+        // but the preference hasn't been enabled yet
+        if (
+          !data.enableBrowserPush &&
+          !autoSubscribeAttempted.current &&
+          typeof Notification !== "undefined" &&
+          Notification.permission === "granted" &&
+          "serviceWorker" in navigator
+        ) {
+          autoSubscribeAttempted.current = true;
+          const subscribed = await pushSubscribe();
+          if (subscribed) {
+            fetch("/api/notifications/preferences", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ enableBrowserPush: true }),
+            }).catch(() => {});
+          }
+        }
       })
       .catch(() => {});
-  }, []);
+  }, [pushSubscribe]);
 
   const {
     notifications,
@@ -45,7 +79,7 @@ export function NotificationBell({
     markAsDismissed,
     dismissAll,
     snoozeNotification,
-  } = useNotifications({ enableBrowserPush });
+  } = useNotifications();
   const [open, setOpen] = useState(false);
 
   // Fetch notifications on mount

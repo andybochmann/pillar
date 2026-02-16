@@ -25,7 +25,10 @@ interface UseNotificationsReturn {
   }) => Promise<void>;
   markAsRead: (id: string) => Promise<Notification>;
   markAsDismissed: (id: string) => Promise<Notification>;
-  snoozeNotification: (id: string, snoozedUntil: string) => Promise<Notification>;
+  snoozeNotification: (
+    id: string,
+    snoozedUntil: string,
+  ) => Promise<Notification>;
   deleteNotification: (id: string) => Promise<void>;
   dismissAll: () => Promise<void>;
 }
@@ -127,22 +130,20 @@ interface UseNotificationsReturn {
  */
 interface UseNotificationsOptions {
   initialNotifications?: Notification[];
-  enableBrowserPush?: boolean;
 }
 
 export function useNotifications(
-  initialNotificationsOrOptions?: Notification[] | UseNotificationsOptions
+  initialNotificationsOrOptions?: Notification[] | UseNotificationsOptions,
 ): UseNotificationsReturn {
   // Support both array (legacy) and options object signatures
   const options =
-    Array.isArray(initialNotificationsOrOptions) || !initialNotificationsOrOptions
+    Array.isArray(initialNotificationsOrOptions) ||
+    !initialNotificationsOrOptions
       ? { initialNotifications: initialNotificationsOrOptions ?? [] }
       : initialNotificationsOrOptions;
   const initialNotifications = options.initialNotifications ?? [];
-  const enableBrowserPush = options.enableBrowserPush ?? false;
-  const [notifications, setNotifications] = useState<Notification[]>(
-    initialNotifications
-  );
+  const [notifications, setNotifications] =
+    useState<Notification[]>(initialNotifications);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -192,7 +193,7 @@ export function useNotifications(
         setLoading(false);
       }
     },
-    []
+    [],
   );
 
   const markAsRead = useCallback(async (id: string) => {
@@ -206,9 +207,7 @@ export function useNotifications(
       throw new Error(body.error || "Failed to mark notification as read");
     }
     const updated: Notification = await res.json();
-    setNotifications((prev) =>
-      prev.map((n) => (n._id === id ? updated : n))
-    );
+    setNotifications((prev) => prev.map((n) => (n._id === id ? updated : n)));
     return updated;
   }, []);
 
@@ -223,9 +222,7 @@ export function useNotifications(
       throw new Error(body.error || "Failed to dismiss notification");
     }
     const updated: Notification = await res.json();
-    setNotifications((prev) =>
-      prev.map((n) => (n._id === id ? updated : n))
-    );
+    setNotifications((prev) => prev.map((n) => (n._id === id ? updated : n)));
     return updated;
   }, []);
 
@@ -241,12 +238,10 @@ export function useNotifications(
         throw new Error(body.error || "Failed to snooze notification");
       }
       const updated: Notification = await res.json();
-      setNotifications((prev) =>
-        prev.map((n) => (n._id === id ? updated : n))
-      );
+      setNotifications((prev) => prev.map((n) => (n._id === id ? updated : n)));
       return updated;
     },
-    []
+    [],
   );
 
   const deleteNotification = useCallback(async (id: string) => {
@@ -262,9 +257,7 @@ export function useNotifications(
 
   const dismissAll = useCallback(async () => {
     // Optimistic update
-    setNotifications((prev) =>
-      prev.map((n) => ({ ...n, dismissed: true }))
-    );
+    setNotifications((prev) => prev.map((n) => ({ ...n, dismissed: true })));
     const res = await offlineFetch("/api/notifications", {
       method: "DELETE",
     });
@@ -300,36 +293,46 @@ export function useNotifications(
         return [newNotification, ...prev];
       });
 
-      // Send push notification via service worker when tab is not focused,
-      // or when the user has explicitly opted into browser push notifications
+      // Show desktop notification via service worker (or fallback Notification API)
+      // whenever browser notification permission is granted
       if (
         typeof Notification !== "undefined" &&
-        Notification.permission === "granted" &&
-        navigator.serviceWorker?.controller &&
-        (!document.hasFocus() || enableBrowserPush)
+        Notification.permission === "granted"
       ) {
-        navigator.serviceWorker.controller.postMessage({
-          type: "SHOW_NOTIFICATION",
-          title: event.title,
-          body: event.message,
-          tag: `pillar-${event.notificationId}`,
-          data: {
-            notificationId: event.notificationId,
-            taskId: event.taskId,
-            url: "/",
-          },
-        });
+        if (navigator.serviceWorker?.controller) {
+          navigator.serviceWorker.controller.postMessage({
+            type: "SHOW_NOTIFICATION",
+            title: event.title,
+            body: event.message,
+            tag: `pillar-${event.notificationId}`,
+            data: {
+              notificationId: event.notificationId,
+              taskId: event.taskId,
+              url: "/",
+            },
+          });
+        } else {
+          new Notification(event.title, {
+            body: event.message,
+            tag: `pillar-${event.notificationId}`,
+            data: {
+              notificationId: event.notificationId,
+              taskId: event.taskId,
+              url: "/",
+            },
+          });
+        }
       }
     }
 
     window.addEventListener("pillar:notification", handler);
     return () => window.removeEventListener("pillar:notification", handler);
-  }, [enableBrowserPush]);
+  }, []);
 
   useRefetchOnReconnect(
     useCallback(() => {
       fetchNotifications();
-    }, [fetchNotifications])
+    }, [fetchNotifications]),
   );
 
   return {

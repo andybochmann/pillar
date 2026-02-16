@@ -32,6 +32,7 @@ const mockNotifications = [
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe("useNotifications", () => {
@@ -81,7 +82,7 @@ describe("useNotifications", () => {
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/notifications?read=false&dismissed=false&type=reminder&taskId=task-1&limit=10"
+      "/api/notifications?read=false&dismissed=false&type=reminder&taskId=task-1&limit=10",
     );
   });
 
@@ -174,7 +175,7 @@ describe("useNotifications", () => {
     const { result } = renderHook(() => useNotifications());
 
     await expect(
-      act(() => result.current.markAsRead("notif-1"))
+      act(() => result.current.markAsRead("notif-1")),
     ).rejects.toThrow("Not found");
   });
 
@@ -191,9 +192,12 @@ describe("useNotifications", () => {
     });
 
     expect(result.current.notifications.every((n) => n.dismissed)).toBe(true);
-    expect(global.fetch).toHaveBeenCalledWith("/api/notifications", expect.objectContaining({
-      method: "DELETE",
-    }));
+    expect(global.fetch).toHaveBeenCalledWith(
+      "/api/notifications",
+      expect.objectContaining({
+        method: "DELETE",
+      }),
+    );
   });
 
   it("throws on dismissAll failure", async () => {
@@ -204,9 +208,9 @@ describe("useNotifications", () => {
 
     const { result } = renderHook(() => useNotifications(mockNotifications));
 
-    await expect(
-      act(() => result.current.dismissAll())
-    ).rejects.toThrow("Server error");
+    await expect(act(() => result.current.dismissAll())).rejects.toThrow(
+      "Server error",
+    );
   });
 
   it("throws on markAsDismissed failure", async () => {
@@ -218,7 +222,7 @@ describe("useNotifications", () => {
     const { result } = renderHook(() => useNotifications());
 
     await expect(
-      act(() => result.current.markAsDismissed("notif-1"))
+      act(() => result.current.markAsDismissed("notif-1")),
     ).rejects.toThrow("Not found");
   });
 
@@ -231,9 +235,7 @@ describe("useNotifications", () => {
     const { result } = renderHook(() => useNotifications());
 
     await expect(
-      act(() =>
-        result.current.snoozeNotification("notif-1", "invalid-date")
-      )
+      act(() => result.current.snoozeNotification("notif-1", "invalid-date")),
     ).rejects.toThrow("Invalid date");
   });
 
@@ -246,7 +248,7 @@ describe("useNotifications", () => {
     const { result } = renderHook(() => useNotifications());
 
     await expect(
-      act(() => result.current.deleteNotification("notif-1"))
+      act(() => result.current.deleteNotification("notif-1")),
     ).rejects.toThrow("Not found");
   });
 
@@ -255,7 +257,7 @@ describe("useNotifications", () => {
 
     act(() => {
       result.current.setNotifications((prev) =>
-        prev.map((n) => (n._id === "notif-1" ? { ...n, read: true } : n))
+        prev.map((n) => (n._id === "notif-1" ? { ...n, read: true } : n)),
       );
     });
 
@@ -264,9 +266,7 @@ describe("useNotifications", () => {
 
   describe("notification events", () => {
     function emitNotification(detail: Partial<NotificationEvent>) {
-      window.dispatchEvent(
-        new CustomEvent("pillar:notification", { detail })
-      );
+      window.dispatchEvent(new CustomEvent("pillar:notification", { detail }));
     }
 
     it("adds notification on pillar:notification event", () => {
@@ -318,9 +318,7 @@ describe("useNotifications", () => {
     });
 
     it("does not add duplicate notifications", () => {
-      const { result } = renderHook(() =>
-        useNotifications(mockNotifications)
-      );
+      const { result } = renderHook(() => useNotifications(mockNotifications));
 
       const event: NotificationEvent = {
         type: "reminder",
@@ -378,7 +376,7 @@ describe("useNotifications", () => {
       });
     });
 
-    it("does not post to service worker when tab is focused and enableBrowserPush is false", () => {
+    it("posts to service worker when tab is focused (always shows desktop notifications)", () => {
       const postMessageMock = vi.fn();
       Object.defineProperty(navigator, "serviceWorker", {
         value: { controller: { postMessage: postMessageMock } },
@@ -394,39 +392,9 @@ describe("useNotifications", () => {
         type: "reminder",
         notificationId: "notif-focused",
         userId: "u1",
+        taskId: "task-focused",
         title: "Focused",
-        message: "Should not go to SW",
-        timestamp: Date.now(),
-      };
-
-      act(() => {
-        emitNotification(event);
-      });
-
-      expect(postMessageMock).not.toHaveBeenCalled();
-    });
-
-    it("posts to service worker when tab is focused but enableBrowserPush is true", () => {
-      const postMessageMock = vi.fn();
-      Object.defineProperty(navigator, "serviceWorker", {
-        value: { controller: { postMessage: postMessageMock } },
-        configurable: true,
-        writable: true,
-      });
-      vi.stubGlobal("Notification", { permission: "granted" });
-      vi.spyOn(document, "hasFocus").mockReturnValue(true);
-
-      renderHook(() =>
-        useNotifications({ enableBrowserPush: true })
-      );
-
-      const event: NotificationEvent = {
-        type: "reminder",
-        notificationId: "notif-push-focused",
-        userId: "u1",
-        taskId: "task-push",
-        title: "Push While Focused",
-        message: "Should go to SW",
+        message: "Should still go to SW",
         timestamp: Date.now(),
       };
 
@@ -436,12 +404,12 @@ describe("useNotifications", () => {
 
       expect(postMessageMock).toHaveBeenCalledWith({
         type: "SHOW_NOTIFICATION",
-        title: "Push While Focused",
-        body: "Should go to SW",
-        tag: "pillar-notif-push-focused",
+        title: "Focused",
+        body: "Should still go to SW",
+        tag: "pillar-notif-focused",
         data: {
-          notificationId: "notif-push-focused",
-          taskId: "task-push",
+          notificationId: "notif-focused",
+          taskId: "task-focused",
           url: "/",
         },
       });
@@ -473,13 +441,17 @@ describe("useNotifications", () => {
       expect(postMessageMock).not.toHaveBeenCalled();
     });
 
-    it("does not post to service worker when no controller available", () => {
+    it("falls back to Notification API when no controller available", () => {
       Object.defineProperty(navigator, "serviceWorker", {
         value: { controller: null },
         configurable: true,
         writable: true,
       });
-      vi.stubGlobal("Notification", { permission: "granted" });
+      const notificationSpy = vi.fn();
+      vi.stubGlobal(
+        "Notification",
+        Object.assign(notificationSpy, { permission: "granted" }),
+      );
       vi.spyOn(document, "hasFocus").mockReturnValue(false);
 
       renderHook(() => useNotifications());
@@ -495,14 +467,19 @@ describe("useNotifications", () => {
         });
       });
 
-      // Should not throw, just silently skip
-      expect(true).toBe(true);
+      expect(notificationSpy).toHaveBeenCalledWith("No Controller", {
+        body: "No SW",
+        tag: "pillar-notif-no-ctrl",
+        data: {
+          notificationId: "notif-no-ctrl",
+          taskId: undefined,
+          url: "/",
+        },
+      });
     });
 
     it("prepends new notification to the list", () => {
-      const { result } = renderHook(() =>
-        useNotifications(mockNotifications)
-      );
+      const { result } = renderHook(() => useNotifications(mockNotifications));
 
       const event: NotificationEvent = {
         type: "reminder",

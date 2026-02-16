@@ -20,6 +20,7 @@ type TaskUpdateFields = Pick<
   | "subtasks"
   | "completedAt"
   | "assigneeId"
+  | "reminderAt"
 >;
 
 interface UseTasksReturn {

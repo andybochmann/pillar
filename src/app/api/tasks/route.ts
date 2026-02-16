@@ -10,6 +10,7 @@ import { ProjectMember } from "@/models/project-member";
 import { startOfDay, endOfDay } from "date-fns";
 import { parseLocalDate } from "@/lib/date-utils";
 import { getAccessibleProjectIds, getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
+import { scheduleNextReminder } from "@/lib/reminder-scheduler";
 
 const CreateTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -216,6 +217,12 @@ export async function POST(request: Request) {
     }
 
     const task = await Task.create(taskData);
+
+    // Auto-schedule reminder from user's reminderTimings preference
+    // when task has a dueDate but no explicit reminderAt
+    if (result.data.dueDate && !result.data.reminderAt) {
+      scheduleNextReminder(task._id.toString()).catch(() => {});
+    }
 
     const targetUserIds = await getProjectMemberUserIds(result.data.projectId);
     emitSyncEvent({

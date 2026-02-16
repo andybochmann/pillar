@@ -89,6 +89,7 @@ interface CreateTaskInput {
   description?: string;
   projectId: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
+  assigneeId?: mongoose.Types.ObjectId;
   columnId?: string;
   priority?: "urgent" | "high" | "medium" | "low";
   dueDate?: Date;
@@ -118,6 +119,7 @@ export async function createTestTask(
     description: overrides.description,
     projectId: overrides.projectId,
     userId: overrides.userId,
+    assigneeId: overrides.assigneeId,
     columnId: overrides.columnId ?? "todo",
     priority: overrides.priority ?? "medium",
     dueDate: overrides.dueDate,

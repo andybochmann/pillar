@@ -8,6 +8,7 @@ import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 import { getNextDueDate } from "@/lib/date-utils";
+import { scheduleNextReminder } from "@/lib/reminder-scheduler";
 
 const UpdateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -173,6 +174,18 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    // Auto-schedule reminder when dueDate is updated and reminderAt wasn't
+    // explicitly set in this request
+    if (
+      result.data.dueDate !== undefined &&
+      result.data.dueDate !== null &&
+      result.data.reminderAt === undefined
+    ) {
+      // Clear existing reminderAt so scheduleNextReminder can set a new one
+      await Task.updateOne({ _id: id }, { $unset: { reminderAt: 1 } });
+      scheduleNextReminder(id).catch(() => {});
     }
 
     const sessionId = request.headers.get("X-Session-Id") ?? "";
