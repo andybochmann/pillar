@@ -139,10 +139,53 @@ describe("TaskSheet", () => {
     ).toBeInTheDocument();
   });
 
+  it("Mark Complete sets completedAt and moves task to last column", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onUpdate = vi.fn().mockResolvedValue({});
+    render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+    await user.click(screen.getByRole("button", { name: "Mark Complete" }));
+
+    vi.advanceTimersByTime(600);
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        completedAt: expect.any(String),
+        columnId: "done",
+      }),
+    );
+  });
+
   it("renders Reopen button for completed tasks", () => {
     const completedTask = { ...mockTask, completedAt: "2026-03-01T00:00:00Z" };
     render(<TaskSheet {...defaultProps} task={completedTask} />);
     expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument();
+  });
+
+  it("Reopen clears completedAt and moves task to first column", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onUpdate = vi.fn().mockResolvedValue({});
+    const completedTask = {
+      ...mockTask,
+      columnId: "done",
+      completedAt: "2026-03-01T00:00:00Z",
+    };
+    render(
+      <TaskSheet {...defaultProps} task={completedTask} onUpdate={onUpdate} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Reopen" }));
+
+    vi.advanceTimersByTime(600);
+
+    expect(onUpdate).toHaveBeenCalledWith(
+      "task-1",
+      expect.objectContaining({
+        completedAt: null,
+        columnId: "todo",
+      }),
+    );
   });
 
   it("renders Delete button", () => {

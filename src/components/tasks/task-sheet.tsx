@@ -655,7 +655,9 @@ function TaskSheetForm({
               variant="outline"
               className="w-full"
               onClick={() => {
-                saveField({ completedAt: null });
+                const firstCol = [...columns].sort((a, b) => a.order - b.order)[0];
+                setColumnId(firstCol.id);
+                saveField({ completedAt: null, columnId: firstCol.id });
               }}
             >
               Reopen
@@ -665,7 +667,9 @@ function TaskSheetForm({
               variant="outline"
               className="w-full"
               onClick={() => {
-                saveField({ completedAt: new Date().toISOString() });
+                const lastCol = [...columns].sort((a, b) => b.order - a.order)[0];
+                setColumnId(lastCol.id);
+                saveField({ completedAt: new Date().toISOString(), columnId: lastCol.id });
               }}
             >
               Mark Complete
