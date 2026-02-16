@@ -45,7 +45,7 @@ Central authorization logic lives in `src/lib/project-access.ts` with four key f
 
 ### Migration Fallback
 
-For backward compatibility, if no `ProjectMember` records exist for a user, the access functions fall back to `Project.find({ userId })`. This ensures projects created before the sharing feature was added remain accessible. The migration script (`scripts/migrate-project-members.ts`) creates `ProjectMember` records for existing project owners.
+For backward compatibility, if no `ProjectMember` records exist for a user, the access functions fall back to `Project.find({ userId })`. This ensures projects created before the sharing feature was added remain accessible. The migration script (`scripts/migrate-project-members.ts`) creates `ProjectMember` records for existing project owners. See [migrations-and-scripts.md](migrations-and-scripts.md) for details on running migration scripts.
 
 ## Sharing Flow
 
