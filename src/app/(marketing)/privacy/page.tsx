@@ -39,11 +39,10 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <strong className="text-foreground">
-                Push notification tokens
+                Push notification data
               </strong>{" "}
-              &mdash; web push subscription endpoints and/or Firebase Cloud
-              Messaging device tokens, used solely to deliver notifications you
-              have opted into.
+              &mdash; Web Push subscription endpoints and VAPID keys, used
+              solely to deliver notifications you have opted into.
             </li>
           </ul>
         </section>
@@ -96,16 +95,11 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <strong className="text-foreground">
-                Firebase Cloud Messaging
+                OpenAI / Google Gemini
               </strong>{" "}
-              &mdash; used to deliver push notifications to Android devices. FCM
-              device tokens are sent to Google servers.
-            </li>
-            <li>
-              <strong className="text-foreground">Anthropic Claude</strong>{" "}
-              &mdash; used for AI-powered subtask generation. When you use this
-              feature, task titles and descriptions are sent to Anthropic&rsquo;s
-              API.
+              &mdash; used for optional AI-powered task and subtask generation.
+              When you use this feature, task titles and descriptions are sent to
+              the configured AI provider&rsquo;s API (OpenAI or Google).
             </li>
           </ul>
           <p className="mt-2">
@@ -128,8 +122,8 @@ export default function PrivacyPolicyPage() {
             </li>
             <li>
               <strong className="text-foreground">AI features</strong> &mdash;
-              task descriptions are sent to Anthropic when you use the subtask
-              generation feature.
+              task descriptions are sent to the configured AI provider (OpenAI
+              or Google) when you use the task generation feature.
             </li>
           </ul>
         </section>

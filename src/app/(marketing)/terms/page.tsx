@@ -88,9 +88,10 @@ export default function TermsOfServicePage() {
         <section>
           <h2>6. AI Features</h2>
           <p>
-            Pillar offers optional AI-powered subtask generation using Anthropic
-            Claude. When you use this feature, task information is sent to
-            Anthropic&rsquo;s API for processing. AI-generated suggestions are
+            Pillar offers optional AI-powered task and subtask generation using
+            third-party AI services (currently OpenAI or Google Gemini). When
+            you use this feature, task information is sent to the configured AI
+            provider&rsquo;s API for processing. AI-generated suggestions are
             provided as-is and should be reviewed before use. You are
             responsible for the content you accept and add to your projects.
           </p>
