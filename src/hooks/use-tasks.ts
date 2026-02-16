@@ -41,79 +41,9 @@ interface UseTasksReturn {
     data: Partial<TaskUpdateFields>,
   ) => Promise<Task>;
   deleteTask: (id: string) => Promise<void>;
+  duplicateTask: (taskId: string) => Promise<Task>;
 }
 
-/**
- * Manages task state with CRUD operations, real-time synchronization, and offline support.
- *
- * This hook provides a complete interface for managing tasks within a project, including:
- * - Local state management with optimistic updates
- * - Real-time synchronization via Server-Sent Events (SSE)
- * - Offline mutation queuing via offlineFetch
- * - Automatic refetch on network reconnection
- * - Support for bulk task creation events (e.g., AI-generated tasks)
- *
- * @param {Task[]} [initialTasks=[]] - Initial tasks to populate state (typically from server-side props)
- * @param {string} [projectId] - Optional project ID to filter real-time events and enable auto-refetch
- *
- * @returns {UseTasksReturn} Object containing:
- *   - `tasks`: Array of tasks in current state
- *   - `loading`: Boolean indicating if a fetch operation is in progress
- *   - `error`: Error message string or null
- *   - `setTasks`: State setter for external optimistic updates (e.g., drag-and-drop reordering)
- *   - `fetchTasks`: Function to fetch tasks for a specific project
- *   - `createTask`: Function to create a new task with optimistic update
- *   - `updateTask`: Function to update a task with optimistic update
- *   - `deleteTask`: Function to delete a task with optimistic update
- *
- * @example
- * ```tsx
- * function ProjectBoard({ projectId }: { projectId: string }) {
- *   const {
- *     tasks,
- *     loading,
- *     error,
- *     createTask,
- *     updateTask,
- *     deleteTask,
- *     setTasks,
- *     fetchTasks
- *   } = useTasks([], projectId);
- *
- *   useEffect(() => {
- *     fetchTasks(projectId);
- *   }, [projectId]);
- *
- *   const handleCreateTask = async () => {
- *     try {
- *       await createTask({
- *         title: "New Task",
- *         projectId,
- *         columnId: "todo",
- *         priority: "medium"
- *       });
- *     } catch (err) {
- *       toast.error((err as Error).message);
- *     }
- *   };
- *
- *   // External optimistic update for drag-and-drop
- *   const handleDragEnd = (result: DragResult) => {
- *     setTasks(reorderedTasks);
- *   };
- *
- *   return <TaskList tasks={tasks} />;
- * }
- * ```
- *
- * @remarks
- * **Side Effects:**
- * - Subscribes to real-time task events (created, updated, deleted, reordered) via SSE
- * - Listens to `pillar:tasks-created` window event for bulk task creation
- * - Automatically refetches tasks on network reconnection (if projectId is provided)
- * - All mutations use `offlineFetch` to queue operations when offline
- * - Optimistic updates are applied immediately; SSE events reconcile state across tabs/users
- */
 export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTasksReturn {
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
   const [loading, setLoading] = useState(false);
@@ -191,6 +121,43 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
     setTasks((prev) => prev.filter((t) => t._id !== id));
   }, []);
 
+  const duplicateTask = useCallback(
+    async (taskId: string) => {
+      const task = tasks.find((t) => t._id === taskId);
+      if (!task) {
+        throw new Error("Task not found");
+      }
+
+      const duplicateData = {
+        title: `${task.title} (Copy)`,
+        projectId: task.projectId,
+        columnId: task.columnId,
+        priority: task.priority,
+        description: task.description,
+        labels: task.labels,
+        subtasks: task.subtasks.map((st) => ({
+          title: st.title,
+          completed: false,
+        })),
+        assigneeId: task.assigneeId,
+      };
+
+      const res = await offlineFetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(duplicateData),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to duplicate task");
+      }
+      const duplicated: Task = await res.json();
+      setTasks((prev) => [...prev, duplicated]);
+      return duplicated;
+    },
+    [tasks],
+  );
+
   // Real-time sync subscription
   useSyncSubscription("task", useCallback((event: SyncEvent) => {
     const data = event.data as Task | undefined;
@@ -248,5 +215,6 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
     createTask,
     updateTask,
     deleteTask,
+    duplicateTask,
   };
 }

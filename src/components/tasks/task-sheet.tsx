@@ -26,7 +26,7 @@ import { StatusHistory } from "@/components/tasks/status-history";
 import { LabelPicker } from "@/components/tasks/label-picker";
 import { GenerateSubtasksDialog } from "@/components/tasks/generate-subtasks-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Plus, Sparkles, Square, Play, Check, Loader2, AlertCircle } from "lucide-react";
+import { X, Plus, Sparkles, Square, Play } from "lucide-react";
 import { toast } from "sonner";
 import { TimeSessionsList } from "@/components/tasks/time-sessions-list";
 import { useBackButton } from "@/hooks/use-back-button";
@@ -48,6 +48,7 @@ interface TaskSheetProps {
   onOpenChange: (open: boolean) => void;
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
+  onDuplicate?: (task: Task) => void;
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
   members?: ProjectMember[];
@@ -64,6 +65,7 @@ export function TaskSheet({
   onOpenChange,
   onUpdate,
   onDelete,
+  onDuplicate,
   allLabels,
   onCreateLabel,
   members,
@@ -89,6 +91,7 @@ export function TaskSheet({
           columns={columns}
           onUpdate={onUpdate}
           onDelete={onDelete}
+          onDuplicate={onDuplicate}
           onClose={() => onOpenChange(false)}
           allLabels={allLabels}
           onCreateLabel={onCreateLabel}
@@ -121,44 +124,12 @@ const priorityConfig = {
   low: { label: "Low", className: "bg-gray-400 text-white hover:bg-gray-500" },
 };
 
-type SaveStatus = "idle" | "saving" | "saved" | "error";
-
-interface SaveIndicatorProps {
-  status: SaveStatus;
-}
-
-function SaveIndicator({ status }: SaveIndicatorProps) {
-  if (status === "idle") return null;
-
-  return (
-    <div className="flex items-center gap-2 text-sm" role="status" aria-live="polite">
-      {status === "saving" && (
-        <>
-          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          <span className="text-muted-foreground">Saving...</span>
-        </>
-      )}
-      {status === "saved" && (
-        <>
-          <Check className="h-4 w-4 text-green-600" />
-          <span className="text-green-600">Saved</span>
-        </>
-      )}
-      {status === "error" && (
-        <>
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <span className="text-red-600">Save failed</span>
-        </>
-      )}
-    </div>
-  );
-}
-
 interface TaskSheetFormProps {
   task: Task;
   columns: Column[];
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
+  onDuplicate?: (task: Task) => void;
   onClose: () => void;
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
@@ -174,6 +145,7 @@ function TaskSheetForm({
   columns,
   onUpdate,
   onDelete,
+  onDuplicate,
   onClose,
   allLabels,
   onCreateLabel,
@@ -204,15 +176,12 @@ function TaskSheetForm({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     };
   }, []);
 
@@ -237,27 +206,12 @@ function TaskSheetForm({
 
   const saveField = useCallback(
     (data: Partial<Task>) => {
-      setSaveStatus("saving");
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
-
       debounceRef.current = setTimeout(async () => {
         try {
           await onUpdate(task._id, data);
-          setSaveStatus("saved");
-
-          // Auto-hide "saved" status after 2 seconds
-          hideTimeoutRef.current = setTimeout(() => {
-            setSaveStatus("idle");
-          }, 2000);
         } catch (err) {
-          setSaveStatus("error");
           toast.error(err instanceof Error ? err.message : "Failed to save");
-
-          // Auto-hide error status after 2 seconds
-          hideTimeoutRef.current = setTimeout(() => {
-            setSaveStatus("idle");
-          }, 2000);
         }
       }, 500);
     },
@@ -409,11 +363,6 @@ function TaskSheetForm({
   return (
     <>
       <div className="flex flex-1 flex-col px-6 pt-8 pb-6">
-        {/* Save Status Indicator */}
-        <div className="mb-4 flex justify-end">
-          <SaveIndicator status={saveStatus} />
-        </div>
-
         <div className="space-y-5">
           {/* Title */}
           <div className="space-y-1.5">
@@ -688,6 +637,15 @@ function TaskSheetForm({
               }}
             >
               Mark Complete
+            </Button>
+          )}
+          {onDuplicate && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => onDuplicate(task)}
+            >
+              Duplicate
             </Button>
           )}
           <Button

@@ -150,6 +150,31 @@ describe("TaskSheet", () => {
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
   });
 
+  it("renders Duplicate button when onDuplicate is provided", () => {
+    const onDuplicate = vi.fn();
+    render(<TaskSheet {...defaultProps} onDuplicate={onDuplicate} />);
+    expect(
+      screen.getByRole("button", { name: "Duplicate" }),
+    ).toBeInTheDocument();
+  });
+
+  it("does not render Duplicate button when onDuplicate is not provided", () => {
+    render(<TaskSheet {...defaultProps} />);
+    expect(
+      screen.queryByRole("button", { name: "Duplicate" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("calls onDuplicate when Duplicate button is clicked", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onDuplicate = vi.fn();
+    render(<TaskSheet {...defaultProps} onDuplicate={onDuplicate} />);
+
+    await user.click(screen.getByRole("button", { name: "Duplicate" }));
+
+    expect(onDuplicate).toHaveBeenCalledWith(mockTask);
+  });
+
   it("shows delete confirmation when Delete is clicked", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<TaskSheet {...defaultProps} />);
@@ -194,147 +219,6 @@ describe("TaskSheet", () => {
   it("does not render when closed", () => {
     render(<TaskSheet {...defaultProps} open={false} />);
     expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
-  });
-
-  // Save indicator tests
-  describe("Save indicator", () => {
-    it("does not show save indicator initially", () => {
-      render(<TaskSheet {...defaultProps} />);
-      expect(screen.queryByRole("status")).not.toBeInTheDocument();
-    });
-
-    it("shows saving indicator when title is changed", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const onUpdate = vi.fn().mockResolvedValue({});
-      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
-
-      const titleInput = screen.getByLabelText("Title");
-      await user.clear(titleInput);
-      await user.type(titleInput, "New title");
-      await user.tab(); // blur to trigger save
-
-      // Saving indicator should appear immediately
-      expect(screen.getByRole("status")).toBeInTheDocument();
-      expect(screen.getByText("Saving...")).toBeInTheDocument();
-    });
-
-    it("shows saved indicator after successful save", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const onUpdate = vi.fn().mockResolvedValue({});
-      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
-
-      const titleInput = screen.getByLabelText("Title");
-      await user.clear(titleInput);
-      await user.type(titleInput, "New title");
-      await user.tab(); // blur
-
-      // Advance past debounce (500ms)
-      vi.advanceTimersByTime(600);
-
-      await waitFor(() => {
-        expect(screen.getByText("Saved")).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
-    });
-
-    it("shows error indicator when save fails", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const onUpdate = vi.fn().mockRejectedValue(new Error("Network error"));
-      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
-
-      const titleInput = screen.getByLabelText("Title");
-      await user.clear(titleInput);
-      await user.type(titleInput, "New title");
-      await user.tab(); // blur
-
-      // Advance past debounce (500ms)
-      vi.advanceTimersByTime(600);
-
-      await waitFor(() => {
-        expect(screen.getByText("Save failed")).toBeInTheDocument();
-      });
-
-      expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
-    });
-
-    it("hides saved indicator after 2 seconds", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const onUpdate = vi.fn().mockResolvedValue({});
-      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
-
-      const titleInput = screen.getByLabelText("Title");
-      await user.clear(titleInput);
-      await user.type(titleInput, "New title");
-      await user.tab(); // blur
-
-      // Advance past debounce (500ms)
-      vi.advanceTimersByTime(600);
-
-      await waitFor(() => {
-        expect(screen.getByText("Saved")).toBeInTheDocument();
-      });
-
-      // Advance past auto-hide timeout (2000ms)
-      vi.advanceTimersByTime(2100);
-
-      await waitFor(() => {
-        expect(screen.queryByRole("status")).not.toBeInTheDocument();
-      });
-    });
-
-    it("hides error indicator after 2 seconds", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const onUpdate = vi.fn().mockRejectedValue(new Error("Network error"));
-      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
-
-      const titleInput = screen.getByLabelText("Title");
-      await user.clear(titleInput);
-      await user.type(titleInput, "New title");
-      await user.tab(); // blur
-
-      // Advance past debounce (500ms)
-      vi.advanceTimersByTime(600);
-
-      await waitFor(() => {
-        expect(screen.getByText("Save failed")).toBeInTheDocument();
-      });
-
-      // Advance past auto-hide timeout (2000ms)
-      vi.advanceTimersByTime(2100);
-
-      await waitFor(() => {
-        expect(screen.queryByRole("status")).not.toBeInTheDocument();
-      });
-    });
-
-    it("shows saving indicator when description is changed", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const onUpdate = vi.fn().mockResolvedValue({});
-      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
-
-      const descriptionInput = screen.getByLabelText("Description");
-      await user.clear(descriptionInput);
-      await user.type(descriptionInput, "New description");
-      await user.tab(); // blur
-
-      expect(screen.getByRole("status")).toBeInTheDocument();
-      expect(screen.getByText("Saving...")).toBeInTheDocument();
-    });
-
-    it("save indicator has proper accessibility attributes", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const onUpdate = vi.fn().mockResolvedValue({});
-      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
-
-      const titleInput = screen.getByLabelText("Title");
-      await user.clear(titleInput);
-      await user.type(titleInput, "New title");
-      await user.tab(); // blur
-
-      const statusElement = screen.getByRole("status");
-      expect(statusElement).toHaveAttribute("aria-live", "polite");
-    });
   });
 
   it("renders labels section", () => {

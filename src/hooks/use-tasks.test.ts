@@ -199,6 +199,145 @@ describe("useTasks", () => {
     expect(result.current.tasks[0].columnId).toBe("done");
   });
 
+  it("duplicates a task with (Copy) suffix", async () => {
+    const duplicated = {
+      _id: "task-3",
+      title: "Fix login bug (Copy)",
+      projectId: "proj-1",
+      userId: "u1",
+      columnId: "todo",
+      priority: "high" as const,
+      order: 2,
+      labels: [],
+      subtasks: [],
+      statusHistory: [],
+      timeSessions: [],
+      createdAt: "",
+      updatedAt: "",
+    };
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => duplicated,
+    } as Response);
+
+    const { result } = renderHook(() => useTasks(mockTasks));
+
+    await act(async () => {
+      await result.current.duplicateTask("task-1");
+    });
+
+    expect(result.current.tasks).toHaveLength(3);
+    expect(result.current.tasks[2].title).toBe("Fix login bug (Copy)");
+  });
+
+  it("duplicates task with labels", async () => {
+    const taskWithLabels = {
+      ...mockTasks[1],
+      _id: "task-2",
+      labels: ["lbl-testing"],
+      subtasks: [{ _id: "s1", title: "Sub 1", completed: true }],
+    };
+    const duplicated = {
+      _id: "task-dup",
+      title: "Write tests (Copy)",
+      projectId: "proj-1",
+      userId: "u1",
+      columnId: "todo",
+      priority: "medium" as const,
+      order: 2,
+      labels: ["lbl-testing"],
+      subtasks: [{ _id: "s2", title: "Sub 1", completed: false }],
+      statusHistory: [],
+      timeSessions: [],
+      createdAt: "",
+      updatedAt: "",
+    };
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => duplicated,
+    } as Response);
+
+    const { result } = renderHook(() => useTasks([taskWithLabels]));
+
+    await act(async () => {
+      await result.current.duplicateTask("task-2");
+    });
+
+    expect(fetchSpy).toHaveBeenCalledWith(
+      "/api/tasks",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"labels":["lbl-testing"]'),
+      }),
+    );
+    expect(result.current.tasks).toHaveLength(2);
+    expect(result.current.tasks[1].labels).toEqual(["lbl-testing"]);
+  });
+
+  it("duplicates task with subtasks reset to incomplete", async () => {
+    const taskWithSubtasks = {
+      ...mockTasks[0],
+      subtasks: [
+        { _id: "s1", title: "Subtask 1", completed: true },
+        { _id: "s2", title: "Subtask 2", completed: false },
+      ],
+    };
+    const fetchSpy = vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        _id: "task-dup",
+        title: "Fix login bug (Copy)",
+        projectId: "proj-1",
+        userId: "u1",
+        columnId: "todo",
+        priority: "high",
+        order: 1,
+        labels: [],
+        subtasks: [
+          { _id: "s3", title: "Subtask 1", completed: false },
+          { _id: "s4", title: "Subtask 2", completed: false },
+        ],
+        statusHistory: [],
+        timeSessions: [],
+        createdAt: "",
+        updatedAt: "",
+      }),
+    } as Response);
+
+    const { result } = renderHook(() => useTasks([taskWithSubtasks]));
+
+    await act(async () => {
+      await result.current.duplicateTask("task-1");
+    });
+
+    const body = JSON.parse(fetchSpy.mock.calls[0][1]?.body as string);
+    expect(body.subtasks).toEqual([
+      { title: "Subtask 1", completed: false },
+      { title: "Subtask 2", completed: false },
+    ]);
+  });
+
+  it("throws when duplicating non-existent task", async () => {
+    const { result } = renderHook(() => useTasks(mockTasks));
+
+    await expect(
+      act(() => result.current.duplicateTask("task-999")),
+    ).rejects.toThrow("Task not found");
+  });
+
+  it("throws on duplicate API failure", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "Failed to create task" }),
+    } as Response);
+
+    const { result } = renderHook(() => useTasks(mockTasks));
+
+    await expect(
+      act(() => result.current.duplicateTask("task-1")),
+    ).rejects.toThrow("Failed to create task");
+  });
+
   describe("sync subscription", () => {
     function emitSync(detail: Partial<SyncEvent>) {
       window.dispatchEvent(

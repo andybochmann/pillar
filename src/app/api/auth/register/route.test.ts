@@ -173,8 +173,8 @@ describe("POST /api/auth/register", () => {
     );
     const newUserTime = Date.now() - start2;
 
-    // Timing difference should be minimal (within 200ms to account for system load)
+    // Timing difference should be minimal (within 100ms)
     const timingDiff = Math.abs(newUserTime - duplicateTime);
-    expect(timingDiff).toBeLessThan(200);
+    expect(timingDiff).toBeLessThan(100);
   });
 });

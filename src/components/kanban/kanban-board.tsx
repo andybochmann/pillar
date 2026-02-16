@@ -54,7 +54,7 @@ export function KanbanBoard({
   onTasksChange,
   filters,
 }: KanbanBoardProps) {
-  const { tasks, setTasks, createTask, updateTask, deleteTask } =
+  const { tasks, setTasks, createTask, updateTask, deleteTask, duplicateTask } =
     useTasks(initialTasks, projectId);
   const { labels: allLabels, createLabel } = useLabels();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
@@ -301,6 +301,17 @@ export function KanbanBoard({
     setSelectedTask(null);
   }
 
+  async function handleTaskDuplicate(task: Task) {
+    try {
+      await duplicateTask(task._id);
+      toast.success("Task duplicated");
+      setSheetOpen(false);
+      setSelectedTask(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to duplicate task");
+    }
+  }
+
   async function handleStartTracking(taskId: string) {
     try {
       const updated = await startTracking(taskId);
@@ -452,6 +463,7 @@ export function KanbanBoard({
         }}
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
+        onDuplicate={readOnly ? undefined : handleTaskDuplicate}
         allLabels={allLabels}
         onCreateLabel={async (data) => {
           await createLabel(data);
