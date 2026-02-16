@@ -27,51 +27,38 @@ export function ShareTaskForm({
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Derive title and description from shared data
   useEffect(() => {
-    let derivedTitle = "";
-    let derivedDescription = "";
-
     if (sharedTitle) {
-      derivedTitle = sharedTitle;
-      const parts: string[] = [];
-      if (sharedText) parts.push(sharedText);
-      if (sharedUrl) parts.push(sharedUrl);
-      derivedDescription = parts.join("\n");
+      setTitle(sharedTitle);
+      setDescription([sharedText, sharedUrl].filter(Boolean).join("\n"));
     } else if (sharedText) {
-      const lines = sharedText.split("\n");
-      derivedTitle = lines[0];
-      const rest = lines.slice(1).join("\n").trim();
-      const parts: string[] = [];
-      if (rest) parts.push(rest);
-      if (sharedUrl) parts.push(sharedUrl);
-      derivedDescription = parts.join("\n");
+      const [firstLine, ...rest] = sharedText.split("\n");
+      setTitle(firstLine);
+      setDescription([rest.join("\n").trim(), sharedUrl].filter(Boolean).join("\n"));
     } else if (sharedUrl) {
-      derivedTitle = sharedUrl;
+      setTitle(sharedUrl);
+      setDescription("");
     }
-
-    setTitle(derivedTitle);
-    setDescription(derivedDescription);
   }, [sharedTitle, sharedText, sharedUrl]);
 
-  // Fetch projects
   useEffect(() => {
     let cancelled = false;
-    async function load() {
+
+    async function loadProjects() {
       try {
         const res = await fetch("/api/projects");
-        if (!res.ok) return;
+        if (!res.ok || cancelled) return;
+
         const data: Project[] = await res.json();
-        if (!cancelled) {
-          const active = data.filter((p) => !p.archived);
-          setProjects(active);
-          if (active.length > 0) setSelectedProjectId(active[0]._id);
-        }
+        const active = data.filter((p) => !p.archived);
+        setProjects(active);
+        if (active.length > 0) setSelectedProjectId(active[0]._id);
       } catch {
         // Silently fail - user can retry
       }
     }
-    load();
+
+    loadProjects();
     return () => {
       cancelled = true;
     };
@@ -84,9 +71,7 @@ export function ShareTaskForm({
     const project = projects.find((p) => p._id === selectedProjectId);
     if (!project) return;
 
-    const sortedColumns = [...project.columns].sort(
-      (a, b) => a.order - b.order
-    );
+    const sortedColumns = [...project.columns].sort((a, b) => a.order - b.order);
     const columnId = sortedColumns[0]?.id ?? "todo";
 
     setSubmitting(true);
@@ -111,9 +96,7 @@ export function ShareTaskForm({
       toast.success("Task created from shared content");
       router.push(`/projects/${selectedProjectId}`);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to create task"
-      );
+      toast.error(err instanceof Error ? err.message : "Failed to create task");
     } finally {
       setSubmitting(false);
     }

@@ -55,17 +55,9 @@ beforeEach(() => {
   });
 });
 
-function getDescriptionTextarea(): HTMLTextAreaElement {
-  return screen.getByLabelText("Description") as HTMLTextAreaElement;
-}
-
-function getProjectSelect(): HTMLSelectElement {
-  return screen.getByLabelText("Project") as HTMLSelectElement;
-}
-
 async function waitForProjectsLoaded() {
   await waitFor(() => {
-    expect(getProjectSelect().value).toBe("proj-1");
+    expect((screen.getByLabelText("Project") as HTMLSelectElement).value).toBe("proj-1");
   });
 }
 
@@ -86,7 +78,7 @@ describe("ShareTaskForm", () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue("First line")).toBeInTheDocument();
     });
-    expect(getDescriptionTextarea().value).toBe("Second line");
+    expect((screen.getByLabelText("Description") as HTMLTextAreaElement).value).toBe("Second line");
   });
 
   it("falls back to sharedUrl when no title or text", async () => {
@@ -109,9 +101,8 @@ describe("ShareTaskForm", () => {
     );
 
     await waitFor(() => {
-      expect(getDescriptionTextarea().value).toBe(
-        "Body text\nhttps://example.com",
-      );
+      const desc = screen.getByLabelText("Description") as HTMLTextAreaElement;
+      expect(desc.value).toBe("Body text\nhttps://example.com");
     });
   });
 
@@ -126,9 +117,9 @@ describe("ShareTaskForm", () => {
     await waitFor(() => {
       expect(screen.getByDisplayValue("First line")).toBeInTheDocument();
     });
-    expect(getDescriptionTextarea().value).toBe(
-      "Rest of text\nhttps://example.com",
-    );
+
+    const desc = screen.getByLabelText("Description") as HTMLTextAreaElement;
+    expect(desc.value).toBe("Rest of text\nhttps://example.com");
   });
 
   it("renders project selector with fetched projects (excluding archived)", async () => {
@@ -140,8 +131,7 @@ describe("ShareTaskForm", () => {
 
     await waitForProjectsLoaded();
 
-    const select = getProjectSelect();
-    // Non-disabled options (excludes placeholder)
+    const select = screen.getByLabelText("Project") as HTMLSelectElement;
     const options = Array.from(select.options).filter((o) => !o.disabled);
     expect(options).toHaveLength(1);
     expect(options[0].textContent).toBe("Test Project");

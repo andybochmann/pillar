@@ -134,7 +134,6 @@ async function networkFirstNavigation(request) {
   }
 }
 
-// Create notification options with consistent defaults
 function buildNotificationOptions(data) {
   return {
     body: data.message || data.body || "",
@@ -151,37 +150,27 @@ function buildNotificationOptions(data) {
   };
 }
 
-// Push: handle push notifications
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || "Pillar Notification";
-  event.waitUntil(
-    Promise.all([
-      self.registration.showNotification(title, buildNotificationOptions(data)),
-      data.overdueCount !== undefined
-        ? self.navigator.setAppBadge(data.overdueCount)
-        : Promise.resolve(),
-    ])
-  );
+
+  const tasks = [self.registration.showNotification(title, buildNotificationOptions(data))];
+  if (data.overdueCount !== undefined) {
+    tasks.push(self.navigator.setAppBadge(data.overdueCount));
+  }
+
+  event.waitUntil(Promise.all(tasks));
 });
 
-// Message from client: show OS notification via Service Worker
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SHOW_NOTIFICATION") {
     const { title, ...data } = event.data;
-    self.registration.showNotification(
-      title || "Pillar",
-      buildNotificationOptions(data)
-    );
+    self.registration.showNotification(title || "Pillar", buildNotificationOptions(data));
   }
 
   if (event.data?.type === "UPDATE_BADGE") {
     const count = event.data.count || 0;
-    if (count > 0) {
-      self.navigator.setAppBadge(count);
-    } else {
-      self.navigator.clearAppBadge();
-    }
+    count > 0 ? self.navigator.setAppBadge(count) : self.navigator.clearAppBadge();
   }
 });
 
@@ -192,34 +181,24 @@ self.addEventListener("sync", (event) => {
   }
 });
 
-async function replayOfflineQueue() {
-  const DB_NAME = "pillar-offline";
-  const STORE_NAME = "mutations";
-  const DB_VERSION = 1;
-  const MAX_RETRIES = 3;
-  const BASE_DELAY_MS = 1000;
-
-  // Generate a session ID for replayed requests
-  const sessionId = crypto.randomUUID();
-
-  // Open IndexedDB directly (can't import from src/ in SW)
-  const db = await new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
+async function openOfflineDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("pillar-offline", 1);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      if (!db.objectStoreNames.contains("mutations")) {
+        db.createObjectStore("mutations", { keyPath: "id" });
       }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
+}
 
-  // Read all queued mutations sorted by timestamp
-  const mutations = await new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const req = store.getAll();
+async function getAllMutations(db) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("mutations", "readonly");
+    const req = tx.objectStore("mutations").getAll();
     req.onsuccess = () => {
       const items = req.result || [];
       items.sort((a, b) => a.timestamp - b.timestamp);
@@ -227,25 +206,33 @@ async function replayOfflineQueue() {
     };
     req.onerror = () => reject(req.error);
   });
+}
+
+async function deleteMutation(db, id) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("mutations", "readwrite");
+    const req = tx.objectStore("mutations").delete(id);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function replayOfflineQueue() {
+  const db = await openOfflineDB();
+  const mutations = await getAllMutations(db);
 
   if (mutations.length === 0) {
     db.close();
     return;
   }
 
+  const sessionId = crypto.randomUUID();
   let hadFailure = false;
 
   for (const mutation of mutations) {
-    const ok = await replayOneMutation(mutation, sessionId, MAX_RETRIES, BASE_DELAY_MS);
+    const ok = await replayOneMutation(mutation, sessionId, 3, 1000);
     if (ok) {
-      // Delete successful entry from IndexedDB
-      await new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, "readwrite");
-        const store = tx.objectStore(STORE_NAME);
-        const req = store.delete(mutation.id);
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
+      await deleteMutation(db, mutation.id);
     } else {
       hadFailure = true;
     }
@@ -253,13 +240,9 @@ async function replayOfflineQueue() {
 
   db.close();
 
-  // Notify all open clients so the UI refreshes
   const allClients = await self.clients.matchAll({ type: "window" });
-  for (const client of allClients) {
-    client.postMessage({ type: "SYNC_COMPLETE" });
-  }
+  allClients.forEach((client) => client.postMessage({ type: "SYNC_COMPLETE" }));
 
-  // If any failed, throw so the browser retries the sync event later
   if (hadFailure) {
     throw new Error("Some offline mutations failed to sync");
   }
@@ -275,25 +258,21 @@ async function replayOneMutation(mutation, sessionId, maxRetries, baseDelay) {
           "X-Session-Id": sessionId,
         },
       };
-      if (mutation.body !== undefined) {
-        init.body = JSON.stringify(mutation.body);
-      }
+      if (mutation.body !== undefined) init.body = JSON.stringify(mutation.body);
 
       const res = await fetch(mutation.url, init);
       if (res.ok) return true;
-      // Client errors (4xx) are permanent — skip retries
       if (res.status >= 400 && res.status < 500) return false;
     } catch {
       // Network error — retry
     }
     if (attempt < maxRetries - 1) {
-      await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+      await new Promise((r) => setTimeout(r, baseDelay * 2 ** attempt));
     }
   }
   return false;
 }
 
-// Notification click: navigate to task or notification center
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
@@ -301,17 +280,13 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Focus existing window and navigate it to the target URL
       for (const client of clientList) {
         if (new URL(client.url).origin === self.location.origin && "focus" in client) {
           client.navigate(urlToOpen);
           return client.focus();
         }
       }
-      // Open new window if no existing Pillar window
-      if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
-      }
+      if (clients.openWindow) return clients.openWindow(urlToOpen);
     }),
   );
 });
