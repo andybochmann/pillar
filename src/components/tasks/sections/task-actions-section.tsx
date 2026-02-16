@@ -11,6 +11,7 @@ interface TaskActionsSectionProps {
   completedAt: string | null;
   onUpdate: (data: { completedAt: string | null }) => Promise<unknown>;
   onDelete: (taskId: string) => Promise<void>;
+  onDuplicate?: () => void;
   onClose: () => void;
 }
 
@@ -20,6 +21,7 @@ export function TaskActionsSection({
   completedAt,
   onUpdate,
   onDelete,
+  onDuplicate,
   onClose,
 }: TaskActionsSectionProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -62,6 +64,15 @@ export function TaskActionsSection({
             onClick={handleToggleComplete}
           >
             Mark Complete
+          </Button>
+        )}
+        {onDuplicate && (
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={onDuplicate}
+          >
+            Duplicate
           </Button>
         )}
         <Button

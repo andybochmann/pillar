@@ -13,13 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { useNotificationPermission } from "@/hooks/use-notification-permission";
 import type { NotificationPreference } from "@/types";
@@ -188,7 +181,7 @@ export function NotificationSettingsCard() {
                 <input
                   type="checkbox"
                   id={`reminder-${option.value}`}
-                  checked={preferences.reminderTimings.includes(option.value)}
+                  checked={preferences.reminderTimings?.includes(option.value) ?? false}
                   onChange={(e) =>
                     handleReminderTimingToggle(option.value, e.target.checked)
                   }
@@ -204,50 +197,6 @@ export function NotificationSettingsCard() {
               </div>
             ))}
           </div>
-        </div>
-
-        {/* Email Digest */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="email-digest">Email Digest</Label>
-              <p className="text-muted-foreground text-sm">
-                Receive summary emails of your tasks
-              </p>
-            </div>
-            <Switch
-              id="email-digest"
-              checked={preferences.enableEmailDigest}
-              onCheckedChange={(checked) =>
-                updatePreferences({ enableEmailDigest: checked })
-              }
-              disabled={saving}
-            />
-          </div>
-
-          {preferences.enableEmailDigest && (
-            <div className="space-y-1.5">
-              <Label htmlFor="digest-frequency">Frequency</Label>
-              <Select
-                value={preferences.emailDigestFrequency}
-                onValueChange={(value) =>
-                  updatePreferences({
-                    emailDigestFrequency: value as "daily" | "weekly" | "none",
-                  })
-                }
-                disabled={saving}
-              >
-                <SelectTrigger id="digest-frequency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="none">None</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
 
         {/* Quiet Hours */}

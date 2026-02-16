@@ -19,6 +19,7 @@ vi.mock("@/hooks/use-notifications", () => ({
     markAsDismissed: vi.fn(),
     snoozeNotification: vi.fn(),
     deleteNotification: vi.fn(),
+    dismissAll: vi.fn().mockResolvedValue(undefined),
   }),
 }));
 
@@ -57,7 +58,7 @@ describe("NotificationBell", () => {
         _id: "1",
         userId: "user1",
         taskId: "task1",
-        type: "due-soon",
+        type: "reminder",
         title: "Task due soon",
         message: "Your task is due in 1 hour",
         read: false,
@@ -91,7 +92,7 @@ describe("NotificationBell", () => {
       _id: `${i + 1}`,
       userId: "user1",
       taskId: `task${i + 1}`,
-      type: "due-soon" as const,
+      type: "reminder" as const,
       title: `Notification ${i + 1}`,
       message: "Test message",
       read: false,
@@ -112,7 +113,7 @@ describe("NotificationBell", () => {
         _id: "1",
         userId: "user1",
         taskId: "task1",
-        type: "due-soon",
+        type: "reminder",
         title: "Unread notification",
         message: "Test",
         read: false,
@@ -144,7 +145,7 @@ describe("NotificationBell", () => {
         _id: "1",
         userId: "user1",
         taskId: "task1",
-        type: "due-soon",
+        type: "reminder",
         title: "Active notification",
         message: "Test",
         read: false,
@@ -192,7 +193,7 @@ describe("NotificationBell", () => {
       _id: "1",
       userId: "user1",
       taskId: "task1",
-      type: "due-soon",
+      type: "reminder",
       title: "Task due soon",
       message: "Your task is due in 1 hour",
       read: false,
@@ -214,7 +215,7 @@ describe("NotificationBell", () => {
       _id: `${i + 1}`,
       userId: "user1",
       taskId: `task${i + 1}`,
-      type: "due-soon" as const,
+      type: "reminder" as const,
       title: `Notification ${i + 1}`,
       message: "Test message",
       read: false,
@@ -254,7 +255,7 @@ describe("NotificationBell", () => {
         _id: "1",
         userId: "user1",
         taskId: "task1",
-        type: "due-soon",
+        type: "reminder",
         title: "Unread",
         message: "Test",
         read: false,
@@ -279,8 +280,8 @@ describe("NotificationBell", () => {
     render(<NotificationBell />);
     await user.click(screen.getByRole("button", { name: "1 unread notifications" }));
 
-    const unreadNotif = screen.getByText("Unread").parentElement;
-    const readNotif = screen.getByText("Read").parentElement;
+    const unreadNotif = screen.getByText("Unread").closest(".group");
+    const readNotif = screen.getByText("Read").closest(".group");
 
     expect(unreadNotif).toHaveClass("bg-background");
     expect(readNotif).toHaveClass("bg-muted/50", "text-muted-foreground");

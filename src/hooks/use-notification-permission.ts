@@ -31,7 +31,7 @@ function subscribe(callback: () => void) {
  * @returns Current permission state: "granted", "denied", or "default"
  */
 function getSnapshot(): NotificationPermission {
-  if (typeof window === "undefined" || !("Notification" in window)) {
+  if (typeof window === "undefined" || typeof Notification === "undefined") {
     return "default";
   }
   return Notification.permission;
@@ -128,7 +128,7 @@ export function useNotificationPermission() {
   );
 
   const requestPermission = useCallback(async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
+    if (typeof window === "undefined" || typeof Notification === "undefined") {
       return "default" as NotificationPermission;
     }
 
@@ -141,7 +141,7 @@ export function useNotificationPermission() {
   }, []);
 
   const isSupported =
-    typeof window !== "undefined" && "Notification" in window;
+    typeof window !== "undefined" && typeof Notification !== "undefined";
 
   return { permission, requestPermission, isSupported };
 }

@@ -24,8 +24,6 @@ const mockPreferences = {
   enableBrowserPush: false,
   enableInAppNotifications: true,
   reminderTimings: [1440, 60, 15],
-  enableEmailDigest: false,
-  emailDigestFrequency: "none" as const,
   quietHoursEnabled: false,
   quietHoursStart: "22:00",
   quietHoursEnd: "08:00",
@@ -255,81 +253,6 @@ describe("NotificationSettingsCard", () => {
         }),
       );
     });
-  });
-
-  it("toggles email digest", async () => {
-    const user = userEvent.setup();
-
-    vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockPreferences),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({ ...mockPreferences, enableEmailDigest: true }),
-      } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Email Digest")).toBeInTheDocument();
-    });
-
-    const toggle = screen.getByLabelText("Email Digest");
-    await user.click(toggle);
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/notifications/preferences",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({ enableEmailDigest: true }),
-        }),
-      );
-    });
-  });
-
-  it("shows email digest frequency when enabled", async () => {
-    const prefsWithDigest = {
-      ...mockPreferences,
-      enableEmailDigest: true,
-      emailDigestFrequency: "daily" as const,
-    };
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(prefsWithDigest),
-    } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Frequency")).toBeInTheDocument();
-    });
-  });
-
-  it("displays email digest frequency select with correct value", async () => {
-    const prefsWithDigest = {
-      ...mockPreferences,
-      enableEmailDigest: true,
-      emailDigestFrequency: "daily" as const,
-    };
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(prefsWithDigest),
-    } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Frequency")).toBeInTheDocument();
-    });
-
-    const select = screen.getByRole("combobox", { name: /frequency/i });
-    expect(select).toBeInTheDocument();
   });
 
   it("toggles quiet hours", async () => {

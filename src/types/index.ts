@@ -178,12 +178,14 @@ export interface NotificationPreference {
   id: string;
   userId: string;
   enableInAppNotifications: boolean;
+  enableBrowserPush: boolean;
   quietHoursEnabled: boolean;
   quietHoursStart: string;
   quietHoursEnd: string;
   enableOverdueSummary: boolean;
   enableDailySummary: boolean;
   dailySummaryTime: string;
+  reminderTimings: number[];
   timezone: string;
   createdAt: string;
   updatedAt: string;

@@ -28,7 +28,7 @@ export function TimeTrackingButton({
     if (!isActive || !activeStartedAt) return;
 
     function tick() {
-      const currentElapsed = Date.now() - new Date(activeStartedAt).getTime();
+      const currentElapsed = Date.now() - new Date(activeStartedAt!).getTime();
       setElapsed(currentElapsed);
     }
 

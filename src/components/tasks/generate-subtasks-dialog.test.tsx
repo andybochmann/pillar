@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GenerateSubtasksDialog } from "./generate-subtasks-dialog";
 
@@ -71,25 +71,14 @@ describe("GenerateSubtasksDialog", () => {
   });
 
   it("shows loading state during generation", async () => {
-    const user = userEvent.setup();
-    global.fetch = vi.fn().mockImplementation(
-      () =>
-        new Promise((resolve) => {
-          setTimeout(
-            () =>
-              resolve({
-                ok: true,
-                json: () => Promise.resolve({ subtasks: [] }),
-              }),
-            100,
-          );
-        }),
-    );
+    // Use a never-resolving fetch so generating stays true
+    global.fetch = vi.fn().mockReturnValue(new Promise(() => {}));
 
     render(<GenerateSubtasksDialog {...defaultProps} />);
 
-    await user.click(screen.getByText(/Generate \d+ Subtasks/));
-    expect(screen.getByText("Generating subtasks...")).toBeInTheDocument();
+    // Use fireEvent to avoid waiting for async handler completion
+    fireEvent.click(screen.getByText(/Generate \d+ Subtasks/));
+    expect(await screen.findByText("Generating subtasks...")).toBeInTheDocument();
   });
 
   it("shows drafts after generation", async () => {

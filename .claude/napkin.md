@@ -37,6 +37,26 @@
 - Server-rendered `taskCounts` prop never updated after client-side task changes
 - Fixed with `onTasksChange` callback pattern: child reports changes to parent, parent computes counts via useMemo
 
+### React 19 useRef requires initial value
+- `useRef<T>()` without arguments fails TypeScript in React 19 — must pass initial value
+- Fix: `useRef<T>(undefined!)` or `useRef<T>(null)` depending on the type
+- Found in `use-realtime-sync.ts` during build
+
+### Test: await user.click() waits for full async handler
+- `userEvent.click()` awaits the entire async onClick handler chain including fetch
+- To test intermediate loading states, use `fireEvent.click()` + `findByText` instead
+- Use a never-resolving fetch mock (`new Promise(() => {})`) to freeze loading state
+- Found in `generate-subtasks-dialog.test.tsx`
+
+### Notification model types must match schema enum
+- Tests used `"due-soon"` type but model only allows `"reminder" | "overdue" | "daily-summary"`
+- Always check model enum values when writing test fixtures
+
+### TypeScript closure narrowing
+- TypeScript can't narrow outer variables inside nested function closures
+- `if (!x) return` guard doesn't narrow `x` inside a `function tick() { ... }` defined after
+- Fix: use non-null assertion `x!` inside the closure when guard ensures it's defined
+
 ## Patterns That Work
 - `onTasksChange` callback from child to parent for reactive derived state (avoids prop drilling server data)
 - `vi.hoisted()` for session mocks in API route tests

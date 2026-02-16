@@ -12,7 +12,7 @@ export function useRealtimeSync(): void {
   const retriesRef = useRef(0);
   const isFirstConnectionRef = useRef(true);
   const mountedRef = useRef(true);
-  const connectRef = useRef<() => void>();
+  const connectRef = useRef<() => void>(undefined!);
 
   const connect = useCallback(() => {
     if (!navigator.onLine || !mountedRef.current) return;

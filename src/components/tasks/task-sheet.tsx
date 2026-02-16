@@ -38,6 +38,7 @@ interface TaskSheetProps {
   onOpenChange: (open: boolean) => void;
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
+  onDuplicate?: (task: Task) => void;
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
   members?: ProjectMember[];
@@ -54,6 +55,7 @@ export function TaskSheet({
   onOpenChange,
   onUpdate,
   onDelete,
+  onDuplicate,
   allLabels,
   onCreateLabel,
   members,
@@ -79,6 +81,7 @@ export function TaskSheet({
           columns={columns}
           onUpdate={onUpdate}
           onDelete={onDelete}
+          onDuplicate={onDuplicate}
           onClose={() => onOpenChange(false)}
           allLabels={allLabels}
           onCreateLabel={onCreateLabel}
@@ -98,6 +101,7 @@ interface TaskSheetFormProps {
   columns: Column[];
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
+  onDuplicate?: (task: Task) => void;
   onClose: () => void;
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
@@ -113,6 +117,7 @@ function TaskSheetForm({
   columns,
   onUpdate,
   onDelete,
+  onDuplicate,
   onClose,
   allLabels,
   onCreateLabel,
@@ -363,6 +368,7 @@ function TaskSheetForm({
           completedAt={task.completedAt ?? null}
           onUpdate={handleTaskUpdate}
           onDelete={handleTaskDelete}
+          onDuplicate={onDuplicate ? () => onDuplicate(task) : undefined}
           onClose={onClose}
         />
       </div>

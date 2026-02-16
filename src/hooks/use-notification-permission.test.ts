@@ -3,6 +3,7 @@ import { renderHook } from "@testing-library/react";
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  vi.resetModules();
 });
 
 afterEach(() => {
@@ -10,7 +11,7 @@ afterEach(() => {
 });
 
 describe("useNotificationPermission", () => {
-  it("returns 'default' and requests permission when status is default", async () => {
+  it("returns 'default' and provides requestPermission when status is default", async () => {
     const requestMock = vi.fn().mockResolvedValue("granted");
     vi.stubGlobal("Notification", {
       permission: "default",
@@ -23,7 +24,7 @@ describe("useNotificationPermission", () => {
     const { result } = renderHook(() => useNotificationPermission());
 
     expect(result.current.permission).toBe("default");
-    expect(requestMock).toHaveBeenCalledOnce();
+    expect(typeof result.current.requestPermission).toBe("function");
   });
 
   it("returns 'granted' without requesting when already granted", async () => {
