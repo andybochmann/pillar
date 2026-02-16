@@ -8,6 +8,7 @@ import {
 } from "@/models/notification-preference";
 import { emitNotificationEvent } from "@/lib/event-bus";
 import { isWithinQuietHours } from "@/lib/notification-scheduler";
+import { sendPushToUser } from "@/lib/web-push";
 
 const WORKER_INTERVAL_MS = 2 * 60 * 1000; // 2 minutes
 
@@ -48,16 +49,20 @@ async function loadPreferencesMap(
 }
 
 /**
- * Emit a notification SSE event.
+ * Emit a notification SSE event and optionally send a web push notification.
  */
 function emitNotification(
   notification: InstanceType<typeof Notification>,
   userId: string,
   taskId?: string,
+  pushEnabled?: boolean,
 ): void {
+  const notificationId = notification._id.toString();
+  const tag = `pillar-${notificationId}`;
+
   emitNotificationEvent({
     type: notification.type,
-    notificationId: notification._id.toString(),
+    notificationId,
     userId,
     taskId,
     title: notification.title,
@@ -65,6 +70,19 @@ function emitNotification(
     metadata: notification.metadata as Record<string, unknown>,
     timestamp: Date.now(),
   });
+
+  if (pushEnabled) {
+    sendPushToUser(userId, {
+      title: notification.title,
+      message: notification.message,
+      notificationId,
+      taskId,
+      tag,
+      url: "/",
+    }).catch(() => {
+      // Push failures are non-blocking
+    });
+  }
 }
 
 /**
@@ -209,7 +227,7 @@ async function processReminders(
         },
       });
 
-      emitNotification(notification, userId, taskId);
+      emitNotification(notification, userId, taskId, prefs?.enableBrowserPush);
       created++;
     }
 
@@ -282,7 +300,7 @@ async function processOverdue(
         },
       });
 
-      emitNotification(notification, userId, taskId);
+      emitNotification(notification, userId, taskId, prefs?.enableBrowserPush);
       created++;
     }
   }
@@ -422,7 +440,7 @@ export async function processDailySummary(
       },
     });
 
-    emitNotification(notification, userId);
+    emitNotification(notification, userId, undefined, pref.enableBrowserPush);
     created++;
   }
 

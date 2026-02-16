@@ -18,6 +18,18 @@ vi.mock("@/hooks/use-notification-permission", () => ({
   })),
 }));
 
+// Mock usePushSubscription hook
+const mockPushSubscribe = vi.fn().mockResolvedValue(true);
+const mockPushUnsubscribe = vi.fn().mockResolvedValue(true);
+vi.mock("@/hooks/use-push-subscription", () => ({
+  usePushSubscription: vi.fn(() => ({
+    subscribe: mockPushSubscribe,
+    unsubscribe: mockPushUnsubscribe,
+    loading: false,
+    error: null,
+  })),
+}));
+
 const mockPreferences = {
   id: "pref1",
   userId: "user1",
@@ -36,6 +48,8 @@ describe("NotificationSettingsCard", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     mockRequestPermission.mockReset();
+    mockPushSubscribe.mockReset().mockResolvedValue(true);
+    mockPushUnsubscribe.mockReset().mockResolvedValue(true);
   });
 
   it("shows loading state initially", () => {

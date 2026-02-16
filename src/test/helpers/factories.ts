@@ -13,6 +13,10 @@ import {
   AccessToken,
   type IAccessToken,
 } from "@/models/access-token";
+import {
+  PushSubscription,
+  type IPushSubscription,
+} from "@/models/push-subscription";
 import { hash } from "bcryptjs";
 import { generateToken, hashToken } from "@/lib/mcp-auth";
 
@@ -180,4 +184,27 @@ export async function createTestAccessToken(
     expiresAt: overrides.expiresAt ?? null,
   });
   return { token, rawToken: raw };
+}
+
+interface CreatePushSubscriptionInput {
+  userId: mongoose.Types.ObjectId;
+  endpoint?: string;
+  keys?: { p256dh: string; auth: string };
+  userAgent?: string;
+}
+
+export async function createTestPushSubscription(
+  overrides: CreatePushSubscriptionInput,
+): Promise<IPushSubscription> {
+  return PushSubscription.create({
+    userId: overrides.userId,
+    endpoint:
+      overrides.endpoint ??
+      `https://fcm.googleapis.com/fcm/send/${new mongoose.Types.ObjectId()}`,
+    keys: overrides.keys ?? {
+      p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4YfYCA_0QTpQtUbVlUls0VJXg7A8u-Ts1XbjhazAkj7I99e8p8REfWJ4=",
+      auth: "tBHItJI5svbpC7htQ-VNRQ==",
+    },
+    userAgent: overrides.userAgent,
+  });
 }

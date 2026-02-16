@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { toast } from "sonner";
 import { useNotificationPermission } from "@/hooks/use-notification-permission";
+import { usePushSubscription } from "@/hooks/use-push-subscription";
 import type { NotificationPreference } from "@/types";
 
 const REMINDER_OPTIONS = [
@@ -26,6 +27,8 @@ const REMINDER_OPTIONS = [
 export function NotificationSettingsCard() {
   const { permission, requestPermission, isSupported } =
     useNotificationPermission();
+  const { subscribe: pushSubscribe, unsubscribe: pushUnsubscribe } =
+    usePushSubscription();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState<NotificationPreference | null>(
@@ -81,14 +84,27 @@ export function NotificationSettingsCard() {
   }
 
   async function handleBrowserPushToggle(enabled: boolean) {
-    if (enabled && permission !== "granted") {
+    if (!enabled) {
+      await pushUnsubscribe();
+      await updatePreferences({ enableBrowserPush: false });
+      return;
+    }
+
+    if (permission !== "granted") {
       const result = await requestPermission();
       if (result !== "granted") {
         toast.error("Browser notifications permission denied");
         return;
       }
     }
-    await updatePreferences({ enableBrowserPush: enabled });
+
+    const subscribed = await pushSubscribe();
+    if (!subscribed) {
+      toast.error("Failed to subscribe to push notifications");
+      return;
+    }
+
+    await updatePreferences({ enableBrowserPush: true });
   }
 
   function handleReminderTimingToggle(timing: number, checked: boolean) {

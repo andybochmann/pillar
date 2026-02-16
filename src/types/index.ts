@@ -174,6 +174,15 @@ export interface Notification {
   updatedAt: string;
 }
 
+export interface PushSubscriptionRecord {
+  _id: string;
+  userId: string;
+  endpoint: string;
+  userAgent?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface NotificationPreference {
   id: string;
   userId: string;

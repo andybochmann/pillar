@@ -9,4 +9,5 @@ export {
   createTestLabel,
   createTestProjectMember,
   createTestAccessToken,
+  createTestPushSubscription,
 } from "./factories";

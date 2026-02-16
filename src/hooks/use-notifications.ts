@@ -312,6 +312,7 @@ export function useNotifications(
           type: "SHOW_NOTIFICATION",
           title: event.title,
           body: event.message,
+          tag: `pillar-${event.notificationId}`,
           data: {
             notificationId: event.notificationId,
             taskId: event.taskId,

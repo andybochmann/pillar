@@ -369,6 +369,7 @@ describe("useNotifications", () => {
         type: "SHOW_NOTIFICATION",
         title: "SW Notification",
         body: "Test message",
+        tag: "pillar-notif-sw",
         data: {
           notificationId: "notif-sw",
           taskId: "task-sw",
@@ -437,6 +438,7 @@ describe("useNotifications", () => {
         type: "SHOW_NOTIFICATION",
         title: "Push While Focused",
         body: "Should go to SW",
+        tag: "pillar-notif-push-focused",
         data: {
           notificationId: "notif-push-focused",
           taskId: "task-push",
