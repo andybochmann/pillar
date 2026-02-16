@@ -7,25 +7,7 @@ import {
   requireProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
-import type {
-  LeanSubtask,
-  SerializedSubtask,
-} from "@/lib/mcp-tools/types";
-
-function serializeSubtask(subtask: LeanSubtask): SerializedSubtask {
-  return {
-    _id: subtask._id.toString(),
-    title: subtask.title,
-    completed: subtask.completed,
-  };
-}
-
-function errorResponse(message: string) {
-  return {
-    content: [{ type: "text" as const, text: message }],
-    isError: true,
-  };
-}
+import { errorResponse, mcpTextResponse } from "@/lib/mcp-helpers";
 
 export function registerSubtaskTools(server: McpServer) {
   server.tool(
@@ -69,14 +51,11 @@ export function registerSubtaskTools(server: McpServer) {
       });
 
       const newSubtask = task.subtasks[task.subtasks.length - 1];
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(serializeSubtask(newSubtask)),
-          },
-        ],
-      };
+      return mcpTextResponse({
+        _id: newSubtask._id.toString(),
+        title: newSubtask.title,
+        completed: newSubtask.completed,
+      });
     },
   );
 
@@ -127,18 +106,13 @@ export function registerSubtaskTools(server: McpServer) {
       });
 
       const sub = task.subtasks.find(
-        (s: LeanSubtask) => s._id.toString() === subtaskId,
+        (s) => s._id.toString() === subtaskId,
       );
-      if (!sub) return errorResponse("Subtask not found");
-
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(serializeSubtask(sub)),
-          },
-        ],
-      };
+      return mcpTextResponse({
+        _id: sub?._id.toString(),
+        title: sub?.title,
+        completed: sub?.completed,
+      });
     },
   );
 
@@ -178,9 +152,7 @@ export function registerSubtaskTools(server: McpServer) {
         timestamp: Date.now(),
       });
 
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify({ success: true }) }],
-      };
+      return mcpTextResponse({ success: true });
     },
   );
 }

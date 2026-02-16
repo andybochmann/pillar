@@ -11,41 +11,21 @@ import {
   requireProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
-import type {
-  LeanProject,
-  SerializedProject,
-  SerializedColumn,
-} from "./types";
+import { serializeDate, errorResponse, mcpTextResponse } from "@/lib/mcp-helpers";
 
-function serializeDate(date: Date): string {
-  return date.toISOString();
-}
-
-function serializeProject(project: LeanProject): SerializedProject {
+function serializeProject(project: unknown) {
+  const p = project as Record<string, unknown>;
   return {
-    _id: project._id.toString(),
-    name: project.name,
-    description: project.description,
-    categoryId: project.categoryId.toString(),
-    userId: project.userId.toString(),
-    columns: project.columns.map(
-      (col): SerializedColumn => ({
-        id: col.id,
-        name: col.name,
-        order: col.order,
-      }),
-    ),
-    viewType: project.viewType,
-    archived: project.archived,
-    createdAt: serializeDate(project.createdAt),
-    updatedAt: serializeDate(project.updatedAt),
-  };
-}
-
-function errorResponse(message: string) {
-  return {
-    content: [{ type: "text" as const, text: message }],
-    isError: true,
+    _id: String(p._id),
+    name: p.name,
+    description: p.description,
+    categoryId: String(p.categoryId),
+    userId: String(p.userId),
+    columns: p.columns,
+    viewType: p.viewType,
+    archived: p.archived,
+    createdAt: serializeDate(p.createdAt),
+    updatedAt: serializeDate(p.updatedAt),
   };
 }
 
@@ -71,14 +51,7 @@ export function registerProjectTools(server: McpServer) {
         .sort({ createdAt: -1 })
         .lean();
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(projects.map(serializeProject)),
-          },
-        ],
-      };
+      return mcpTextResponse(projects.map(serializeProject));
     },
   );
 
@@ -94,17 +67,10 @@ export function registerProjectTools(server: McpServer) {
       const project = await Project.findById(projectId).lean();
       if (!project) return errorResponse("Project not found");
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify({
-              ...serializeProject(project),
-              currentUserRole: role,
-            }),
-          },
-        ],
-      };
+      return mcpTextResponse({
+        ...serializeProject(project),
+        currentUserRole: role,
+      });
     },
   );
 
@@ -145,14 +111,7 @@ export function registerProjectTools(server: McpServer) {
         timestamp: Date.now(),
       });
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(serializeProject(project.toObject())),
-          },
-        ],
-      };
+      return mcpTextResponse(serializeProject(project.toObject() as unknown as Record<string, unknown>));
     },
   );
 
@@ -207,18 +166,11 @@ export function registerProjectTools(server: McpServer) {
         sessionId: "mcp",
         entityId: projectId,
         targetUserIds,
-        data: serializeProject(project),
+        data: serializeProject(project as unknown as Record<string, unknown>),
         timestamp: Date.now(),
       });
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(serializeProject(project)),
-          },
-        ],
-      };
+      return mcpTextResponse(serializeProject(project));
     },
   );
 
@@ -253,9 +205,7 @@ export function registerProjectTools(server: McpServer) {
         timestamp: Date.now(),
       });
 
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify({ success: true }) }],
-      };
+      return mcpTextResponse({ success: true });
     },
   );
 }

@@ -8,12 +8,11 @@ import {
   requireProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
-import { getNextDueDate } from "@/lib/date-utils";
-
-function serializeDate(date: unknown): string | null {
-  if (date instanceof Date) return date.toISOString();
-  return date ? String(date) : null;
-}
+import {
+  serializeDate,
+  errorResponse,
+  mcpTextResponse,
+} from "@/lib/mcp-helpers";
 
 function serializeTask(task: unknown) {
   const t = task as Record<string, unknown>;
@@ -35,13 +34,6 @@ function serializeTask(task: unknown) {
     completedAt: serializeDate(t.completedAt),
     createdAt: serializeDate(t.createdAt),
     updatedAt: serializeDate(t.updatedAt),
-  };
-}
-
-function errorResponse(message: string) {
-  return {
-    content: [{ type: "text" as const, text: message }],
-    isError: true,
   };
 }
 
@@ -74,14 +66,7 @@ export function registerTaskTools(server: McpServer) {
         .sort({ order: 1 })
         .lean();
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(tasks.map(serializeTask)),
-          },
-        ],
-      };
+      return mcpTextResponse(tasks.map(serializeTask));
     },
   );
 
@@ -100,14 +85,7 @@ export function registerTaskTools(server: McpServer) {
         return errorResponse("Task not found");
       }
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(serializeTask(task)),
-          },
-        ],
-      };
+      return mcpTextResponse(serializeTask(task));
     },
   );
 
@@ -130,15 +108,7 @@ export function registerTaskTools(server: McpServer) {
         await requireProjectRole(userId, projectId, "editor");
       } catch (err) {
         const status = (err as Error & { status?: number }).status;
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: status === 403 ? "Forbidden" : "Project not found",
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse(status === 403 ? "Forbidden" : "Project not found");
       }
 
       const taskCount = await Task.countDocuments({
@@ -173,14 +143,7 @@ export function registerTaskTools(server: McpServer) {
         timestamp: Date.now(),
       });
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(serializeTask(task.toObject() as unknown as Record<string, unknown>)),
-          },
-        ],
-      };
+      return mcpTextResponse(serializeTask(task.toObject() as unknown as Record<string, unknown>));
     },
   );
 
@@ -256,14 +219,7 @@ export function registerTaskTools(server: McpServer) {
         timestamp: Date.now(),
       });
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(serializeTask(task)),
-          },
-        ],
-      };
+      return mcpTextResponse(serializeTask(task));
     },
   );
 
@@ -280,15 +236,7 @@ export function registerTaskTools(server: McpServer) {
         await requireProjectRole(userId, task.projectId.toString(), "editor");
       } catch (err) {
         const status = (err as Error & { status?: number }).status;
-        return {
-          content: [
-            {
-              type: "text" as const,
-              text: status === 403 ? "Forbidden" : "Task not found",
-            },
-          ],
-          isError: true,
-        };
+        return errorResponse(status === 403 ? "Forbidden" : "Task not found");
       }
 
       const targetUserIds = await getProjectMemberUserIds(
@@ -308,9 +256,7 @@ export function registerTaskTools(server: McpServer) {
         timestamp: Date.now(),
       });
 
-      return {
-        content: [{ type: "text" as const, text: JSON.stringify({ success: true }) }],
-      };
+      return mcpTextResponse({ success: true });
     },
   );
 
@@ -322,10 +268,7 @@ export function registerTaskTools(server: McpServer) {
       const userId = getMcpUserId();
       const existing = await Task.findById(taskId);
       if (!existing) {
-        return {
-          content: [{ type: "text" as const, text: "Task not found" }],
-          isError: true,
-        };
+        return errorResponse("Task not found");
       }
 
       try {
@@ -360,14 +303,7 @@ export function registerTaskTools(server: McpServer) {
         timestamp: Date.now(),
       });
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(serializeTask(task)),
-          },
-        ],
-      };
+      return mcpTextResponse(serializeTask(task));
     },
   );
 
@@ -379,10 +315,7 @@ export function registerTaskTools(server: McpServer) {
       const userId = getMcpUserId();
       const existing = await Task.findById(taskId);
       if (!existing) {
-        return {
-          content: [{ type: "text" as const, text: "Task not found" }],
-          isError: true,
-        };
+        return errorResponse("Task not found");
       }
 
       try {
@@ -434,7 +367,7 @@ export function registerTaskTools(server: McpServer) {
         existing.recurrence &&
         existing.recurrence.frequency !== "none"
       ) {
-        const nextDue = getNextDueDate(
+        const nextDue = computeNextDueDate(
           existing.dueDate ?? now,
           existing.recurrence.frequency,
           existing.recurrence.interval,
@@ -476,14 +409,30 @@ export function registerTaskTools(server: McpServer) {
         }
       }
 
-      return {
-        content: [
-          {
-            type: "text" as const,
-            text: JSON.stringify(serializeTask(task)),
-          },
-        ],
-      };
+      return mcpTextResponse(serializeTask(task));
     },
   );
+}
+
+function computeNextDueDate(
+  current: Date,
+  frequency: string,
+  interval: number,
+): Date {
+  const next = new Date(current);
+  switch (frequency) {
+    case "daily":
+      next.setDate(next.getDate() + interval);
+      break;
+    case "weekly":
+      next.setDate(next.getDate() + interval * 7);
+      break;
+    case "monthly":
+      next.setMonth(next.getMonth() + interval);
+      break;
+    case "yearly":
+      next.setFullYear(next.getFullYear() + interval);
+      break;
+  }
+  return next;
 }
