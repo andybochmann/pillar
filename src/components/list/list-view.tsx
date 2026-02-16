@@ -30,7 +30,7 @@ export function ListView({
   readOnly,
   onTasksChange,
 }: ListViewProps) {
-  const { tasks, createTask, updateTask, deleteTask, duplicateTask } = useTasks(
+  const { tasks, setTasks, createTask, updateTask, deleteTask, duplicateTask } = useTasks(
     initialTasks,
     projectId,
   );
@@ -141,7 +141,7 @@ export function ListView({
     if (completedTasks.length === 0) return;
 
     try {
-      await offlineFetch("/api/tasks/bulk", {
+      const res = await offlineFetch("/api/tasks/bulk", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -149,16 +149,16 @@ export function ListView({
           taskIds: completedTasks.map((t) => t._id),
         }),
       });
-      // Refetch will happen via sync event; optimistic removal
-      for (const t of completedTasks) {
-        await deleteTask(t._id);
-      }
+      if (!res.ok) throw new Error("Bulk delete failed");
+      // Remove completed tasks from local state (already deleted on server)
+      const deletedIds = new Set(completedTasks.map((t) => t._id));
+      setTasks((prev) => prev.filter((t) => !deletedIds.has(t._id)));
       toast.success("Completed items deleted");
     } catch {
       toast.error("Failed to delete completed items");
     }
     setShowDeleteAllConfirm(false);
-  }, [completedTasks, deleteTask]);
+  }, [completedTasks, setTasks]);
 
   const handleTaskUpdate = useCallback(
     async (id: string, data: Partial<Task>) => {
