@@ -17,6 +17,7 @@ import { TaskPriorityColumnSection } from "@/components/tasks/sections/task-prio
 import { TaskAssigneeSection } from "@/components/tasks/sections/task-assignee-section";
 import { TaskLabelsSection } from "@/components/tasks/sections/task-labels-section";
 import { TaskDueRecurrenceSection } from "@/components/tasks/sections/task-due-recurrence-section";
+import { TaskReminderSection } from "@/components/tasks/sections/task-reminder-section";
 import { TaskSubtasksSection } from "@/components/tasks/sections/task-subtasks-section";
 import { TaskTimeTrackingSection } from "@/components/tasks/sections/task-time-tracking-section";
 import { TaskStatusHistorySection } from "@/components/tasks/sections/task-status-history-section";
@@ -136,6 +137,9 @@ function TaskSheetForm({
     task.assigneeId ?? null,
   );
   const [labels, setLabels] = useState<string[]>(task.labels);
+  const [reminderAt, setReminderAt] = useState(
+    task.reminderAt ? task.reminderAt.slice(0, 16) : "",
+  );
   const [recurrence, setRecurrence] = useState<Recurrence>({
     frequency: task.recurrence?.frequency ?? "none",
     interval: task.recurrence?.interval ?? 1,
@@ -208,6 +212,13 @@ function TaskSheetForm({
     setDueDate(value);
     saveField({
       dueDate: value ? new Date(value + "T00:00:00Z").toISOString() : undefined,
+    });
+  }
+
+  function handleReminderChange(value: string) {
+    setReminderAt(value);
+    saveField({
+      reminderAt: value ? new Date(value).toISOString() : null,
     });
   }
 
@@ -316,6 +327,11 @@ function TaskSheetForm({
             recurrence={recurrence}
             onDueDateChange={handleDueDateChange}
             onRecurrenceChange={handleRecurrenceChange}
+          />
+
+          <TaskReminderSection
+            reminderAt={reminderAt}
+            onReminderChange={handleReminderChange}
           />
 
           <Separator />

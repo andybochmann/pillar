@@ -244,6 +244,39 @@ describe("PATCH /api/tasks/[id]", () => {
     expect(cloned!.statusHistory[0].columnId).toBe("todo");
   });
 
+  it("sets reminderAt on a task", async () => {
+    await setupFixtures();
+    const task = await createTestTask({ projectId, userId });
+    const reminderDate = "2026-03-15T10:30:00.000Z";
+
+    const { request, params } = createRequest(task._id.toString(), {
+      reminderAt: reminderDate,
+    });
+    const res = await PATCH(request, { params });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.reminderAt).toBe(reminderDate);
+  });
+
+  it("clears reminderAt when set to null", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      reminderAt: new Date("2026-03-15T10:30:00.000Z"),
+    });
+
+    const { request, params } = createRequest(task._id.toString(), {
+      reminderAt: null,
+    });
+    const res = await PATCH(request, { params });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.reminderAt).toBeNull();
+  });
+
   it("returns 404 for non-existent task", async () => {
     await setupFixtures();
     const fakeId = new mongoose.Types.ObjectId().toString();
