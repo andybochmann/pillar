@@ -137,9 +137,12 @@ function TaskSheetForm({
     task.assigneeId ?? null,
   );
   const [labels, setLabels] = useState<string[]>(task.labels);
-  const [reminderAt, setReminderAt] = useState(
-    task.reminderAt ? task.reminderAt.slice(0, 16) : "",
-  );
+  const [reminderAt, setReminderAt] = useState(() => {
+    if (!task.reminderAt) return "";
+    const d = new Date(task.reminderAt);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  });
   const [recurrence, setRecurrence] = useState<Recurrence>({
     frequency: task.recurrence?.frequency ?? "none",
     interval: task.recurrence?.interval ?? 1,
