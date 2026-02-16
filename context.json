@@ -1,71 +1,50 @@
 {
   "files_to_modify": {
     "frontend": [
-      "src/hooks/use-tasks.ts",
-      "src/hooks/use-projects.ts",
-      "src/hooks/use-categories.ts",
-      "src/hooks/use-labels.ts",
-      "src/hooks/use-project-members.ts",
-      "src/hooks/use-api-tokens.ts",
-      "src/hooks/use-time-tracking.ts",
-      "src/hooks/use-task-counts.ts",
-      "src/hooks/use-online-status.ts",
-      "src/hooks/use-offline-queue.ts",
-      "src/hooks/use-realtime-sync.ts",
-      "src/hooks/use-sync-subscription.ts",
-      "src/hooks/use-refetch-on-reconnect.ts",
-      "src/hooks/use-notifications.ts",
-      "src/hooks/use-notification-permission.ts",
-      "src/hooks/use-back-button.ts",
-      "src/hooks/use-user-search.ts",
-      "src/hooks/use-generate-subtasks.ts",
-      "src/hooks/use-generate-tasks.ts"
+      ".env.example",
+      "docs/ai-features.md",
+      "README.md",
+      "DOCKER_README.md"
     ]
   },
-  "files_to_create": {},
+  "files_to_create": {
+    "frontend": [
+      "docs/environment-variables.md"
+    ]
+  },
   "files_to_reference": [
-    "src/hooks/use-tasks.ts",
-    "src/hooks/use-projects.ts",
-    "src/hooks/use-time-tracking.ts",
-    "src/hooks/use-sync-subscription.ts"
+    "src/lib/ai.ts",
+    "src/lib/db.ts",
+    "docs/ai-features.md",
+    "DOCKER_README.md",
+    ".env.example"
   ],
   "patterns": {
-    "jsdoc_pattern": "TSDoc-style comments with @param, @returns, @example tags",
-    "hook_pattern": "Custom hooks use useState, useCallback, useEffect and return interface-typed objects",
-    "data_hooks_pattern": "Data management hooks (use-tasks, use-projects, etc.) support CRUD operations with optimistic updates, real-time sync via SSE, and offline support via offlineFetch",
-    "sync_pattern": "Most data hooks subscribe to real-time updates via useSyncSubscription and auto-refetch on reconnect via useRefetchOnReconnect"
+    "documentation_pattern": "Markdown files in docs/ folder follow consistent structure with Overview, Key Files, Configuration sections",
+    "env_var_pattern": "Environment variables accessed via process.env.VAR_NAME, documented with purpose, valid values, defaults",
+    "table_format": "Documentation uses markdown tables for structured information (Variable | Required | Description | Default)"
   },
   "existing_implementations": {
-    "description": "19 custom React hooks in src/hooks/ currently have NO JSDoc documentation. All hooks have TypeScript interfaces for return types but lack parameter descriptions, return value documentation, usage examples, and side-effect documentation.",
+    "description": "Environment variables scattered across multiple files: .env.example (4 vars), DOCKER_README.md (4 auth vars), docs/ai-features.md (2 AI vars with incorrect info)",
     "relevant_files": [
-      "src/hooks/use-tasks.ts",
-      "src/hooks/use-projects.ts",
-      "src/hooks/use-categories.ts",
-      "src/hooks/use-labels.ts",
-      "src/hooks/use-project-members.ts",
-      "src/hooks/use-api-tokens.ts",
-      "src/hooks/use-time-tracking.ts",
-      "src/hooks/use-task-counts.ts",
-      "src/hooks/use-online-status.ts",
-      "src/hooks/use-offline-queue.ts",
-      "src/hooks/use-realtime-sync.ts",
-      "src/hooks/use-sync-subscription.ts",
-      "src/hooks/use-refetch-on-reconnect.ts",
-      "src/hooks/use-notifications.ts",
-      "src/hooks/use-notification-permission.ts",
-      "src/hooks/use-back-button.ts",
-      "src/hooks/use-user-search.ts",
-      "src/hooks/use-generate-subtasks.ts",
-      "src/hooks/use-generate-tasks.ts"
+      ".env.example",
+      "src/lib/ai.ts",
+      "src/lib/db.ts",
+      "DOCKER_README.md",
+      "docs/ai-features.md"
     ],
-    "hook_categories": {
-      "data_management": ["use-tasks", "use-projects", "use-categories", "use-labels", "use-project-members", "use-api-tokens"],
-      "time_tracking": ["use-time-tracking", "use-task-counts"],
-      "realtime_offline": ["use-online-status", "use-offline-queue", "use-realtime-sync", "use-sync-subscription", "use-refetch-on-reconnect"],
-      "notifications": ["use-notifications", "use-notification-permission"],
-      "ui_helpers": ["use-back-button"],
-      "search": ["use-user-search"],
-      "ai_features": ["use-generate-subtasks", "use-generate-tasks"]
-    }
+    "environment_variables_found": {
+      "required": ["MONGODB_URI", "AUTH_SECRET"],
+      "required_in_docker": ["AUTH_URL"],
+      "optional": ["AUTH_TRUST_HOST", "AI_API_KEY", "AI_PROVIDER", "AI_MODEL", "AI_ALLOWED_EMAILS"],
+      "internal": ["NODE_ENV", "CI"]
+    },
+    "documentation_gaps": [
+      ".env.example missing AUTH_URL and AUTH_TRUST_HOST",
+      "docs/ai-features.md has incorrect information about AI_PROVIDER and AI_MODEL requirements",
+      "No comprehensive environment variables documentation",
+      "README.md doesn't reference environment configuration",
+      "Inconsistent documentation across DOCKER_README.md and .env.example"
+    ]
   }
 }

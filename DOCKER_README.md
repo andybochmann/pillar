@@ -37,7 +37,6 @@ docker run -d \
   -e MONGODB_URI=mongodb://your-mongo-host:27017/pillar \
   -e AUTH_SECRET=$(openssl rand -base64 32) \
   -e AUTH_URL=http://localhost:3000 \
-  -e AUTH_TRUST_HOST=true \
   --name pillar \
   andybochmann/pillar:latest
 ```
@@ -56,7 +55,6 @@ services:
       - MONGODB_URI=mongodb://mongo:27017/pillar
       - AUTH_SECRET=<run: openssl rand -base64 32>
       - AUTH_URL=http://localhost:3000
-      - AUTH_TRUST_HOST=true
     depends_on:
       mongo:
         condition: service_healthy
@@ -94,12 +92,25 @@ Open [http://localhost:3000](http://localhost:3000) and create an account.
 
 ## Environment Variables
 
+### Core Variables (Quick Reference)
+
 | Variable | Required | Description |
 |---|---|---|
 | `MONGODB_URI` | Yes | MongoDB connection string |
 | `AUTH_SECRET` | Yes | Secret for signing JWT sessions. Generate with `openssl rand -base64 32` |
 | `AUTH_URL` | Yes | Public URL of the app (e.g., `https://pillar.example.com`) |
-| `AUTH_TRUST_HOST` | No | Set to `true` when behind a reverse proxy (default: `false`) |
+| `AUTH_TRUST_HOST` | N/A | Always enabled (hardcoded to `true` for Docker deployment) |
+
+### Optional Features
+
+For AI-powered subtask generation and other optional features, see the comprehensive [Environment Variables Documentation](docs/environment-variables.md), which includes:
+
+- `AI_API_KEY` — Enable AI-powered subtask generation (OpenAI or Google)
+- `AI_PROVIDER` — Choose AI provider (`openai` or `google`)
+- `AI_MODEL` — Override default AI model
+- `AI_ALLOWED_EMAILS` — Restrict AI access to specific users
+
+See [docs/environment-variables.md](docs/environment-variables.md) for detailed documentation, examples, validation, and troubleshooting.
 
 ## Health Check
 

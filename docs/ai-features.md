@@ -17,14 +17,17 @@ Pillar integrates AI-powered subtask generation to help users break down tasks. 
 
 AI features are controlled by environment variables:
 
-| Variable | Description | Example |
-|---|---|---|
-| `AI_PROVIDER` | The AI provider to use | `openai`, `anthropic`, `google` |
-| `AI_MODEL` | The specific model ID | `gpt-4o`, `claude-sonnet-4-20250514`, `gemini-pro` |
+| Variable | Required | Description | Default | Example |
+|---|---|---|---|---|
+| `AI_API_KEY` | **Yes** (for AI features) | API key for the AI provider | - | `sk-...` (OpenAI), `AIza...` (Google) |
+| `AI_PROVIDER` | No | The AI provider to use | `openai` | `openai`, `google` |
+| `AI_MODEL` | No | The specific model ID | `gpt-4.1-mini` (OpenAI), `gemini-2.0-flash` (Google) | `gpt-4o`, `gemini-pro` |
+| `AI_ALLOWED_EMAILS` | No | Comma-separated list of emails allowed to use AI features. If not set, all users can use AI. | - | `user1@example.com,user2@example.com` |
 
 The `src/lib/ai.ts` module exports:
 
-- **`isAIEnabled()`** — Returns `true` if both `AI_PROVIDER` and `AI_MODEL` are set. Used by the UI to conditionally show AI features and by the status endpoint.
+- **`isAIEnabled()`** — Returns `true` if `AI_API_KEY` is set. Used by the UI to conditionally show AI features and by the status endpoint.
+- **`isAIAllowedForUser(email)`** — Returns `true` if the user's email is in `AI_ALLOWED_EMAILS` (or if `AI_ALLOWED_EMAILS` is not set, allowing all users).
 - **`getAIModel()`** — Returns the configured model instance from the Vercel AI SDK, based on the provider and model env vars.
 
 ## API Endpoints

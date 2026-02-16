@@ -42,6 +42,7 @@ pnpm install
 # Set up environment variables
 cp .env.example .env
 # Edit .env and set your MONGODB_URI and AUTH_SECRET
+# See docs/environment-variables.md for detailed configuration options
 
 # Start the dev server
 pnpm dev
