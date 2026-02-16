@@ -13,7 +13,9 @@ import {
   teardownTestDB,
   clearTestDB,
   createTestUser,
+  createTestAccount,
 } from "@/test/helpers";
+import { Account } from "@/models/account";
 import { GET, PATCH, DELETE } from "./route";
 
 const session = vi.hoisted(() => ({
@@ -60,14 +62,20 @@ describe("/api/settings/profile", () => {
       expect(res.status).toBe(401);
     });
 
-    it("returns user profile", async () => {
-      await seedUser();
+    it("returns user profile with hasPassword and providers", async () => {
+      const user = await seedUser();
+      await createTestAccount({ userId: user._id, provider: "credentials" });
+      await createTestAccount({ userId: user._id, provider: "google", providerAccountId: "google-123" });
+
       const res = await GET();
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.name).toBe("Test User");
       expect(body.email).toContain("@");
       expect(body.id).toBe(session.user.id);
+      expect(body.hasPassword).toBe(true);
+      expect(body.providers).toContain("credentials");
+      expect(body.providers).toContain("google");
     });
   });
 
@@ -96,12 +104,18 @@ describe("/api/settings/profile", () => {
   });
 
   describe("DELETE", () => {
-    it("deletes user account", async () => {
-      await seedUser();
+    it("deletes user account and cascades to Account records", async () => {
+      const user = await seedUser();
+      await createTestAccount({ userId: user._id, provider: "credentials" });
+      await createTestAccount({ userId: user._id, provider: "google", providerAccountId: "google-del" });
+
       const res = await DELETE();
       expect(res.status).toBe(200);
       const body = await res.json();
       expect(body.message).toBe("Account deleted");
+
+      const remaining = await Account.countDocuments({ userId: user._id });
+      expect(remaining).toBe(0);
     });
 
     it("returns 404 when user not found", async () => {

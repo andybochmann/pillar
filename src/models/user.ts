@@ -4,7 +4,7 @@ export interface IUser extends Document {
   _id: mongoose.Types.ObjectId;
   name: string;
   email: string;
-  passwordHash: string;
+  passwordHash?: string;
   image?: string;
   createdAt: Date;
   updatedAt: Date;
@@ -20,7 +20,7 @@ const UserSchema = new Schema<IUser>(
       lowercase: true,
       trim: true,
     },
-    passwordHash: { type: String, required: true },
+    passwordHash: { type: String },
     image: { type: String },
   },
   { timestamps: true },

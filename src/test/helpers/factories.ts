@@ -17,6 +17,7 @@ import {
   PushSubscription,
   type IPushSubscription,
 } from "@/models/push-subscription";
+import { Account, type IAccount } from "@/models/account";
 import { hash } from "bcryptjs";
 import { generateToken, hashToken } from "@/lib/mcp-auth";
 
@@ -186,6 +187,23 @@ export async function createTestAccessToken(
     expiresAt: overrides.expiresAt ?? null,
   });
   return { token, rawToken: raw };
+}
+
+interface CreateAccountInput {
+  userId: mongoose.Types.ObjectId;
+  provider?: string;
+  providerAccountId?: string;
+}
+
+export async function createTestAccount(
+  overrides: CreateAccountInput,
+): Promise<IAccount> {
+  return Account.create({
+    userId: overrides.userId,
+    provider: overrides.provider ?? "credentials",
+    providerAccountId:
+      overrides.providerAccountId ?? overrides.userId.toString(),
+  });
 }
 
 interface CreatePushSubscriptionInput {

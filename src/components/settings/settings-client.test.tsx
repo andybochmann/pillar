@@ -17,6 +17,8 @@ const mockProfile = {
   id: "user1",
   name: "Test User",
   email: "test@pillar.dev",
+  hasPassword: true,
+  providers: ["credentials"],
   createdAt: new Date().toISOString(),
 };
 

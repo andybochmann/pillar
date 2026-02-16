@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/user";
+import { Account } from "@/models/account";
 import { SettingsClient } from "@/components/settings/settings-client";
 import { Separator } from "@/components/ui/separator";
 
@@ -11,17 +12,24 @@ export default async function SettingsPage() {
 
   await connectDB();
 
-  const user = await User.findById(session.user.id)
-    .select("name email image createdAt")
-    .lean();
+  const [user, accounts] = await Promise.all([
+    User.findById(session.user.id)
+      .select("name email image passwordHash createdAt")
+      .lean(),
+    Account.find({ userId: session.user.id }).select("provider").lean(),
+  ]);
 
   if (!user) redirect("/login");
+
+  const providers = accounts.map((a) => a.provider);
 
   const profile = {
     id: user._id.toString(),
     name: user.name,
     email: user.email,
     image: user.image,
+    hasPassword: !!user.passwordHash,
+    providers,
     createdAt: user.createdAt.toISOString(),
   };
 

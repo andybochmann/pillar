@@ -41,10 +41,15 @@ describe("User Model", () => {
     ).rejects.toThrow(/email.*required/i);
   });
 
-  it("requires passwordHash field", async () => {
-    await expect(
-      User.create({ name: "Test", email: "test@example.com" }),
-    ).rejects.toThrow(/passwordHash.*required/i);
+  it("allows user without passwordHash (OAuth user)", async () => {
+    const user = await User.create({
+      name: "OAuth User",
+      email: "oauth@example.com",
+    });
+
+    expect(user.name).toBe("OAuth User");
+    expect(user.email).toBe("oauth@example.com");
+    expect(user.passwordHash).toBeUndefined();
   });
 
   it("enforces unique email", async () => {

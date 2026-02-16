@@ -30,6 +30,7 @@ export const authConfig: NextAuthConfig = {
       if (token?.id) {
         session.user.id = token.id as string;
       }
+      session.user.hasPassword = token.hasPassword ?? true;
       return session;
     },
   },

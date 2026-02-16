@@ -10,4 +10,5 @@ export {
   createTestProjectMember,
   createTestAccessToken,
   createTestPushSubscription,
+  createTestAccount,
 } from "./factories";

@@ -14,6 +14,7 @@ import {
   clearTestDB,
   createTestUser,
 } from "@/test/helpers";
+import { Account } from "@/models/account";
 import { POST } from "./route";
 
 // Mock connectDB — test already has an active mongodb-memory-server connection
@@ -57,6 +58,11 @@ describe("POST /api/auth/register", () => {
     expect(data.email).toBe("john@example.com");
     expect(data.id).toBeDefined();
     expect(data).not.toHaveProperty("passwordHash");
+
+    // Verify Account record was created
+    const account = await Account.findOne({ userId: data.id, provider: "credentials" });
+    expect(account).not.toBeNull();
+    expect(account?.providerAccountId).toBe(data.id);
   });
 
   it("returns 400 for missing name", async () => {

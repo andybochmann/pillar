@@ -10,6 +10,7 @@ import { Label } from "@/models/label";
 import { ProjectMember } from "@/models/project-member";
 import { AccessToken } from "@/models/access-token";
 import { PushSubscription } from "@/models/push-subscription";
+import { Account } from "@/models/account";
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -25,17 +26,22 @@ export async function GET() {
   await connectDB();
 
   const user = await User.findById(session.user.id).select(
-    "name email image createdAt",
+    "name email image passwordHash createdAt",
   );
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
+
+  const accounts = await Account.find({ userId: user._id }).select("provider").lean();
+  const providers = accounts.map((a) => a.provider);
 
   return NextResponse.json({
     id: user._id.toString(),
     name: user.name,
     email: user.email,
     image: user.image,
+    hasPassword: !!user.passwordHash,
+    providers,
     createdAt: user.createdAt.toISOString(),
   });
 }
@@ -98,6 +104,7 @@ export async function DELETE() {
       ProjectMember.deleteMany({ userId: session.user.id }),
       AccessToken.deleteMany({ userId: session.user.id }),
       PushSubscription.deleteMany({ userId: session.user.id }),
+      Account.deleteMany({ userId: session.user.id }),
     ]);
 
     return NextResponse.json({ message: "Account deleted" });

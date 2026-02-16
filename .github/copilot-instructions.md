@@ -11,7 +11,7 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 - **Single Next.js app** with App Router (`src/app/`), two route groups: `(auth)` (login/register, no sidebar) and `(dashboard)` (main app with sidebar)
 - **REST API** via Route Handlers (`src/app/api/`) — every handler: auth check → `connectDB()` → Zod validate → query with `userId` filter → respond
 - **MongoDB** via Mongoose 9 (`src/models/`) — singleton connection in `src/lib/db.ts` with global HMR cache
-- **Auth.js v5** split across three files: `src/lib/auth.config.ts` (edge-safe, no bcryptjs), `src/lib/auth.ts` (full config with Credentials provider), `src/proxy.ts` (auth middleware — Next.js 16 convention, NOT `middleware.ts`)
+- **Auth.js v5** split across three files: `src/lib/auth.config.ts` (edge-safe, no bcryptjs), `src/lib/auth.ts` (full config with Credentials + Google providers), `src/proxy.ts` (auth middleware — Next.js 16 convention, NOT `middleware.ts`). OAuth linking logic in `src/lib/oauth-linking.ts`, Account model in `src/models/account.ts`. `User.passwordHash` is optional (OAuth-only users have none).
 - **PWA/Offline**: vanilla service worker (`public/sw.js`), IndexedDB queue (`src/lib/offline-queue.ts`), `offlineFetch()` wrapper for mutations, auto-sync on reconnect (`src/lib/sync.ts`)
 - **Real-time sync** via SSE + in-memory EventEmitter — see `docs/realtime-sync.md`
 - **Project sharing** via `ProjectMember` model with role-based access — see `docs/project-sharing.md`
@@ -142,7 +142,7 @@ import { GET, POST } from "./route";
 ## Feature Documentation
 
 Detailed docs for each major feature in the `docs/` folder:
-`realtime-sync.md`, `project-sharing.md`, `time-tracking.md`, `offline-pwa.md`, `ai-features.md`, `kanban-dnd.md`
+`realtime-sync.md`, `project-sharing.md`, `time-tracking.md`, `offline-pwa.md`, `ai-features.md`, `kanban-dnd.md`, `oauth-social-login.md`
 
 ## Test Credentials (Dev/E2E)
 

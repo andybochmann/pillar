@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FolderKanban } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -18,10 +18,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SocialLoginButtons } from "@/components/auth/social-login-buttons";
+
+const oauthErrors: Record<string, string> = {
+  OAuthAccountNotLinked: "This email is already associated with a different sign-in method.",
+  OAuthCallbackError: "Something went wrong during sign in. Please try again.",
+  OAuthSignin: "Could not start the sign-in process. Please try again.",
+};
 
 export default function LoginPage() {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const errorParam = searchParams.get("error");
+  const oauthError = errorParam ? oauthErrors[errorParam] : null;
+
+  const [error, setError] = useState<string | null>(oauthError ?? null);
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -96,6 +107,7 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}
           </Button>
+          <SocialLoginButtons />
           <p className="text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <Link href="/register" className="text-primary hover:underline">

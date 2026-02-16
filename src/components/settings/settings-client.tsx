@@ -32,12 +32,15 @@ import { toast } from "sonner";
 import { InstallPromptCard } from "./install-prompt-card";
 import { ApiTokensCard } from "./api-tokens-card";
 import { NotificationSettingsCard } from "./notification-settings-card";
+import { ConnectedAccountsCard } from "./connected-accounts-card";
 
 interface Profile {
   id: string;
   name: string;
   email: string;
   image?: string;
+  hasPassword: boolean;
+  providers: string[];
   createdAt: string;
 }
 
@@ -85,19 +88,24 @@ export function SettingsClient({ profile }: SettingsClientProps) {
     }
     setChangingPassword(true);
     try {
+      const body = profile.hasPassword
+        ? { currentPassword, newPassword }
+        : { newPassword };
+
       const res = await fetch("/api/settings/password", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) {
-        const body = await res.json();
-        throw new Error(body.error || "Failed to change password");
+        const data = await res.json();
+        throw new Error(data.error || "Failed to change password");
       }
-      toast.success("Password changed");
+      toast.success(profile.hasPassword ? "Password changed" : "Password set");
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
+      router.refresh();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Failed to change password",
@@ -203,24 +211,33 @@ export function SettingsClient({ profile }: SettingsClientProps) {
         </CardFooter>
       </Card>
 
+      {/* Connected accounts */}
+      <ConnectedAccountsCard providers={profile.providers} />
+
       {/* Password section */}
       <Card>
         <CardHeader>
-          <CardTitle>Change Password</CardTitle>
+          <CardTitle>
+            {profile.hasPassword ? "Change Password" : "Set Password"}
+          </CardTitle>
           <CardDescription>
-            Update your password to keep your account secure
+            {profile.hasPassword
+              ? "Update your password to keep your account secure"
+              : "Add a password to enable email & password sign in"}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="current-password">Current Password</Label>
-            <Input
-              id="current-password"
-              type="password"
-              value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-            />
-          </div>
+          {profile.hasPassword && (
+            <div className="space-y-2">
+              <Label htmlFor="current-password">Current Password</Label>
+              <Input
+                id="current-password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="new-password">New Password</Label>
             <Input
@@ -245,12 +262,14 @@ export function SettingsClient({ profile }: SettingsClientProps) {
             onClick={handlePasswordChange}
             disabled={
               changingPassword ||
-              !currentPassword ||
+              (profile.hasPassword && !currentPassword) ||
               !newPassword ||
               !confirmPassword
             }
           >
-            {changingPassword ? "Changing…" : "Change password"}
+            {changingPassword
+              ? (profile.hasPassword ? "Changing…" : "Setting…")
+              : (profile.hasPassword ? "Change password" : "Set password")}
           </Button>
         </CardFooter>
       </Card>

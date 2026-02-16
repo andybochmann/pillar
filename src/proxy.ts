@@ -10,7 +10,7 @@ const securityHeaders = {
     "default-src 'self'",
     "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: *.googleusercontent.com",
     "font-src 'self' data:",
     "connect-src 'self'",
     "frame-ancestors 'none'",

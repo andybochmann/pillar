@@ -14,6 +14,8 @@ import {
   clearTestDB,
   createTestUser,
 } from "@/test/helpers";
+import { User } from "@/models/user";
+import { Account } from "@/models/account";
 import { PATCH } from "./route";
 
 const session = vi.hoisted(() => ({
@@ -107,5 +109,56 @@ describe("PATCH /api/settings/password", () => {
     });
     const res = await PATCH(req);
     expect(res.status).toBe(400);
+  });
+
+  describe("set password (OAuth user)", () => {
+    async function seedOAuthUser() {
+      const user = await User.create({
+        name: "OAuth User",
+        email: "oauth@example.com",
+      });
+      session.user.id = user._id.toString();
+      return user;
+    }
+
+    it("sets password for OAuth user without currentPassword", async () => {
+      await seedOAuthUser();
+      const req = new NextRequest("http://localhost/api/settings/password", {
+        method: "PATCH",
+        body: JSON.stringify({ newPassword: "NewPassword123!" }),
+      });
+      const res = await PATCH(req);
+      expect(res.status).toBe(200);
+      const body = await res.json();
+      expect(body.message).toBe("Password updated");
+
+      const updated = await User.findById(session.user.id);
+      expect(updated?.passwordHash).toBeDefined();
+    });
+
+    it("creates credentials Account when setting password", async () => {
+      const user = await seedOAuthUser();
+      const req = new NextRequest("http://localhost/api/settings/password", {
+        method: "PATCH",
+        body: JSON.stringify({ newPassword: "NewPassword123!" }),
+      });
+      await PATCH(req);
+
+      const account = await Account.findOne({
+        userId: user._id,
+        provider: "credentials",
+      });
+      expect(account).not.toBeNull();
+    });
+
+    it("validates new password length for OAuth user", async () => {
+      await seedOAuthUser();
+      const req = new NextRequest("http://localhost/api/settings/password", {
+        method: "PATCH",
+        body: JSON.stringify({ newPassword: "short" }),
+      });
+      const res = await PATCH(req);
+      expect(res.status).toBe(400);
+    });
   });
 });

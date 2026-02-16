@@ -11,7 +11,7 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 - **Framework**: Next.js 16.1.6 (App Router, React 19.2.3, React Compiler enabled)
 - **Language**: TypeScript (strict mode, no `any`)
 - **Database**: MongoDB 7 via Mongoose 9
-- **Auth**: Auth.js v5 (next-auth@beta) with Credentials provider, JWT sessions
+- **Auth**: Auth.js v5 (next-auth@beta) with Credentials + Google providers, JWT sessions
 - **UI**: shadcn/ui + Tailwind CSS v4 + Lucide icons
 - **Drag & Drop**: @dnd-kit/core + @dnd-kit/sortable
 - **Validation**: Zod v4
@@ -86,6 +86,8 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 - **Project** has default columns: `["todo", "in-progress", "review", "done"]`
 - **Task.priority**: `"urgent" | "high" | "medium" | "low"` (default: `"medium"`)
 - **Task.recurrence**: `{ frequency: "daily"|"weekly"|"monthly"|"yearly"|"none", interval, endDate? }`
+- **User.passwordHash** is optional — OAuth-only users have no password
+- **Account** links OAuth/credentials identities to users (compound unique indexes on `{provider, providerAccountId}` and `{userId, provider}`)
 - Model re-registration guard: `mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema)`
 
 ## Testing
@@ -145,6 +147,9 @@ import { GET, POST } from "./route";
 | ------------------------- | ------------------------------------------- |
 | Auth (edge-safe)          | `src/lib/auth.config.ts`                    |
 | Auth (full)               | `src/lib/auth.ts`                           |
+| OAuth linking             | `src/lib/oauth-linking.ts`                  |
+| Account model             | `src/models/account.ts`                     |
+| Auth type augmentations   | `src/types/next-auth.d.ts`                  |
 | Auth proxy                | `src/proxy.ts`                              |
 | DB connection             | `src/lib/db.ts`                             |
 | Shared types              | `src/types/index.ts`                        |
@@ -174,6 +179,7 @@ Detailed documentation for each major feature lives in the `docs/` folder:
 | Offline/PWA | [docs/offline-pwa.md](docs/offline-pwa.md) |
 | AI features | [docs/ai-features.md](docs/ai-features.md) |
 | Kanban drag & drop | [docs/kanban-dnd.md](docs/kanban-dnd.md) |
+| OAuth social login | [docs/oauth-social-login.md](docs/oauth-social-login.md) |
 
 ## Test Credentials (Dev/E2E)
 

@@ -3,6 +3,7 @@ import { hash } from "bcryptjs";
 import { z } from "zod";
 import { connectDB } from "@/lib/db";
 import { User } from "@/models/user";
+import { Account } from "@/models/account";
 
 const RegisterSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
@@ -44,6 +45,12 @@ export async function POST(request: Request) {
       name: result.data.name,
       email: result.data.email.toLowerCase(),
       passwordHash,
+    });
+
+    await Account.create({
+      userId: user._id,
+      provider: "credentials",
+      providerAccountId: user._id.toString(),
     });
 
     return NextResponse.json(
