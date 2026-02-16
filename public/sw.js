@@ -179,13 +179,14 @@ self.addEventListener("notificationclick", (event) => {
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
-      // Focus existing window if available
+      // Focus existing window and navigate it to the target URL
       for (const client of clientList) {
-        if (client.url === urlToOpen && "focus" in client) {
+        if (new URL(client.url).origin === self.location.origin && "focus" in client) {
+          client.navigate(urlToOpen);
           return client.focus();
         }
       }
-      // Open new window if no matching client
+      // Open new window if no existing Pillar window
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }

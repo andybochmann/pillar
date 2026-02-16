@@ -56,6 +56,7 @@ function emitNotification(
   userId: string,
   taskId?: string,
   pushEnabled?: boolean,
+  projectId?: string,
 ): void {
   const notificationId = notification._id.toString();
   const tag = `pillar-${notificationId}`;
@@ -78,7 +79,7 @@ function emitNotification(
       notificationId,
       taskId,
       tag,
-      url: "/",
+      url: projectId ? `/projects/${projectId}` : "/",
     }).catch(() => {
       // Push failures are non-blocking
     });
@@ -227,7 +228,7 @@ async function processReminders(
         },
       });
 
-      emitNotification(notification, userId, taskId, prefs?.enableBrowserPush);
+      emitNotification(notification, userId, taskId, prefs?.enableBrowserPush, task.projectId.toString());
       created++;
     }
 
@@ -300,7 +301,7 @@ async function processOverdue(
         },
       });
 
-      emitNotification(notification, userId, taskId, prefs?.enableBrowserPush);
+      emitNotification(notification, userId, taskId, prefs?.enableBrowserPush, task.projectId.toString());
       created++;
     }
   }
