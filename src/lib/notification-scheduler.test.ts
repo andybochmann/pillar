@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  shouldCreateNotification,
   isWithinQuietHours,
-  calculateNotificationTime,
   generateNotificationsForTask,
   type NotificationToCreate,
 } from "./notification-scheduler";
@@ -78,72 +76,11 @@ describe("notification-scheduler", () => {
     });
   });
 
-  describe("calculateNotificationTime", () => {
-    it("should calculate notification time for minutes before due date", () => {
-      const dueDate = new Date("2026-02-16T10:00:00.000Z");
-      const result = calculateNotificationTime(dueDate, 60); // 1 hour before
-      expect(result).toEqual(new Date("2026-02-16T09:00:00.000Z"));
-    });
-
-    it("should calculate notification time for 1 day before", () => {
-      const dueDate = new Date("2026-02-16T10:00:00.000Z");
-      const result = calculateNotificationTime(dueDate, 1440); // 1 day before
-      expect(result).toEqual(new Date("2026-02-15T10:00:00.000Z"));
-    });
-
-    it("should calculate notification time for 15 minutes before", () => {
-      const dueDate = new Date("2026-02-15T10:15:00.000Z");
-      const result = calculateNotificationTime(dueDate, 15);
-      expect(result).toEqual(new Date("2026-02-15T10:00:00.000Z"));
-    });
-  });
-
-  describe("shouldCreateNotification", () => {
-    it("should return true when notification time has passed and is recent", () => {
-      const notificationTime = new Date("2026-02-15T09:00:00.000Z");
-      const currentTime = new Date("2026-02-15T09:30:00.000Z");
-      const result = shouldCreateNotification(notificationTime, currentTime);
-      expect(result).toBe(true);
-    });
-
-    it("should return false when notification time is in the future", () => {
-      const notificationTime = new Date("2026-02-15T11:00:00.000Z");
-      const currentTime = new Date("2026-02-15T10:00:00.000Z");
-      const result = shouldCreateNotification(notificationTime, currentTime);
-      expect(result).toBe(false);
-    });
-
-    it("should return false when notification time is too far in the past", () => {
-      const notificationTime = new Date("2026-02-14T09:00:00.000Z");
-      const currentTime = new Date("2026-02-15T10:00:00.000Z");
-      const result = shouldCreateNotification(notificationTime, currentTime);
-      expect(result).toBe(false);
-    });
-
-    it("should return true when notification time is exactly at current time", () => {
-      const notificationTime = new Date("2026-02-15T10:00:00.000Z");
-      const currentTime = new Date("2026-02-15T10:00:00.000Z");
-      const result = shouldCreateNotification(notificationTime, currentTime);
-      expect(result).toBe(true);
-    });
-
-    it("should use 2-hour window by default", () => {
-      const notificationTime = new Date("2026-02-15T08:00:00.000Z");
-      const currentTime = new Date("2026-02-15T09:59:00.000Z"); // 1h 59m later
-      const result = shouldCreateNotification(notificationTime, currentTime);
-      expect(result).toBe(true);
-    });
-  });
-
   describe("generateNotificationsForTask", () => {
     const basePreferences: INotificationPreference = {
       _id: new mongoose.Types.ObjectId(),
       userId,
-      enableBrowserPush: true,
       enableInAppNotifications: true,
-      reminderTimings: [1440, 60, 15], // 1 day, 1 hour, 15 min
-      enableEmailDigest: false,
-      emailDigestFrequency: "none",
       quietHoursEnabled: false,
       quietHoursStart: "22:00",
       quietHoursEnd: "08:00",
@@ -203,55 +140,6 @@ describe("notification-scheduler", () => {
       expect(result).toEqual([]);
     });
 
-    it("should create reminder notification when due in 1 hour", () => {
-      const task = {
-        ...baseTask,
-        dueDate: new Date("2026-02-15T11:00:00.000Z"), // 1 hour from now
-      } as ITask;
-
-      const result = generateNotificationsForTask(
-        task,
-        basePreferences,
-        [],
-        now,
-        "UTC",
-      );
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        type: "reminder",
-        title: "Task due in 1 hour",
-        taskId: taskId.toString(),
-        userId: userId.toString(),
-        scheduledFor: new Date("2026-02-15T10:00:00.000Z"),
-      });
-      expect(result[0].message).toContain("Test Task");
-    });
-
-    it("should create reminder notification when due in 1 day", () => {
-      const task = {
-        ...baseTask,
-        dueDate: new Date("2026-02-16T10:00:00.000Z"), // 1 day from now
-      } as ITask;
-
-      const result = generateNotificationsForTask(
-        task,
-        basePreferences,
-        [],
-        now,
-        "UTC",
-      );
-
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        type: "reminder",
-        title: "Task due in 1 day",
-        taskId: taskId.toString(),
-        userId: userId.toString(),
-        scheduledFor: new Date("2026-02-15T10:00:00.000Z"),
-      });
-    });
-
     it("should create overdue notification when task is overdue", () => {
       const task = {
         ...baseTask,
@@ -277,10 +165,10 @@ describe("notification-scheduler", () => {
       expect(result[0].message).toContain("overdue");
     });
 
-    it("should not create duplicate notifications", () => {
+    it("should not create duplicate overdue notifications", () => {
       const task = {
         ...baseTask,
-        dueDate: new Date("2026-02-15T11:00:00.000Z"), // 1 hour from now
+        dueDate: new Date("2026-02-14T10:00:00.000Z"), // overdue
       } as ITask;
 
       const existingNotifications: Partial<INotification>[] = [
@@ -288,8 +176,8 @@ describe("notification-scheduler", () => {
           _id: new mongoose.Types.ObjectId(),
           userId,
           taskId,
-          type: "reminder",
-          title: "Task due in 1 hour",
+          type: "overdue",
+          title: "Task is overdue",
           message: "Test",
           read: false,
           dismissed: false,
@@ -312,7 +200,7 @@ describe("notification-scheduler", () => {
     it("should skip notifications during quiet hours", () => {
       const task = {
         ...baseTask,
-        dueDate: new Date("2026-02-15T11:00:00.000Z"), // 1 hour from now
+        dueDate: new Date("2026-02-14T10:00:00.000Z"), // overdue
       } as ITask;
 
       const preferences = {
@@ -333,31 +221,10 @@ describe("notification-scheduler", () => {
       expect(result).toEqual([]);
     });
 
-    it("should create multiple reminder notifications for different timings", () => {
-      const task = {
-        ...baseTask,
-        dueDate: new Date("2026-02-17T10:00:00.000Z"), // 2 days from now
-      } as ITask;
-
-      const currentTime = new Date("2026-02-16T10:00:00.000Z"); // 1 day before due
-
-      const result = generateNotificationsForTask(
-        task,
-        basePreferences,
-        [],
-        currentTime,
-        "UTC",
-      );
-
-      // Should create 1-day reminder
-      expect(result).toHaveLength(1);
-      expect(result[0].title).toBe("Task due in 1 day");
-    });
-
     it("should not create notification for completed tasks", () => {
       const task = {
         ...baseTask,
-        dueDate: new Date("2026-02-15T11:00:00.000Z"),
+        dueDate: new Date("2026-02-14T10:00:00.000Z"),
         completedAt: new Date("2026-02-14T10:00:00.000Z"),
       } as ITask;
 
@@ -372,15 +239,15 @@ describe("notification-scheduler", () => {
       expect(result).toEqual([]);
     });
 
-    it("should use custom reminder timings from preferences", () => {
+    it("should not create overdue notification when enableOverdueSummary is false", () => {
       const task = {
         ...baseTask,
-        dueDate: new Date("2026-02-15T12:00:00.000Z"), // 2 hours from now
+        dueDate: new Date("2026-02-14T10:00:00.000Z"), // overdue
       } as ITask;
 
       const preferences = {
         ...basePreferences,
-        reminderTimings: [120], // 2 hours before
+        enableOverdueSummary: false,
       };
 
       const result = generateNotificationsForTask(
@@ -391,41 +258,30 @@ describe("notification-scheduler", () => {
         "UTC",
       );
 
-      expect(result).toHaveLength(1);
-      expect(result[0]).toMatchObject({
-        type: "reminder",
-        title: "Task due in 2 hours",
-      });
+      expect(result).toEqual([]);
     });
 
-    it("should handle reminder notification with custom timing", () => {
+    it("should not create overdue notification for future tasks", () => {
       const task = {
         ...baseTask,
-        dueDate: new Date("2026-02-15T20:00:00.000Z"), // 10 hours from now
+        dueDate: new Date("2026-02-16T10:00:00.000Z"), // 1 day in future
       } as ITask;
-
-      const preferences = {
-        ...basePreferences,
-        reminderTimings: [600], // 10 hours before
-      };
 
       const result = generateNotificationsForTask(
         task,
-        preferences,
+        basePreferences,
         [],
         now,
         "UTC",
       );
 
-      expect(result).toHaveLength(1);
-      expect(result[0].type).toBe("reminder");
-      expect(result[0].title).toBe("Task due in 10 hours");
+      expect(result).toEqual([]);
     });
 
     it("should include priority in metadata", () => {
       const task = {
         ...baseTask,
-        dueDate: new Date("2026-02-15T11:00:00.000Z"),
+        dueDate: new Date("2026-02-14T10:00:00.000Z"), // overdue
         priority: "urgent",
       } as ITask;
 

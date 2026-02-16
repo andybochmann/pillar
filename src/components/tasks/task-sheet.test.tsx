@@ -299,6 +299,84 @@ describe("TaskSheet", () => {
     expect(screen.getByText("Enter task")).toBeInTheDocument();
   });
 
+  describe("reminder picker", () => {
+    it("renders empty reminder input", () => {
+      render(<TaskSheet {...defaultProps} />);
+      expect(screen.getByLabelText("Reminder date and time")).toHaveValue("");
+    });
+
+    it("renders reminder input populated from task.reminderAt", () => {
+      const taskWithReminder: Task = {
+        ...mockTask,
+        reminderAt: "2026-03-15T14:30:00.000Z",
+      };
+      render(<TaskSheet {...defaultProps} task={taskWithReminder} />);
+      expect(screen.getByLabelText("Reminder date and time")).toHaveValue(
+        "2026-03-15T14:30",
+      );
+    });
+
+    it("saves reminder when datetime is set", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      const input = screen.getByLabelText("Reminder date and time");
+
+      await user.clear(input);
+      await user.type(input, "2026-04-01T10:00");
+
+      vi.advanceTimersByTime(600);
+
+      expect(onUpdate).toHaveBeenCalledWith(
+        "task-1",
+        expect.objectContaining({
+          reminderAt: expect.stringContaining("2026-04-01"),
+        }),
+      );
+    });
+
+    it("clears reminder when clear button is clicked", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      const taskWithReminder: Task = {
+        ...mockTask,
+        reminderAt: "2026-03-15T14:30:00.000Z",
+      };
+      render(
+        <TaskSheet {...defaultProps} task={taskWithReminder} onUpdate={onUpdate} />,
+      );
+
+      const clearButton = screen.getByRole("button", { name: "Clear reminder" });
+      await user.click(clearButton);
+
+      vi.advanceTimersByTime(600);
+
+      expect(onUpdate).toHaveBeenCalledWith(
+        "task-1",
+        expect.objectContaining({ reminderAt: null }),
+      );
+    });
+
+    it("does not show clear button when no reminder is set", () => {
+      render(<TaskSheet {...defaultProps} />);
+      expect(
+        screen.queryByRole("button", { name: "Clear reminder" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows clear button when reminder is set", () => {
+      const taskWithReminder: Task = {
+        ...mockTask,
+        reminderAt: "2026-03-15T14:30:00.000Z",
+      };
+      render(<TaskSheet {...defaultProps} task={taskWithReminder} />);
+      expect(
+        screen.getByRole("button", { name: "Clear reminder" }),
+      ).toBeInTheDocument();
+    });
+  });
+
   describe("AI subtask generation", () => {
     it("does not show generate button when AI is disabled", async () => {
       mockFetch.mockResolvedValue(

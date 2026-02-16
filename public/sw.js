@@ -124,15 +124,13 @@ async function networkFirstNavigation(request) {
   }
 }
 
-// Push: handle push notifications
-self.addEventListener("push", (event) => {
-  const data = event.data ? event.data.json() : {};
-  const title = data.title || "Pillar Notification";
-  const options = {
+// Create notification options with consistent defaults
+function buildNotificationOptions(data) {
+  return {
     body: data.message || data.body || "",
     icon: data.icon || "/icons/icon-192x192.png",
-    badge: data.badge || "/icons/icon-192x192.png",
-    tag: data.tag || `notification-${Date.now()}`,
+    badge: "/icons/icon-192x192.png",
+    tag: data.tag || data.notificationId || `notification-${Date.now()}`,
     data: {
       taskId: data.taskId,
       notificationId: data.notificationId,
@@ -141,8 +139,26 @@ self.addEventListener("push", (event) => {
     requireInteraction: data.requireInteraction || false,
     actions: data.actions || [],
   };
+}
 
-  event.waitUntil(self.registration.showNotification(title, options));
+// Push: handle push notifications
+self.addEventListener("push", (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || "Pillar Notification";
+  event.waitUntil(
+    self.registration.showNotification(title, buildNotificationOptions(data))
+  );
+});
+
+// Message from client: show OS notification via Service Worker
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SHOW_NOTIFICATION") {
+    const { title, ...data } = event.data;
+    self.registration.showNotification(
+      title || "Pillar",
+      buildNotificationOptions(data)
+    );
+  }
 });
 
 // Notification click: navigate to task or notification center

@@ -8,28 +8,17 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-// Mock useNotificationPermission hook
-const mockRequestPermission = vi.fn();
-vi.mock("@/hooks/use-notification-permission", () => ({
-  useNotificationPermission: vi.fn(() => ({
-    permission: "default",
-    requestPermission: mockRequestPermission,
-    isSupported: true,
-  })),
-}));
-
 const mockPreferences = {
   id: "pref1",
   userId: "user1",
-  enableBrowserPush: false,
   enableInAppNotifications: true,
-  reminderTimings: [1440, 60, 15],
-  enableEmailDigest: false,
-  emailDigestFrequency: "none" as const,
   quietHoursEnabled: false,
   quietHoursStart: "22:00",
   quietHoursEnd: "08:00",
   enableOverdueSummary: true,
+  enableDailySummary: true,
+  dailySummaryTime: "09:00",
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   createdAt: "2025-01-01T00:00:00.000Z",
   updatedAt: "2025-01-01T00:00:00.000Z",
 };
@@ -37,7 +26,6 @@ const mockPreferences = {
 describe("NotificationSettingsCard", () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    mockRequestPermission.mockReset();
   });
 
   it("shows loading state initially", () => {
@@ -61,9 +49,6 @@ describe("NotificationSettingsCard", () => {
       expect(screen.getByText("Notification Settings")).toBeInTheDocument();
     });
 
-    expect(
-      screen.getByLabelText("Browser Push Notifications"),
-    ).not.toBeChecked();
     expect(screen.getByLabelText("In-App Notifications")).toBeChecked();
   });
 
@@ -78,73 +63,6 @@ describe("NotificationSettingsCard", () => {
     await waitFor(() => {
       expect(screen.getByText("Failed to load preferences")).toBeInTheDocument();
     });
-  });
-
-  it("toggles browser push notifications with permission request", async () => {
-    const user = userEvent.setup();
-    mockRequestPermission.mockResolvedValue("granted");
-
-    vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockPreferences),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({ ...mockPreferences, enableBrowserPush: true }),
-      } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Browser Push Notifications")).toBeInTheDocument();
-    });
-
-    const toggle = screen.getByLabelText("Browser Push Notifications");
-    await user.click(toggle);
-
-    await waitFor(() => {
-      expect(mockRequestPermission).toHaveBeenCalled();
-    });
-
-    expect(globalThis.fetch).toHaveBeenCalledWith(
-      "/api/notifications/preferences",
-      expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify({ enableBrowserPush: true }),
-      }),
-    );
-  });
-
-  it("does not enable browser push if permission denied", async () => {
-    const user = userEvent.setup();
-    mockRequestPermission.mockResolvedValue("denied");
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockPreferences),
-    } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Browser Push Notifications")).toBeInTheDocument();
-    });
-
-    const toggle = screen.getByLabelText("Browser Push Notifications");
-    await user.click(toggle);
-
-    await waitFor(() => {
-      expect(mockRequestPermission).toHaveBeenCalled();
-    });
-
-    // PATCH should not be called
-    expect(
-      Array.from(
-        (globalThis.fetch as any).mock.calls as [string, RequestInit][],
-      ).filter(([_, opts]) => opts?.method === "PATCH"),
-    ).toHaveLength(0);
   });
 
   it("toggles in-app notifications", async () => {
@@ -179,157 +97,6 @@ describe("NotificationSettingsCard", () => {
         }),
       );
     });
-  });
-
-  it("toggles reminder timing checkboxes", async () => {
-    const user = userEvent.setup();
-
-    vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockPreferences),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({ ...mockPreferences, reminderTimings: [1440, 60] }),
-      } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("15 minutes before")).toBeInTheDocument();
-    });
-
-    const checkbox = screen.getByLabelText("15 minutes before");
-    expect(checkbox).toBeChecked();
-
-    await user.click(checkbox);
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/notifications/preferences",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({ reminderTimings: [1440, 60] }),
-        }),
-      );
-    });
-  });
-
-  it("adds reminder timing when checkbox is checked", async () => {
-    const user = userEvent.setup();
-    const prefsWithoutReminders = {
-      ...mockPreferences,
-      reminderTimings: [],
-    };
-
-    vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(prefsWithoutReminders),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({ ...prefsWithoutReminders, reminderTimings: [1440] }),
-      } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("1 day before")).toBeInTheDocument();
-    });
-
-    const checkbox = screen.getByLabelText("1 day before");
-    expect(checkbox).not.toBeChecked();
-
-    await user.click(checkbox);
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/notifications/preferences",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({ reminderTimings: [1440] }),
-        }),
-      );
-    });
-  });
-
-  it("toggles email digest", async () => {
-    const user = userEvent.setup();
-
-    vi.spyOn(globalThis, "fetch")
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () => Promise.resolve(mockPreferences),
-      } as Response)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: () =>
-          Promise.resolve({ ...mockPreferences, enableEmailDigest: true }),
-      } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Email Digest")).toBeInTheDocument();
-    });
-
-    const toggle = screen.getByLabelText("Email Digest");
-    await user.click(toggle);
-
-    await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith(
-        "/api/notifications/preferences",
-        expect.objectContaining({
-          method: "PATCH",
-          body: JSON.stringify({ enableEmailDigest: true }),
-        }),
-      );
-    });
-  });
-
-  it("shows email digest frequency when enabled", async () => {
-    const prefsWithDigest = {
-      ...mockPreferences,
-      enableEmailDigest: true,
-      emailDigestFrequency: "daily" as const,
-    };
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(prefsWithDigest),
-    } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Frequency")).toBeInTheDocument();
-    });
-  });
-
-  it("displays email digest frequency select with correct value", async () => {
-    const prefsWithDigest = {
-      ...mockPreferences,
-      enableEmailDigest: true,
-      emailDigestFrequency: "daily" as const,
-    };
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(prefsWithDigest),
-    } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Frequency")).toBeInTheDocument();
-    });
-
-    const select = screen.getByRole("combobox", { name: /frequency/i });
-    expect(select).toBeInTheDocument();
   });
 
   it("toggles quiet hours", async () => {
@@ -388,30 +155,6 @@ describe("NotificationSettingsCard", () => {
     expect(screen.getByLabelText("End")).toHaveValue("08:00");
   });
 
-  it("displays quiet hours start and end time inputs with correct values", async () => {
-    const prefsWithQuietHours = {
-      ...mockPreferences,
-      quietHoursEnabled: true,
-    };
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(prefsWithQuietHours),
-    } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Start")).toBeInTheDocument();
-    });
-
-    const startInput = screen.getByLabelText("Start") as HTMLInputElement;
-    const endInput = screen.getByLabelText("End") as HTMLInputElement;
-
-    expect(startInput.value).toBe("22:00");
-    expect(endInput.value).toBe("08:00");
-  });
-
   it("toggles overdue summary", async () => {
     const user = userEvent.setup();
 
@@ -429,10 +172,10 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+      expect(screen.getByLabelText("Overdue Task Alerts")).toBeInTheDocument();
     });
 
-    const toggle = screen.getByLabelText("Overdue Task Summary");
+    const toggle = screen.getByLabelText("Overdue Task Alerts");
     await user.click(toggle);
 
     await waitFor(() => {
@@ -444,33 +187,6 @@ describe("NotificationSettingsCard", () => {
         }),
       );
     });
-  });
-
-  it("disables browser push toggle when not supported", async () => {
-    const { useNotificationPermission } = await import(
-      "@/hooks/use-notification-permission"
-    );
-    vi.mocked(useNotificationPermission).mockReturnValue({
-      permission: "default",
-      requestPermission: mockRequestPermission,
-      isSupported: false,
-    });
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockPreferences),
-    } as Response);
-
-    render(<NotificationSettingsCard />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText("Browser Push Notifications")).toBeInTheDocument();
-    });
-
-    expect(screen.getByLabelText("Browser Push Notifications")).toBeDisabled();
-    expect(
-      screen.getByText(/Not supported in this browser/),
-    ).toBeInTheDocument();
   });
 
   it("shows success toast on update", async () => {
@@ -491,10 +207,10 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+      expect(screen.getByLabelText("Overdue Task Alerts")).toBeInTheDocument();
     });
 
-    const toggle = screen.getByLabelText("Overdue Task Summary");
+    const toggle = screen.getByLabelText("Overdue Task Alerts");
     await user.click(toggle);
 
     await waitFor(() => {
@@ -519,10 +235,10 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+      expect(screen.getByLabelText("Overdue Task Alerts")).toBeInTheDocument();
     });
 
-    const toggle = screen.getByLabelText("Overdue Task Summary");
+    const toggle = screen.getByLabelText("Overdue Task Alerts");
     await user.click(toggle);
 
     await waitFor(() => {
@@ -545,7 +261,7 @@ describe("NotificationSettingsCard", () => {
     });
   });
 
-  it("test notification button is disabled when permission not granted", async () => {
+  it("test notification button is always enabled", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
       ok: true,
       json: () => Promise.resolve(mockPreferences),
@@ -556,29 +272,23 @@ describe("NotificationSettingsCard", () => {
     await waitFor(() => {
       expect(
         screen.getByRole("button", { name: /Send Test Notification/i }),
-      ).toBeDisabled();
+      ).not.toBeDisabled();
     });
   });
 
-  it("sends test notification when button clicked with permission", async () => {
+  it("sends test notification via API when button clicked", async () => {
     const user = userEvent.setup();
-    const { useNotificationPermission } = await import(
-      "@/hooks/use-notification-permission"
-    );
-    vi.mocked(useNotificationPermission).mockReturnValue({
-      permission: "granted",
-      requestPermission: mockRequestPermission,
-      isSupported: true,
-    });
+    const { toast } = await import("sonner");
 
-    // Mock Notification constructor
-    const mockNotification = vi.fn();
-    global.Notification = mockNotification as any;
-
-    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
-      ok: true,
-      json: () => Promise.resolve(mockPreferences),
-    } as Response);
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockPreferences),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ _id: "test-notif" }),
+      } as Response);
 
     render(<NotificationSettingsCard />);
 
@@ -591,11 +301,91 @@ describe("NotificationSettingsCard", () => {
     const button = screen.getByRole("button", { name: /Send Test Notification/i });
     await user.click(button);
 
-    expect(mockNotification).toHaveBeenCalledWith(
-      "Test Notification",
-      expect.objectContaining({
-        body: "Your notification settings are working!",
-      }),
-    );
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "/api/notifications",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({
+            type: "reminder",
+            title: "Test Notification",
+            message: "Your notification settings are working!",
+          }),
+        }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("Test notification sent");
+    });
+  });
+
+  it("toggles daily summary", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockPreferences),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({ ...mockPreferences, enableDailySummary: false }),
+      } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Daily Summary")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText("Daily Summary");
+    await user.click(toggle);
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "/api/notifications/preferences",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ enableDailySummary: false }),
+        }),
+      );
+    });
+  });
+
+  it("shows summary time input when daily summary is enabled", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockPreferences),
+    } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Summary Time")).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText("Summary Time")).toHaveValue("09:00");
+  });
+
+  it("hides summary time input when daily summary is disabled", async () => {
+    const prefsWithoutSummary = {
+      ...mockPreferences,
+      enableDailySummary: false,
+    };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(prefsWithoutSummary),
+    } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Daily Summary")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByLabelText("Summary Time")).not.toBeInTheDocument();
   });
 });

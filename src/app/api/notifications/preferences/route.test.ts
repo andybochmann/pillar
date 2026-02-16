@@ -72,15 +72,14 @@ describe("/api/notifications/preferences", () => {
 
       const body = await res.json();
       expect(body.userId).toBe(user._id.toString());
-      expect(body.enableBrowserPush).toBe(false);
       expect(body.enableInAppNotifications).toBe(true);
-      expect(body.reminderTimings).toEqual([1440, 60, 15]);
-      expect(body.enableEmailDigest).toBe(false);
-      expect(body.emailDigestFrequency).toBe("none");
       expect(body.quietHoursEnabled).toBe(false);
       expect(body.quietHoursStart).toBe("22:00");
       expect(body.quietHoursEnd).toBe("08:00");
       expect(body.enableOverdueSummary).toBe(true);
+      expect(body.enableDailySummary).toBe(true);
+      expect(body.dailySummaryTime).toBe("09:00");
+      expect(body.timezone).toBe("UTC");
       expect(body.createdAt).toBeDefined();
       expect(body.updatedAt).toBeDefined();
 
@@ -95,11 +94,7 @@ describe("/api/notifications/preferences", () => {
       // Create custom preferences
       await NotificationPreference.create({
         userId: user._id,
-        enableBrowserPush: true,
         enableInAppNotifications: true,
-        reminderTimings: [60, 15],
-        enableEmailDigest: true,
-        emailDigestFrequency: "daily",
         quietHoursEnabled: true,
         quietHoursStart: "23:00",
         quietHoursEnd: "07:00",
@@ -110,9 +105,7 @@ describe("/api/notifications/preferences", () => {
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.enableBrowserPush).toBe(true);
-      expect(body.reminderTimings).toEqual([60, 15]);
-      expect(body.emailDigestFrequency).toBe("daily");
+      expect(body.enableInAppNotifications).toBe(true);
       expect(body.quietHoursStart).toBe("23:00");
       expect(body.quietHoursEnd).toBe("07:00");
       expect(body.enableOverdueSummary).toBe(false);
@@ -128,7 +121,7 @@ describe("/api/notifications/preferences", () => {
         "http://localhost/api/notifications/preferences",
         {
           method: "PATCH",
-          body: JSON.stringify({ enableBrowserPush: true }),
+          body: JSON.stringify({ enableInAppNotifications: false }),
         },
       );
 
@@ -151,8 +144,7 @@ describe("/api/notifications/preferences", () => {
         {
           method: "PATCH",
           body: JSON.stringify({
-            enableBrowserPush: true,
-            reminderTimings: [30, 10],
+            enableInAppNotifications: false,
             quietHoursEnabled: true,
           }),
         },
@@ -162,12 +154,10 @@ describe("/api/notifications/preferences", () => {
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.enableBrowserPush).toBe(true);
-      expect(body.reminderTimings).toEqual([30, 10]);
+      expect(body.enableInAppNotifications).toBe(false);
       expect(body.quietHoursEnabled).toBe(true);
       // Should keep default for unchanged fields
-      expect(body.enableInAppNotifications).toBe(true);
-      expect(body.emailDigestFrequency).toBe("none");
+      expect(body.enableOverdueSummary).toBe(true);
     });
 
     it("creates preferences if none exist (upsert)", async () => {
@@ -178,8 +168,7 @@ describe("/api/notifications/preferences", () => {
         {
           method: "PATCH",
           body: JSON.stringify({
-            enableBrowserPush: true,
-            reminderTimings: [120],
+            enableInAppNotifications: false,
           }),
         },
       );
@@ -189,51 +178,12 @@ describe("/api/notifications/preferences", () => {
 
       const body = await res.json();
       expect(body.userId).toBe(user._id.toString());
-      expect(body.enableBrowserPush).toBe(true);
-      expect(body.reminderTimings).toEqual([120]);
+      expect(body.enableInAppNotifications).toBe(false);
 
       // Verify it was created in DB
       const saved = await NotificationPreference.findOne({ userId: user._id });
       expect(saved).toBeTruthy();
-      expect(saved?.enableBrowserPush).toBe(true);
-    });
-
-    it("validates reminderTimings array", async () => {
-      await seedUser();
-
-      const req = new NextRequest(
-        "http://localhost/api/notifications/preferences",
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            reminderTimings: [-10, 30], // negative value should fail
-          }),
-        },
-      );
-
-      const res = await PATCH(req);
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.error).toBeDefined();
-    });
-
-    it("validates emailDigestFrequency enum", async () => {
-      await seedUser();
-
-      const req = new NextRequest(
-        "http://localhost/api/notifications/preferences",
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            emailDigestFrequency: "invalid",
-          }),
-        },
-      );
-
-      const res = await PATCH(req);
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.error).toBeDefined();
+      expect(saved?.enableInAppNotifications).toBe(false);
     });
 
     it("validates quietHoursStart format", async () => {
@@ -296,6 +246,49 @@ describe("/api/notifications/preferences", () => {
       expect(body.quietHoursEnd).toBe("07:15");
     });
 
+    it("updates daily summary fields", async () => {
+      const user = await seedUser();
+
+      await NotificationPreference.create({ userId: user._id });
+
+      const req = new NextRequest(
+        "http://localhost/api/notifications/preferences",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            enableDailySummary: false,
+            dailySummaryTime: "08:30",
+          }),
+        },
+      );
+
+      const res = await PATCH(req);
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.enableDailySummary).toBe(false);
+      expect(body.dailySummaryTime).toBe("08:30");
+    });
+
+    it("validates dailySummaryTime format", async () => {
+      await seedUser();
+
+      const req = new NextRequest(
+        "http://localhost/api/notifications/preferences",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            dailySummaryTime: "25:00",
+          }),
+        },
+      );
+
+      const res = await PATCH(req);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("HH:mm");
+    });
+
     it("updates multiple fields at once", async () => {
       const user = await seedUser();
 
@@ -308,11 +301,7 @@ describe("/api/notifications/preferences", () => {
         {
           method: "PATCH",
           body: JSON.stringify({
-            enableBrowserPush: true,
-            enableInAppNotifications: true,
-            reminderTimings: [60],
-            enableEmailDigest: true,
-            emailDigestFrequency: "weekly",
+            enableInAppNotifications: false,
             quietHoursEnabled: true,
             quietHoursStart: "22:30",
             quietHoursEnd: "08:30",
@@ -325,54 +314,11 @@ describe("/api/notifications/preferences", () => {
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.enableBrowserPush).toBe(true);
-      expect(body.enableInAppNotifications).toBe(true);
-      expect(body.reminderTimings).toEqual([60]);
-      expect(body.enableEmailDigest).toBe(true);
-      expect(body.emailDigestFrequency).toBe("weekly");
+      expect(body.enableInAppNotifications).toBe(false);
       expect(body.quietHoursEnabled).toBe(true);
       expect(body.quietHoursStart).toBe("22:30");
       expect(body.quietHoursEnd).toBe("08:30");
       expect(body.enableOverdueSummary).toBe(false);
-    });
-
-    it("allows empty reminderTimings array", async () => {
-      await seedUser();
-
-      const req = new NextRequest(
-        "http://localhost/api/notifications/preferences",
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            reminderTimings: [],
-          }),
-        },
-      );
-
-      const res = await PATCH(req);
-      expect(res.status).toBe(200);
-
-      const body = await res.json();
-      expect(body.reminderTimings).toEqual([]);
-    });
-
-    it("rejects too many reminder timings", async () => {
-      await seedUser();
-
-      const req = new NextRequest(
-        "http://localhost/api/notifications/preferences",
-        {
-          method: "PATCH",
-          body: JSON.stringify({
-            reminderTimings: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], // 11 items, max is 10
-          }),
-        },
-      );
-
-      const res = await PATCH(req);
-      expect(res.status).toBe(400);
-      const body = await res.json();
-      expect(body.error).toBeDefined();
     });
   });
 });

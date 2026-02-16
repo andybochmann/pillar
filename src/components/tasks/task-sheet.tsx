@@ -26,7 +26,7 @@ import { StatusHistory } from "@/components/tasks/status-history";
 import { LabelPicker } from "@/components/tasks/label-picker";
 import { GenerateSubtasksDialog } from "@/components/tasks/generate-subtasks-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Plus, Sparkles, Square, Play } from "lucide-react";
+import { X, Plus, Sparkles, Square, Play, BellOff } from "lucide-react";
 import { toast } from "sonner";
 import { TimeSessionsList } from "@/components/tasks/time-sessions-list";
 import { useBackButton } from "@/hooks/use-back-button";
@@ -166,6 +166,7 @@ function TaskSheetForm({
     interval: task.recurrence?.interval ?? 1,
     endDate: task.recurrence?.endDate,
   });
+  const [reminder, setReminder] = useState(task.reminderAt ?? "");
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks ?? []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -281,6 +282,16 @@ function TaskSheetForm({
     const newValue = value === "unassigned" ? null : value;
     setAssigneeId(newValue);
     saveField({ assigneeId: newValue });
+  }
+
+  function handleReminderChange(value: string) {
+    setReminder(value);
+    saveField({ reminderAt: value || null });
+  }
+
+  function handleClearReminder() {
+    setReminder("");
+    saveField({ reminderAt: null });
   }
 
   function handleToggleLabel(labelId: string) {
@@ -470,6 +481,32 @@ function TaskSheetForm({
                 onChange={handleRecurrenceChange}
               />
             </div>
+          </div>
+
+          {/* Reminder */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="task-reminder">Reminder</Label>
+              {reminder && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground"
+                  onClick={handleClearReminder}
+                  aria-label="Clear reminder"
+                >
+                  <BellOff className="mr-1 h-3 w-3" />
+                  Clear
+                </Button>
+              )}
+            </div>
+            <Input
+              id="task-reminder"
+              type="datetime-local"
+              value={reminder ? reminder.slice(0, 16) : ""}
+              onChange={(e) => handleReminderChange(e.target.value ? new Date(e.target.value).toISOString() : "")}
+              aria-label="Reminder date and time"
+            />
           </div>
 
           <Separator />

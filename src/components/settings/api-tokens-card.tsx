@@ -67,7 +67,7 @@ export function ApiTokensCard() {
     toast.success("Copied to clipboard");
   }
 
-  const mcpUrl = `${window.location.origin}/api/mcp`;
+  const mcpUrl = typeof window !== "undefined" ? `${window.location.origin}/api/mcp` : "/api/mcp";
 
   return (
     <>

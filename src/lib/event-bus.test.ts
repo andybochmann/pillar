@@ -118,7 +118,7 @@ describe("event-bus", () => {
       syncEventBus.on("notification", listener);
 
       const event: NotificationEvent = {
-        type: "due-soon",
+        type: "reminder",
         notificationId: "notif-1",
         userId: "user-1",
         taskId: "task-1",
@@ -180,9 +180,8 @@ describe("event-bus", () => {
       syncEventBus.on("notification", listener);
 
       const types = [
-        "due-soon",
-        "overdue",
         "reminder",
+        "overdue",
         "daily-summary",
       ] as const;
       types.forEach((type) => {
@@ -190,14 +189,32 @@ describe("event-bus", () => {
           type,
           notificationId: `notif-${type}`,
           userId: "user-1",
-          taskId: "task-1",
+          ...(type !== "daily-summary" && { taskId: "task-1" }),
           title: `Notification ${type}`,
           message: `Message for ${type}`,
           timestamp: Date.now(),
         });
       });
 
-      expect(listener).toHaveBeenCalledTimes(4);
+      expect(listener).toHaveBeenCalledTimes(3);
+    });
+
+    it("supports notification events without taskId (daily-summary)", () => {
+      const listener = vi.fn();
+      syncEventBus.on("notification", listener);
+
+      const event: NotificationEvent = {
+        type: "daily-summary",
+        notificationId: "notif-ds",
+        userId: "user-1",
+        title: "Daily Summary",
+        message: "You have 3 tasks due today",
+        timestamp: Date.now(),
+      };
+
+      emitNotificationEvent(event);
+      expect(listener).toHaveBeenCalledWith(event);
+      expect(listener.mock.calls[0][0].taskId).toBeUndefined();
     });
 
     it("does not interfere with sync events", () => {
@@ -216,7 +233,7 @@ describe("event-bus", () => {
       };
 
       const notifEvent: NotificationEvent = {
-        type: "due-soon",
+        type: "reminder",
         notificationId: "notif-1",
         userId: "user-1",
         taskId: "task-1",

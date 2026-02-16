@@ -36,6 +36,7 @@ const UpdateTaskSchema = z.object({
     .optional(),
   completedAt: z.string().datetime().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
+  reminderAt: z.string().datetime().nullable().optional(),
 });
 
 interface RouteParams {
@@ -103,6 +104,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (result.data.completedAt !== undefined) {
       updateData.completedAt = result.data.completedAt ? new Date(result.data.completedAt) : null;
+    }
+
+    if (result.data.reminderAt !== undefined) {
+      updateData.reminderAt = result.data.reminderAt ? new Date(result.data.reminderAt) : null;
     }
 
     if (result.data.recurrence) {

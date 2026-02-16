@@ -4,15 +4,16 @@ import mongoose, { type SortOrder } from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Notification } from "@/models/notification";
+import { emitNotificationEvent } from "@/lib/event-bus";
 
 const CreateNotificationSchema = z.object({
-  taskId: z.string().min(1, "Task ID is required"),
-  type: z.enum(["due-soon", "overdue", "reminder", "daily-summary"]),
+  taskId: z.string().min(1, "Task ID is required").optional(),
+  type: z.enum(["reminder", "overdue", "daily-summary"]),
   title: z.string().min(1, "Title is required").max(200, "Title must be at most 200 characters"),
   message: z.string().min(1, "Message is required").max(500, "Message must be at most 500 characters"),
   scheduledFor: z.string().datetime().optional(),
   snoozedUntil: z.string().datetime().optional(),
-  metadata: z.any().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export async function GET(request: Request) {
@@ -31,27 +32,13 @@ export async function GET(request: Request) {
 
   const filter: Record<string, unknown> = {
     userId: session.user.id,
+    ...(read === "true" && { read: true }),
+    ...(read === "false" && { read: false }),
+    ...(dismissed === "true" && { dismissed: true }),
+    ...(dismissed === "false" && { dismissed: false }),
+    ...(type && { type: { $in: type.split(",") } }),
+    ...(taskId && { taskId }),
   };
-
-  if (read === "true") {
-    filter.read = true;
-  } else if (read === "false") {
-    filter.read = false;
-  }
-
-  if (dismissed === "true") {
-    filter.dismissed = true;
-  } else if (dismissed === "false") {
-    filter.dismissed = false;
-  }
-
-  if (type) {
-    filter.type = { $in: type.split(",") };
-  }
-
-  if (taskId) {
-    filter.taskId = taskId;
-  }
 
   const sort: Record<string, SortOrder> = { createdAt: -1 };
 
@@ -87,27 +74,28 @@ export async function POST(request: Request) {
 
     await connectDB();
 
-    const notificationData: Record<string, unknown> = {
+    const notification = await Notification.create({
       userId: session.user.id,
-      taskId: result.data.taskId,
       type: result.data.type,
       title: result.data.title,
       message: result.data.message,
-    };
+      ...(result.data.taskId && { taskId: result.data.taskId }),
+      ...(result.data.scheduledFor && { scheduledFor: new Date(result.data.scheduledFor) }),
+      ...(result.data.snoozedUntil && { snoozedUntil: new Date(result.data.snoozedUntil) }),
+      ...(result.data.metadata && { metadata: result.data.metadata }),
+    });
 
-    if (result.data.scheduledFor) {
-      notificationData.scheduledFor = new Date(result.data.scheduledFor);
-    }
+    emitNotificationEvent({
+      type: notification.type,
+      notificationId: notification._id.toString(),
+      userId: session.user.id,
+      ...(notification.taskId && { taskId: notification.taskId.toString() }),
+      title: notification.title,
+      message: notification.message,
+      metadata: notification.metadata as Record<string, unknown>,
+      timestamp: Date.now(),
+    });
 
-    if (result.data.snoozedUntil) {
-      notificationData.snoozedUntil = new Date(result.data.snoozedUntil);
-    }
-
-    if (result.data.metadata) {
-      notificationData.metadata = result.data.metadata;
-    }
-
-    const notification = await Notification.create(notificationData);
     return NextResponse.json(notification, { status: 201 });
   } catch {
     return NextResponse.json(

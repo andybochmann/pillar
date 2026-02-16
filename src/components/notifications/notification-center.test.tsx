@@ -41,7 +41,7 @@ describe("NotificationCenter", () => {
     _id: "notif-1",
     userId: "user-1",
     taskId: "task-1",
-    type: "due-soon",
+    type: "reminder",
     title: "Task due soon",
     message: "Your task is due in 1 hour",
     read: false,

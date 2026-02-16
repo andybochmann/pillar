@@ -14,7 +14,7 @@ describe("NotificationItem", () => {
     _id: "notif-1",
     userId: "user-1",
     taskId: "task-1",
-    type: "due-soon",
+    type: "reminder",
     title: "Task due soon",
     message: "Your task is due in 1 hour",
     read: false,
@@ -54,7 +54,7 @@ describe("NotificationItem", () => {
 
   it("displays notification type badge", () => {
     render(<NotificationItem notification={baseNotification} />);
-    expect(screen.getByText("Due Soon")).toBeInTheDocument();
+    expect(screen.getByText("Reminder")).toBeInTheDocument();
   });
 
   it("displays correct badge for overdue type", () => {
@@ -63,17 +63,8 @@ describe("NotificationItem", () => {
     expect(screen.getByText("Overdue")).toBeInTheDocument();
   });
 
-  it("displays correct badge for reminder type", () => {
-    const reminderNotif = { ...baseNotification, type: "reminder" as const };
-    render(<NotificationItem notification={reminderNotif} />);
-    expect(screen.getByText("Reminder")).toBeInTheDocument();
-  });
-
   it("displays correct badge for daily-summary type", () => {
-    const summaryNotif = {
-      ...baseNotification,
-      type: "daily-summary" as const,
-    };
+    const summaryNotif = { ...baseNotification, type: "daily-summary" as const };
     render(<NotificationItem notification={summaryNotif} />);
     expect(screen.getByText("Daily Summary")).toBeInTheDocument();
   });

@@ -75,7 +75,7 @@ describe("GET /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: otherUser._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Other user notification",
       message: "Should not be accessible",
     });
@@ -100,7 +100,7 @@ describe("GET /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Test notification",
       message: "Test message",
     });
@@ -142,7 +142,7 @@ describe("PATCH /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Test",
       message: "Test",
     });
@@ -188,7 +188,7 @@ describe("PATCH /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: otherUser._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Other user notification",
       message: "Should not be accessible",
     });
@@ -216,7 +216,7 @@ describe("PATCH /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Test",
       message: "Test",
       read: false,
@@ -245,7 +245,7 @@ describe("PATCH /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Test",
       message: "Test",
       dismissed: false,
@@ -274,7 +274,7 @@ describe("PATCH /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Test",
       message: "Test",
     });
@@ -304,7 +304,7 @@ describe("PATCH /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Test",
       message: "Test",
       snoozedUntil: new Date(),
@@ -333,7 +333,7 @@ describe("PATCH /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Test",
       message: "Test",
       read: false,
@@ -395,7 +395,7 @@ describe("DELETE /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: otherUser._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Other user notification",
       message: "Should not be accessible",
     });
@@ -422,7 +422,7 @@ describe("DELETE /api/notifications/[id]", () => {
     const notification = await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Test",
       message: "Test",
     });

@@ -1,15 +1,11 @@
 import mongoose, { Schema, type Document, type Model } from "mongoose";
 
-export type NotificationType =
-  | "due-soon"
-  | "overdue"
-  | "reminder"
-  | "daily-summary";
+export type NotificationType = "reminder" | "overdue" | "daily-summary";
 
 export interface INotification extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
-  taskId: mongoose.Types.ObjectId;
+  taskId?: mongoose.Types.ObjectId;
   type: NotificationType;
   title: string;
   message: string;
@@ -34,12 +30,11 @@ const NotificationSchema = new Schema<INotification>(
     taskId: {
       type: Schema.Types.ObjectId,
       ref: "Task",
-      required: true,
       index: true,
     },
     type: {
       type: String,
-      enum: ["due-soon", "overdue", "reminder", "daily-summary"],
+      enum: ["reminder", "overdue", "daily-summary"],
       required: true,
     },
     title: {
@@ -81,6 +76,7 @@ const NotificationSchema = new Schema<INotification>(
 // Compound indexes for efficient queries
 NotificationSchema.index({ userId: 1, read: 1 });
 NotificationSchema.index({ userId: 1, scheduledFor: 1 });
+NotificationSchema.index({ userId: 1, type: 1, createdAt: 1 });
 
 export const Notification: Model<INotification> =
   mongoose.models.Notification ||

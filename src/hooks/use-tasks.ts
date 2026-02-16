@@ -20,6 +20,7 @@ type TaskUpdateFields = Pick<
   | "subtasks"
   | "completedAt"
   | "assigneeId"
+  | "reminderAt"
 >;
 
 interface UseTasksReturn {
@@ -35,6 +36,7 @@ interface UseTasksReturn {
     priority?: string;
     description?: string;
     assigneeId?: string | null;
+    reminderAt?: string | null;
   }) => Promise<Task>;
   updateTask: (
     id: string,
@@ -73,6 +75,7 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
       priority?: string;
       description?: string;
       assigneeId?: string | null;
+      reminderAt?: string | null;
     }) => {
       const res = await offlineFetch("/api/tasks", {
         method: "POST",

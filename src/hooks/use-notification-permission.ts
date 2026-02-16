@@ -1,49 +1,20 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
-
-function subscribe(callback: () => void) {
-  // There's no standard event for permission changes, but we can listen
-  // to visibility changes to check if permission was changed in browser settings
-  document.addEventListener("visibilitychange", callback);
-  return () => {
-    document.removeEventListener("visibilitychange", callback);
-  };
-}
-
-function getSnapshot(): NotificationPermission {
-  if (typeof window === "undefined" || !("Notification" in window)) {
-    return "default";
-  }
-  return Notification.permission;
-}
-
-function getServerSnapshot(): NotificationPermission {
-  return "default";
-}
+import { useState, useEffect } from "react";
 
 export function useNotificationPermission() {
-  const permission = useSyncExternalStore(
-    subscribe,
-    getSnapshot,
-    getServerSnapshot,
+  const [permission, setPermission] = useState<NotificationPermission>(
+    typeof Notification !== "undefined" ? Notification.permission : "default",
   );
 
-  const requestPermission = useCallback(async () => {
-    if (typeof window === "undefined" || !("Notification" in window)) {
-      return "default" as NotificationPermission;
-    }
+  useEffect(() => {
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission !== "default") return;
 
-    if (Notification.permission === "granted") {
-      return "granted" as NotificationPermission;
-    }
-
-    const result = await Notification.requestPermission();
-    return result;
+    Notification.requestPermission().then((result) => {
+      setPermission(result);
+    });
   }, []);
 
-  const isSupported =
-    typeof window !== "undefined" && "Notification" in window;
-
-  return { permission, requestPermission, isSupported };
+  return { permission };
 }

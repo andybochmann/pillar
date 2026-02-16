@@ -4,7 +4,7 @@ import type { INotification, NotificationType } from "@/models/notification";
 
 export interface NotificationToCreate {
   userId: string;
-  taskId: string;
+  taskId?: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -52,50 +52,8 @@ export function isWithinQuietHours(
 }
 
 /**
- * Calculate when a notification should be sent based on due date and minutes before
- */
-export function calculateNotificationTime(
-  dueDate: Date,
-  minutesBefore: number,
-): Date {
-  const notificationTime = new Date(dueDate);
-  notificationTime.setMinutes(notificationTime.getMinutes() - minutesBefore);
-  return notificationTime;
-}
-
-/**
- * Determine if a notification should be created based on timing
- * Returns true if the notification time has passed and is within the window
- */
-export function shouldCreateNotification(
-  notificationTime: Date,
-  currentTime: Date,
-  windowMinutes: number = 120, // 2-hour window by default
-): boolean {
-  const timeDiffMs = currentTime.getTime() - notificationTime.getTime();
-  const timeDiffMinutes = timeDiffMs / (1000 * 60);
-
-  // Notification time has passed and is within the window
-  return timeDiffMinutes >= 0 && timeDiffMinutes <= windowMinutes;
-}
-
-/**
- * Format time remaining until due date
- */
-function formatTimeRemaining(minutes: number): string {
-  if (minutes < 60) {
-    return `${minutes} minute${minutes !== 1 ? "s" : ""}`;
-  }
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours} hour${hours !== 1 ? "s" : ""}`;
-  }
-  const days = Math.floor(hours / 24);
-  return `${days} day${days !== 1 ? "s" : ""}`;
-}
-
-/**
- * Generate notifications for a task based on user preferences
+ * Generate overdue notifications for a task based on user preferences.
+ * Per-task reminders are handled by the notification worker via reminderAt.
  */
 export function generateNotificationsForTask(
   task: ITask,
@@ -128,9 +86,7 @@ export function generateNotificationsForTask(
   // Check if task is overdue
   if (dueDate < currentTime) {
     const hasOverdueNotification = existingNotifications.some(
-      (n) =>
-        n.taskId.toString() === taskId &&
-        (n.type === "overdue" || n.type === "daily-summary"),
+      (n) => n.taskId?.toString() === taskId && n.type === "overdue",
     );
 
     if (!hasOverdueNotification && preferences.enableOverdueSummary) {
@@ -158,58 +114,6 @@ export function generateNotificationsForTask(
         });
       }
     }
-    return notifications;
-  }
-
-  // Check reminder timings
-  for (const minutesBefore of preferences.reminderTimings) {
-    const notificationTime = calculateNotificationTime(dueDate, minutesBefore);
-
-    // Check if notification should be sent now
-    if (!shouldCreateNotification(notificationTime, currentTime)) {
-      continue;
-    }
-
-    // Skip if within quiet hours
-    if (
-      isWithinQuietHours(
-        currentTime,
-        preferences.quietHoursEnabled,
-        preferences.quietHoursStart,
-        preferences.quietHoursEnd,
-        timezone,
-      )
-    ) {
-      continue;
-    }
-
-    // Check for duplicate notifications
-    const timeRemainingStr = formatTimeRemaining(minutesBefore);
-    const expectedTitle = `Task due in ${timeRemainingStr}`;
-    const hasDuplicate = existingNotifications.some(
-      (n) =>
-        n.taskId.toString() === taskId &&
-        (n.title === expectedTitle ||
-          (n.type === "reminder" && n.title.startsWith("Task due in"))),
-    );
-
-    if (hasDuplicate) {
-      continue;
-    }
-
-    notifications.push({
-      userId,
-      taskId,
-      type: "reminder",
-      title: expectedTitle,
-      message: `"${task.title}" is due in ${timeRemainingStr}.`,
-      scheduledFor: notificationTime,
-      metadata: {
-        priority: task.priority,
-        dueDate: dueDate.toISOString(),
-        projectId: task.projectId.toString(),
-      },
-    });
   }
 
   return notifications;

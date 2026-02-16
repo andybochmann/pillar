@@ -1,7 +1,6 @@
-import { describe, it, expect, beforeAll, afterEach, vi } from "vitest";
-import mongoose from "mongoose";
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
 import { Notification } from "@/models/notification";
-import { setupTestDB, teardownTestDB } from "@/test/helpers/db";
+import { setupTestDB, teardownTestDB, clearTestDB } from "@/test/helpers";
 import { createTestUser, createTestTask, createTestProject, createTestCategory } from "@/test/helpers/factories";
 
 // vi.hoisted() for session — must exist before vi.mock() closures
@@ -30,11 +29,7 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-  await Notification.deleteMany({});
-  await mongoose.connection.db?.collection("tasks").deleteMany({});
-  await mongoose.connection.db?.collection("projects").deleteMany({});
-  await mongoose.connection.db?.collection("categories").deleteMany({});
-  await mongoose.connection.db?.collection("users").deleteMany({});
+  await clearTestDB();
   vi.clearAllMocks();
 });
 
@@ -60,7 +55,7 @@ describe("GET /api/notifications", () => {
     const notification1 = await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Task due soon",
       message: "Your task is due in 1 hour",
     });
@@ -104,7 +99,7 @@ describe("GET /api/notifications", () => {
     await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Unread notification",
       message: "Unread",
       read: false,
@@ -139,7 +134,7 @@ describe("GET /api/notifications", () => {
     await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Active notification",
       message: "Active",
       dismissed: false,
@@ -174,9 +169,9 @@ describe("GET /api/notifications", () => {
     await Notification.create({
       userId: user._id,
       taskId: task._id,
-      type: "due-soon",
-      title: "Due soon",
-      message: "Due soon message",
+      type: "reminder",
+      title: "Reminder 1",
+      message: "Reminder message",
     });
 
     await Notification.create({
@@ -191,17 +186,18 @@ describe("GET /api/notifications", () => {
       userId: user._id,
       taskId: task._id,
       type: "reminder",
-      title: "Reminder",
-      message: "Reminder message",
+      title: "Reminder 2",
+      message: "Reminder message 2",
     });
 
-    const request = new Request("http://localhost:3000/api/notifications?type=overdue,reminder");
+    // Filter by single type — should return only the 1 overdue
+    const request = new Request("http://localhost:3000/api/notifications?type=overdue");
     const response = await GET(request);
 
     expect(response.status).toBe(200);
     const data = await response.json();
-    expect(data).toHaveLength(2);
-    expect(data.map((n: { type: string }) => n.type).sort()).toEqual(["overdue", "reminder"]);
+    expect(data).toHaveLength(1);
+    expect(data[0].type).toBe("overdue");
   });
 
   it("filters notifications by taskId", async () => {
@@ -216,7 +212,7 @@ describe("GET /api/notifications", () => {
     await Notification.create({
       userId: user._id,
       taskId: task1._id,
-      type: "due-soon",
+      type: "reminder",
       title: "Task 1 notification",
       message: "Message",
     });
@@ -251,7 +247,7 @@ describe("GET /api/notifications", () => {
       await Notification.create({
         userId: user._id,
         taskId: task._id,
-        type: "due-soon",
+        type: "reminder",
         title: `Notification ${i}`,
         message: "Message",
       });
@@ -303,7 +299,7 @@ describe("POST /api/notifications", () => {
 
     const notificationData = {
       taskId: task._id.toString(),
-      type: "due-soon",
+      type: "reminder",
       title: "Task due soon",
       message: "Your task is due in 1 hour",
     };
@@ -361,7 +357,7 @@ describe("POST /api/notifications", () => {
 
     const notificationData = {
       taskId: task._id.toString(),
-      type: "due-soon",
+      type: "reminder",
       title: "a".repeat(201),
       message: "Test message",
     };
@@ -387,7 +383,7 @@ describe("POST /api/notifications", () => {
 
     const notificationData = {
       taskId: task._id.toString(),
-      type: "due-soon",
+      type: "reminder",
       title: "Test",
       message: "a".repeat(501),
     };

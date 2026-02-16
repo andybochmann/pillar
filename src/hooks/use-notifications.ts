@@ -152,6 +152,14 @@ export function useNotifications(
     setNotifications((prev) => prev.filter((n) => n._id !== id));
   }, []);
 
+  // Polling fallback — refetch unread notifications every 2 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchNotifications();
+    }, 2 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
   // Listen for notification events from event bus
   useEffect(() => {
     function handler(e: Event) {
@@ -176,6 +184,27 @@ export function useNotifications(
         if (prev.some((n) => n._id === newNotification._id)) return prev;
         return [newNotification, ...prev];
       });
+
+      // Show OS notification via Service Worker when tab is not focused
+      const swController =
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted" &&
+        !document.hasFocus()
+          ? navigator.serviceWorker?.controller
+          : null;
+
+      if (swController) {
+        swController.postMessage({
+          type: "SHOW_NOTIFICATION",
+          title: event.title,
+          body: event.message,
+          data: {
+            notificationId: event.notificationId,
+            taskId: event.taskId,
+            url: "/",
+          },
+        });
+      }
     }
 
     window.addEventListener("pillar:notification", handler);

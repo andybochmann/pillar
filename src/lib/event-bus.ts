@@ -13,10 +13,10 @@ export interface SyncEvent {
 }
 
 export interface NotificationEvent {
-  type: "due-soon" | "overdue" | "reminder" | "daily-summary";
+  type: "reminder" | "overdue" | "daily-summary";
   notificationId: string;
   userId: string;
-  taskId: string;
+  taskId?: string;
   title: string;
   message: string;
   metadata?: Record<string, unknown>;

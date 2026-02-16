@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { syncEventBus, type SyncEvent } from "@/lib/event-bus";
+import { syncEventBus, type SyncEvent, type NotificationEvent } from "@/lib/event-bus";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,6 +32,7 @@ export async function GET(request: Request): Promise<Response> {
 
       function cleanup() {
         syncEventBus.off("sync", onSync);
+        syncEventBus.off("notification", onNotification);
         clearInterval(heartbeat);
         try {
           controller.close();
@@ -50,8 +51,14 @@ export async function GET(request: Request): Promise<Response> {
         send(`event: sync\ndata: ${JSON.stringify(event)}\n\n`);
       }
 
+      function onNotification(event: NotificationEvent) {
+        if (event.userId !== userId) return;
+        send(`event: notification\ndata: ${JSON.stringify(event)}\n\n`);
+      }
+
       send(": connected\n\n");
       syncEventBus.on("sync", onSync);
+      syncEventBus.on("notification", onNotification);
 
       const heartbeat = setInterval(() => {
         if (!send(": heartbeat\n\n")) cleanup();

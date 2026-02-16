@@ -103,6 +103,7 @@ interface CreateTaskInput {
   }[];
   statusHistory?: { columnId: string; timestamp: Date }[];
   completedAt?: Date;
+  reminderAt?: Date;
 }
 
 export async function createTestTask(
@@ -116,6 +117,7 @@ export async function createTestTask(
     columnId: overrides.columnId ?? "todo",
     priority: overrides.priority ?? "medium",
     dueDate: overrides.dueDate,
+    reminderAt: overrides.reminderAt,
     recurrence: overrides.recurrence,
     order: overrides.order ?? 0,
     labels: overrides.labels ?? [],

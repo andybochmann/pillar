@@ -25,7 +25,7 @@ const securityHeaders = {
 
 export async function proxy(request: NextRequest) {
   // Get the auth response
-  const authResponse = await auth(request as unknown as Parameters<typeof auth>[0]);
+  const authResponse = await auth(request as unknown as Parameters<typeof auth>[0]) as unknown as NextResponse | undefined;
 
   // If auth returns a response (redirect, etc.), add headers to it
   if (authResponse) {

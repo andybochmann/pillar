@@ -5,15 +5,7 @@ import { connectDB } from "@/lib/db";
 import { NotificationPreference } from "@/models/notification-preference";
 
 const UpdatePreferencesSchema = z.object({
-  enableBrowserPush: z.boolean().optional(),
   enableInAppNotifications: z.boolean().optional(),
-  reminderTimings: z
-    .array(z.number().positive())
-    .min(0)
-    .max(10)
-    .optional(),
-  enableEmailDigest: z.boolean().optional(),
-  emailDigestFrequency: z.enum(["daily", "weekly", "none"]).optional(),
   quietHoursEnabled: z.boolean().optional(),
   quietHoursStart: z
     .string()
@@ -24,7 +16,30 @@ const UpdatePreferencesSchema = z.object({
     .regex(/^([0-1]\d|2[0-3]):[0-5]\d$/, "Must be in HH:mm format")
     .optional(),
   enableOverdueSummary: z.boolean().optional(),
+  enableDailySummary: z.boolean().optional(),
+  dailySummaryTime: z
+    .string()
+    .regex(/^([0-1]\d|2[0-3]):[0-5]\d$/, "Must be in HH:mm format")
+    .optional(),
+  timezone: z.string().min(1).max(100).optional(),
 });
+
+function serializePreferences(preferences: InstanceType<typeof NotificationPreference>) {
+  return {
+    id: preferences._id.toString(),
+    userId: preferences.userId.toString(),
+    enableInAppNotifications: preferences.enableInAppNotifications,
+    quietHoursEnabled: preferences.quietHoursEnabled,
+    quietHoursStart: preferences.quietHoursStart,
+    quietHoursEnd: preferences.quietHoursEnd,
+    enableOverdueSummary: preferences.enableOverdueSummary,
+    enableDailySummary: preferences.enableDailySummary,
+    dailySummaryTime: preferences.dailySummaryTime,
+    timezone: preferences.timezone,
+    createdAt: preferences.createdAt.toISOString(),
+    updatedAt: preferences.updatedAt.toISOString(),
+  };
+}
 
 export async function GET() {
   const session = await auth();
@@ -44,22 +59,7 @@ export async function GET() {
     });
   }
 
-  return NextResponse.json({
-    id: preferences._id.toString(),
-    userId: preferences.userId.toString(),
-    enableBrowserPush: preferences.enableBrowserPush,
-    enableInAppNotifications: preferences.enableInAppNotifications,
-    reminderTimings: preferences.reminderTimings,
-    enableEmailDigest: preferences.enableEmailDigest,
-    emailDigestFrequency: preferences.emailDigestFrequency,
-    quietHoursEnabled: preferences.quietHoursEnabled,
-    quietHoursStart: preferences.quietHoursStart,
-    quietHoursEnd: preferences.quietHoursEnd,
-    enableOverdueSummary: preferences.enableOverdueSummary,
-    pushSubscription: preferences.pushSubscription,
-    createdAt: preferences.createdAt.toISOString(),
-    updatedAt: preferences.updatedAt.toISOString(),
-  });
+  return NextResponse.json(serializePreferences(preferences));
 }
 
 export async function PATCH(request: Request) {
@@ -92,20 +92,5 @@ export async function PATCH(request: Request) {
     );
   }
 
-  return NextResponse.json({
-    id: preferences._id.toString(),
-    userId: preferences.userId.toString(),
-    enableBrowserPush: preferences.enableBrowserPush,
-    enableInAppNotifications: preferences.enableInAppNotifications,
-    reminderTimings: preferences.reminderTimings,
-    enableEmailDigest: preferences.enableEmailDigest,
-    emailDigestFrequency: preferences.emailDigestFrequency,
-    quietHoursEnabled: preferences.quietHoursEnabled,
-    quietHoursStart: preferences.quietHoursStart,
-    quietHoursEnd: preferences.quietHoursEnd,
-    enableOverdueSummary: preferences.enableOverdueSummary,
-    pushSubscription: preferences.pushSubscription,
-    createdAt: preferences.createdAt.toISOString(),
-    updatedAt: preferences.updatedAt.toISOString(),
-  });
+  return NextResponse.json(serializePreferences(preferences));
 }

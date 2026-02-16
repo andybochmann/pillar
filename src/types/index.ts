@@ -105,6 +105,7 @@ export interface Task {
   subtasks: Subtask[];
   timeSessions: TimeSession[];
   statusHistory: StatusHistoryEntry[];
+  reminderAt?: string | null;
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -154,16 +155,12 @@ export interface SyncResult {
   failed: number;
 }
 
-export type NotificationType =
-  | "due-soon"
-  | "overdue"
-  | "reminder"
-  | "daily-summary";
+export type NotificationType = "reminder" | "overdue" | "daily-summary";
 
 export interface Notification {
   _id: string;
   userId: string;
-  taskId: string;
+  taskId?: string;
   type: NotificationType;
   title: string;
   message: string;
@@ -177,27 +174,17 @@ export interface Notification {
   updatedAt: string;
 }
 
-export interface PushSubscription {
-  endpoint: string;
-  keys: {
-    p256dh: string;
-    auth: string;
-  };
-}
-
 export interface NotificationPreference {
   id: string;
   userId: string;
-  enableBrowserPush: boolean;
   enableInAppNotifications: boolean;
-  reminderTimings: number[];
-  enableEmailDigest: boolean;
-  emailDigestFrequency: "daily" | "weekly" | "none";
   quietHoursEnabled: boolean;
   quietHoursStart: string;
   quietHoursEnd: string;
   enableOverdueSummary: boolean;
-  pushSubscription?: PushSubscription;
+  enableDailySummary: boolean;
+  dailySummaryTime: string;
+  timezone: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -18,9 +18,8 @@ interface NotificationItemProps {
 }
 
 const notificationTypeLabels: Record<NotificationType, string> = {
-  "due-soon": "Due Soon",
-  overdue: "Overdue",
   reminder: "Reminder",
+  overdue: "Overdue",
   "daily-summary": "Daily Summary",
 };
 
@@ -28,10 +27,9 @@ const notificationTypeColors: Record<
   NotificationType,
   "default" | "destructive" | "outline" | "secondary"
 > = {
-  "due-soon": "default",
-  overdue: "destructive",
   reminder: "secondary",
-  "daily-summary": "outline",
+  overdue: "destructive",
+  "daily-summary": "default",
 };
 
 export function NotificationItem({

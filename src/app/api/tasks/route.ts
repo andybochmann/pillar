@@ -37,6 +37,7 @@ const CreateTaskSchema = z.object({
     .max(50)
     .optional(),
   assigneeId: z.string().nullable().optional(),
+  reminderAt: z.string().datetime().nullable().optional(),
 });
 
 export async function GET(request: Request) {
@@ -197,6 +198,10 @@ export async function POST(request: Request) {
 
     if (result.data.dueDate) {
       taskData.dueDate = new Date(result.data.dueDate);
+    }
+
+    if (result.data.reminderAt) {
+      taskData.reminderAt = new Date(result.data.reminderAt);
     }
 
     if (result.data.recurrence?.endDate) {

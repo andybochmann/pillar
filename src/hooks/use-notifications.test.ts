@@ -8,7 +8,7 @@ const mockNotifications = [
     _id: "notif-1",
     userId: "u1",
     taskId: "task-1",
-    type: "due-soon" as const,
+    type: "reminder" as const,
     title: "Task due soon",
     message: "Task 'Fix login bug' is due in 1 hour",
     read: false,
@@ -74,14 +74,14 @@ describe("useNotifications", () => {
       await result.current.fetchNotifications({
         read: false,
         dismissed: false,
-        type: "due-soon",
+        type: "reminder",
         taskId: "task-1",
         limit: 10,
       });
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      "/api/notifications?read=false&dismissed=false&type=due-soon&taskId=task-1&limit=10"
+      "/api/notifications?read=false&dismissed=false&type=reminder&taskId=task-1&limit=10"
     );
   });
 
@@ -266,11 +266,11 @@ describe("useNotifications", () => {
       const { result } = renderHook(() => useNotifications());
 
       const event: NotificationEvent = {
-        type: "daily-summary",
+        type: "reminder",
         notificationId: "notif-summary",
         userId: "u1",
         taskId: "task-1",
-        title: "Daily Summary",
+        title: "Task Reminder",
         message: "You have 5 tasks due today",
         metadata: { taskCount: 5, projectId: "proj-1" },
         timestamp: Date.now(),
@@ -292,7 +292,7 @@ describe("useNotifications", () => {
       );
 
       const event: NotificationEvent = {
-        type: "due-soon",
+        type: "reminder",
         notificationId: "notif-1",
         userId: "u1",
         taskId: "task-1",
@@ -306,6 +306,124 @@ describe("useNotifications", () => {
       });
 
       expect(result.current.notifications).toHaveLength(2);
+    });
+
+    it("posts message to service worker when tab is not focused", () => {
+      const postMessageMock = vi.fn();
+      Object.defineProperty(navigator, "serviceWorker", {
+        value: { controller: { postMessage: postMessageMock } },
+        configurable: true,
+        writable: true,
+      });
+      vi.stubGlobal("Notification", { permission: "granted" });
+      vi.spyOn(document, "hasFocus").mockReturnValue(false);
+
+      renderHook(() => useNotifications());
+
+      const event: NotificationEvent = {
+        type: "reminder",
+        notificationId: "notif-sw",
+        userId: "u1",
+        taskId: "task-sw",
+        title: "SW Notification",
+        message: "Test message",
+        timestamp: Date.now(),
+      };
+
+      act(() => {
+        emitNotification(event);
+      });
+
+      expect(postMessageMock).toHaveBeenCalledWith({
+        type: "SHOW_NOTIFICATION",
+        title: "SW Notification",
+        body: "Test message",
+        data: {
+          notificationId: "notif-sw",
+          taskId: "task-sw",
+          url: "/",
+        },
+      });
+    });
+
+    it("does not post to service worker when tab is focused", () => {
+      const postMessageMock = vi.fn();
+      Object.defineProperty(navigator, "serviceWorker", {
+        value: { controller: { postMessage: postMessageMock } },
+        configurable: true,
+        writable: true,
+      });
+      vi.stubGlobal("Notification", { permission: "granted" });
+      vi.spyOn(document, "hasFocus").mockReturnValue(true);
+
+      renderHook(() => useNotifications());
+
+      const event: NotificationEvent = {
+        type: "reminder",
+        notificationId: "notif-focused",
+        userId: "u1",
+        title: "Focused",
+        message: "Should not go to SW",
+        timestamp: Date.now(),
+      };
+
+      act(() => {
+        emitNotification(event);
+      });
+
+      expect(postMessageMock).not.toHaveBeenCalled();
+    });
+
+    it("does not post to service worker when permission is denied", () => {
+      const postMessageMock = vi.fn();
+      Object.defineProperty(navigator, "serviceWorker", {
+        value: { controller: { postMessage: postMessageMock } },
+        configurable: true,
+        writable: true,
+      });
+      vi.stubGlobal("Notification", { permission: "denied" });
+      vi.spyOn(document, "hasFocus").mockReturnValue(false);
+
+      renderHook(() => useNotifications());
+
+      act(() => {
+        emitNotification({
+          type: "reminder",
+          notificationId: "notif-denied",
+          userId: "u1",
+          title: "Denied",
+          message: "No SW",
+          timestamp: Date.now(),
+        });
+      });
+
+      expect(postMessageMock).not.toHaveBeenCalled();
+    });
+
+    it("does not post to service worker when no controller available", () => {
+      Object.defineProperty(navigator, "serviceWorker", {
+        value: { controller: null },
+        configurable: true,
+        writable: true,
+      });
+      vi.stubGlobal("Notification", { permission: "granted" });
+      vi.spyOn(document, "hasFocus").mockReturnValue(false);
+
+      renderHook(() => useNotifications());
+
+      act(() => {
+        emitNotification({
+          type: "reminder",
+          notificationId: "notif-no-ctrl",
+          userId: "u1",
+          title: "No Controller",
+          message: "No SW",
+          timestamp: Date.now(),
+        });
+      });
+
+      // Should not throw, just silently skip
+      expect(true).toBe(true);
     });
 
     it("prepends new notification to the list", () => {

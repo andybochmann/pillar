@@ -48,6 +48,7 @@ export interface ITask extends Document {
   subtasks: ISubtask[];
   timeSessions: ITimeSession[];
   statusHistory: IStatusHistoryEntry[];
+  reminderAt?: Date;
   completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
@@ -146,6 +147,7 @@ const TaskSchema = new Schema<ITask>(
       },
     },
     statusHistory: { type: [StatusHistoryEntrySchema], default: [] },
+    reminderAt: { type: Date },
     completedAt: { type: Date },
   },
   { timestamps: true },
@@ -156,6 +158,7 @@ TaskSchema.index({ userId: 1, dueDate: 1 });
 TaskSchema.index({ userId: 1, priority: 1 });
 TaskSchema.index({ title: "text", description: "text" });
 TaskSchema.index({ "timeSessions.userId": 1, "timeSessions.endedAt": 1 });
+TaskSchema.index({ reminderAt: 1 });
 
 export const Task: Model<ITask> =
   mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema);
