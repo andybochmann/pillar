@@ -92,7 +92,8 @@ export function ShareDialog({
       toast.success(isSelf ? "You left the project" : `Removed ${userName}`);
       if (isSelf) {
         onOpenChange(false);
-        window.location.href = "/";
+        // Redirect after leaving project
+        window.location.assign("/");
       }
     } catch (err) {
       toast.error((err as Error).message);

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, afterAll, afterEach } from "vitest";
+import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import mongoose from "mongoose";
 import { Notification, type INotification } from "./notification";
 import { User } from "./user";
@@ -54,14 +54,14 @@ describe("Notification Model", () => {
       const notification = await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Task due soon",
         message: "Your task is due in 1 hour",
       });
 
       expect(notification.userId.toString()).toBe(testUserId.toString());
       expect(notification.taskId.toString()).toBe(testTaskId.toString());
-      expect(notification.type).toBe("reminder");
+      expect(notification.type).toBe("due-soon");
       expect(notification.title).toBe("Task due soon");
       expect(notification.message).toBe("Your task is due in 1 hour");
       expect(notification.read).toBe(false);
@@ -73,23 +73,22 @@ describe("Notification Model", () => {
       await expect(
         Notification.create({
           taskId: testTaskId,
-          type: "reminder",
+          type: "due-soon",
           title: "Task due soon",
           message: "Your task is due in 1 hour",
         }),
       ).rejects.toThrow();
     });
 
-    it("should allow creating notification without taskId (daily-summary)", async () => {
-      const notification = await Notification.create({
-        userId: testUserId,
-        type: "daily-summary",
-        title: "Daily Summary",
-        message: "You have 3 tasks due today",
-      });
-
-      expect(notification.taskId).toBeUndefined();
-      expect(notification.type).toBe("daily-summary");
+    it("should require taskId", async () => {
+      await expect(
+        Notification.create({
+          userId: testUserId,
+          type: "due-soon",
+          title: "Task due soon",
+          message: "Your task is due in 1 hour",
+        }),
+      ).rejects.toThrow();
     });
 
     it("should require type", async () => {
@@ -108,7 +107,7 @@ describe("Notification Model", () => {
         Notification.create({
           userId: testUserId,
           taskId: testTaskId,
-          type: "reminder",
+          type: "due-soon",
           message: "Your task is due in 1 hour",
         }),
       ).rejects.toThrow();
@@ -119,7 +118,7 @@ describe("Notification Model", () => {
         Notification.create({
           userId: testUserId,
           taskId: testTaskId,
-          type: "reminder",
+          type: "due-soon",
           title: "Task due soon",
         }),
       ).rejects.toThrow();
@@ -130,7 +129,7 @@ describe("Notification Model", () => {
         Notification.create({
           userId: testUserId,
           taskId: testTaskId,
-          type: "invalid-type" as any,
+          type: "invalid-type" as INotification["type"],
           title: "Task due soon",
           message: "Your task is due in 1 hour",
         }),
@@ -139,8 +138,9 @@ describe("Notification Model", () => {
 
     it("should accept valid notification types", async () => {
       const types: Array<INotification["type"]> = [
-        "reminder",
+        "due-soon",
         "overdue",
+        "reminder",
         "daily-summary",
       ];
 
@@ -164,7 +164,7 @@ describe("Notification Model", () => {
         Notification.create({
           userId: testUserId,
           taskId: testTaskId,
-          type: "reminder",
+          type: "due-soon",
           title: longTitle,
           message: "Test message",
         }),
@@ -178,7 +178,7 @@ describe("Notification Model", () => {
         Notification.create({
           userId: testUserId,
           taskId: testTaskId,
-          type: "reminder",
+          type: "due-soon",
           title: "Test title",
           message: longMessage,
         }),
@@ -191,7 +191,7 @@ describe("Notification Model", () => {
       const notification = await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Test",
         message: "Test message",
       });
@@ -203,7 +203,7 @@ describe("Notification Model", () => {
       const notification = await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Test",
         message: "Test message",
       });
@@ -233,7 +233,7 @@ describe("Notification Model", () => {
       const notification = await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Test",
         message: "Test message",
         snoozedUntil: snoozeDate,
@@ -248,7 +248,7 @@ describe("Notification Model", () => {
       const notification = await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Test",
         message: "Test message",
         sentAt: sentDate,
@@ -269,7 +269,7 @@ describe("Notification Model", () => {
       const notification = await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Test",
         message: "Test message",
         metadata,
@@ -306,16 +306,6 @@ describe("Notification Model", () => {
       );
       expect(hasScheduledIndex).toBe(true);
     });
-
-    it("should have compound index on userId, type, and createdAt", async () => {
-      const indexes = Notification.schema.indexes();
-      const hasIndex = indexes.some(
-        (idx) =>
-          JSON.stringify(idx[0]) ===
-          JSON.stringify({ userId: 1, type: 1, createdAt: 1 }),
-      );
-      expect(hasIndex).toBe(true);
-    });
   });
 
   describe("Update Operations", () => {
@@ -323,7 +313,7 @@ describe("Notification Model", () => {
       const notification = await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Test",
         message: "Test message",
       });
@@ -343,7 +333,7 @@ describe("Notification Model", () => {
       const notification = await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Test",
         message: "Test message",
       });
@@ -363,7 +353,7 @@ describe("Notification Model", () => {
       const notification = await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Test",
         message: "Test message",
       });
@@ -385,7 +375,7 @@ describe("Notification Model", () => {
       await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Notification 1",
         message: "Message 1",
       });
@@ -406,7 +396,7 @@ describe("Notification Model", () => {
       await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "Unread",
         message: "Message",
         read: false,
@@ -441,7 +431,7 @@ describe("Notification Model", () => {
       await Notification.create({
         userId: testUserId,
         taskId: testTaskId,
-        type: "reminder",
+        type: "due-soon",
         title: "For task 1",
         message: "Message",
       });
@@ -449,7 +439,7 @@ describe("Notification Model", () => {
       await Notification.create({
         userId: testUserId,
         taskId: anotherTask._id,
-        type: "reminder",
+        type: "due-soon",
         title: "For task 2",
         message: "Message",
       });

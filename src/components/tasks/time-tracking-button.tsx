@@ -25,18 +25,19 @@ export function TimeTrackingButton({
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    if (!isActive || !activeStartedAt) {
-      setElapsed(0);
-      return;
-    }
+    if (!isActive || !activeStartedAt) return;
 
     function tick() {
-      setElapsed(Date.now() - new Date(activeStartedAt!).getTime());
+      const currentElapsed = Date.now() - new Date(activeStartedAt).getTime();
+      setElapsed(currentElapsed);
     }
 
     tick();
     const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      setElapsed(0);
+    };
   }, [isActive, activeStartedAt]);
 
   if (isOtherUserActive) {

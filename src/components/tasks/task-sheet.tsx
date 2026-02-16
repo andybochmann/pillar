@@ -8,29 +8,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
-import { StatusHistory } from "@/components/tasks/status-history";
-import { LabelPicker } from "@/components/tasks/label-picker";
 import { GenerateSubtasksDialog } from "@/components/tasks/generate-subtasks-dialog";
-import { Checkbox } from "@/components/ui/checkbox";
-import { X, Plus, Sparkles, Square, Play } from "lucide-react";
 import { toast } from "sonner";
-import { TimeSessionsList } from "@/components/tasks/time-sessions-list";
 import { useBackButton } from "@/hooks/use-back-button";
-import { cn } from "@/lib/utils";
+import { TaskTitleDescriptionSection } from "@/components/tasks/sections/task-title-description-section";
+import { TaskPriorityColumnSection } from "@/components/tasks/sections/task-priority-column-section";
+import { TaskAssigneeSection } from "@/components/tasks/sections/task-assignee-section";
+import { TaskLabelsSection } from "@/components/tasks/sections/task-labels-section";
+import { TaskDueRecurrenceSection } from "@/components/tasks/sections/task-due-recurrence-section";
+import { TaskSubtasksSection } from "@/components/tasks/sections/task-subtasks-section";
+import { TaskTimeTrackingSection } from "@/components/tasks/sections/task-time-tracking-section";
+import { TaskStatusHistorySection } from "@/components/tasks/sections/task-status-history-section";
+import { TaskActionsSection } from "@/components/tasks/sections/task-actions-section";
 import type {
   Task,
   Subtask,
@@ -48,7 +38,6 @@ interface TaskSheetProps {
   onOpenChange: (open: boolean) => void;
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
-  onDuplicate?: (task: Task) => void;
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
   members?: ProjectMember[];
@@ -65,7 +54,6 @@ export function TaskSheet({
   onOpenChange,
   onUpdate,
   onDelete,
-  onDuplicate,
   allLabels,
   onCreateLabel,
   members,
@@ -91,7 +79,6 @@ export function TaskSheet({
           columns={columns}
           onUpdate={onUpdate}
           onDelete={onDelete}
-          onDuplicate={onDuplicate}
           onClose={() => onOpenChange(false)}
           allLabels={allLabels}
           onCreateLabel={onCreateLabel}
@@ -106,30 +93,11 @@ export function TaskSheet({
   );
 }
 
-const PRIORITIES: Priority[] = ["urgent", "high", "medium", "low"];
-
-const priorityConfig = {
-  urgent: {
-    label: "Urgent",
-    className: "bg-red-500 text-white hover:bg-red-600",
-  },
-  high: {
-    label: "High",
-    className: "bg-orange-500 text-white hover:bg-orange-600",
-  },
-  medium: {
-    label: "Medium",
-    className: "bg-blue-500 text-white hover:bg-blue-600",
-  },
-  low: { label: "Low", className: "bg-gray-400 text-white hover:bg-gray-500" },
-};
-
 interface TaskSheetFormProps {
   task: Task;
   columns: Column[];
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
-  onDuplicate?: (task: Task) => void;
   onClose: () => void;
   allLabels?: LabelType[];
   onCreateLabel?: (data: { name: string; color: string }) => Promise<void>;
@@ -145,7 +113,6 @@ function TaskSheetForm({
   columns,
   onUpdate,
   onDelete,
-  onDuplicate,
   onClose,
   allLabels,
   onCreateLabel,
@@ -155,8 +122,6 @@ function TaskSheetForm({
   onStopTracking,
   onDeleteSession,
 }: TaskSheetFormProps) {
-  const [title, setTitle] = useState(task.title);
-  const [description, setDescription] = useState(task.description ?? "");
   const [priority, setPriority] = useState<Priority>(task.priority);
   const [columnId, setColumnId] = useState(task.columnId);
   const [dueDate, setDueDate] = useState(
@@ -173,7 +138,6 @@ function TaskSheetForm({
   });
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks ?? []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
 
@@ -218,46 +182,11 @@ function TaskSheetForm({
     [task._id, onUpdate],
   );
 
-  function saveTitleIfChanged() {
-    if (title.trim() === task.title) return;
-    if (!title.trim()) {
-      setTitle(task.title);
-      return;
-    }
-    saveField({ title: title.trim() });
-  }
-
-  function handleTitleBlur() {
-    saveTitleIfChanged();
-  }
-
-  function handleTitleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      (e.target as HTMLInputElement).blur();
-    }
-  }
-
-  // Save any pending title/description changes when sheet closes
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      // Flush unsaved title
-      const trimmed = title.trim();
-      if (trimmed && trimmed !== task.title) {
-        onUpdate(task._id, { title: trimmed });
-      }
-      // Flush unsaved description
-      if (description !== (task.description ?? "")) {
-        onUpdate(task._id, { description });
-      }
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, description, task._id, task.title, task.description]);
-
-  function handleDescriptionBlur() {
-    if (description === (task.description ?? "")) return;
-    saveField({ description });
+  async function handleTitleDescriptionUpdate(data: {
+    title?: string;
+    description?: string;
+  }) {
+    await onUpdate(task._id, data);
   }
 
   function handlePriorityChange(value: Priority) {
@@ -282,10 +211,9 @@ function TaskSheetForm({
     saveField({ recurrence: value });
   }
 
-  function handleAssigneeChange(value: string) {
-    const newValue = value === "unassigned" ? null : value;
-    setAssigneeId(newValue);
-    saveField({ assigneeId: newValue });
+  function handleAssigneeChange(value: string | null) {
+    setAssigneeId(value);
+    saveField({ assigneeId: value });
   }
 
   function handleToggleLabel(labelId: string) {
@@ -294,12 +222,6 @@ function TaskSheetForm({
       : [...labels, labelId];
     setLabels(newLabels);
     saveField({ labels: newLabels });
-  }
-
-  async function handleCreateLabel(data: { name: string; color: string }) {
-    if (onCreateLabel) {
-      await onCreateLabel(data);
-    }
   }
 
   function handleToggleSubtask(id: string) {
@@ -349,266 +271,85 @@ function TaskSheetForm({
     toast.success(`Added ${newSubtasks.length} subtasks`);
   }
 
-  async function handleDelete() {
-    try {
-      await onDelete(task._id);
-      toast.success("Task deleted");
-      setShowDeleteConfirm(false);
-      onClose();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to delete task");
-    }
+  async function handleTaskUpdate(data: { completedAt: string | null }) {
+    await onUpdate(task._id, data);
+  }
+
+  async function handleTaskDelete(taskId: string) {
+    await onDelete(taskId);
   }
 
   return (
     <>
       <div className="flex flex-1 flex-col px-6 pt-8 pb-6">
         <div className="space-y-5">
-          {/* Title */}
-          <div className="space-y-1.5">
-            <Label htmlFor="task-title">Title</Label>
-            <Input
-              id="task-title"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={handleTitleBlur}
-              onKeyDown={handleTitleKeyDown}
-              className="text-lg font-semibold"
-            />
-          </div>
-
-          {/* Description */}
-          <div className="space-y-1.5">
-            <Label htmlFor="task-description">Description</Label>
-            <Textarea
-              id="task-description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              onBlur={handleDescriptionBlur}
-              placeholder="Add a description…"
-              rows={3}
-            />
-          </div>
+          <TaskTitleDescriptionSection
+            taskId={task._id}
+            initialTitle={task.title}
+            initialDescription={task.description ?? ""}
+            onUpdate={handleTitleDescriptionUpdate}
+          />
 
           <Separator />
 
-          {/* Priority & Column */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="task-priority">Priority</Label>
-              <Select value={priority} onValueChange={handlePriorityChange}>
-                <SelectTrigger id="task-priority">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITIES.map((p) => (
-                    <SelectItem key={p} value={p}>
-                      <span
-                        className={cn(
-                          "mr-2 inline-block h-2 w-2 rounded-full",
-                          priorityConfig[p].className,
-                        )}
-                      />
-                      {p.charAt(0).toUpperCase() + p.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <TaskPriorityColumnSection
+            priority={priority}
+            columnId={columnId}
+            columns={columns}
+            onPriorityChange={handlePriorityChange}
+            onColumnChange={handleColumnChange}
+          />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="task-column">Column</Label>
-              <Select value={columnId} onValueChange={handleColumnChange}>
-                <SelectTrigger id="task-column">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {columns.map((col) => (
-                    <SelectItem key={col.id} value={col.id}>
-                      {col.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          <TaskAssigneeSection
+            assigneeId={assigneeId}
+            members={members}
+            onAssigneeChange={handleAssigneeChange}
+          />
 
-          {/* Assignee */}
-          {members && members.length > 1 && (
-            <div className="space-y-1.5">
-              <Label htmlFor="task-assignee">Assignee</Label>
-              <Select
-                value={assigneeId ?? "unassigned"}
-                onValueChange={handleAssigneeChange}
-              >
-                <SelectTrigger id="task-assignee">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
-                  {members.map((member) => (
-                    <SelectItem key={member.userId} value={member.userId}>
-                      {member.userName ?? member.userEmail}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
-          {/* Due Date & Recurrence */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="task-due-date">Due Date</Label>
-              <Input
-                id="task-due-date"
-                type="date"
-                value={dueDate}
-                onChange={(e) => handleDueDateChange(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label>Recurrence</Label>
-              <RecurrencePicker
-                value={recurrence}
-                onChange={handleRecurrenceChange}
-              />
-            </div>
-          </div>
+          <TaskDueRecurrenceSection
+            dueDate={dueDate}
+            recurrence={recurrence}
+            onDueDateChange={handleDueDateChange}
+            onRecurrenceChange={handleRecurrenceChange}
+          />
 
           <Separator />
 
-          {/* Labels */}
-          <div className="space-y-1.5">
-            <Label>Labels</Label>
-            <LabelPicker
-              labels={allLabels ?? []}
-              selectedLabels={labels}
-              onToggle={handleToggleLabel}
-              onCreate={handleCreateLabel}
-            />
-          </div>
+          <TaskLabelsSection
+            allLabels={allLabels}
+            selectedLabels={labels}
+            onToggleLabel={handleToggleLabel}
+            onCreateLabel={onCreateLabel}
+          />
+
           <Separator />
 
-          {/* Subtasks */}
-          <div className="space-y-2">
-            <Label>Subtasks</Label>
-            {subtasks.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {subtasks.filter((s) => s.completed).length} of{" "}
-                {subtasks.length} completed
-              </p>
-            )}
-            <div className="space-y-1">
-              {subtasks.map((subtask) => (
-                <div
-                  key={subtask._id}
-                  className="group flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-muted"
-                >
-                  <Checkbox
-                    checked={subtask.completed}
-                    onCheckedChange={() => handleToggleSubtask(subtask._id)}
-                    aria-label={`Toggle ${subtask.title}`}
-                  />
-                  <span
-                    className={
-                      subtask.completed
-                        ? "flex-1 text-sm line-through text-muted-foreground"
-                        : "flex-1 text-sm"
-                    }
-                  >
-                    {subtask.title}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6"
-                    onClick={() => handleDeleteSubtask(subtask._id)}
-                    aria-label={`Delete ${subtask.title}`}
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-            {aiEnabled && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setGenerateDialogOpen(true)}
-                disabled={subtasks.length >= 50}
-              >
-                <Sparkles className="mr-2 h-4 w-4" />
-                Generate subtasks
-              </Button>
-            )}
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Add a subtask…"
-                value={newSubtaskTitle}
-                onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                onKeyDown={handleSubtaskKeyDown}
-                aria-label="New subtask title"
-                className="h-8 text-sm"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 shrink-0"
-                onClick={handleAddSubtask}
-                disabled={!newSubtaskTitle.trim()}
-                aria-label="Add subtask"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+          <TaskSubtasksSection
+            subtasks={subtasks}
+            onToggleSubtask={handleToggleSubtask}
+            onDeleteSubtask={handleDeleteSubtask}
+            newSubtaskTitle={newSubtaskTitle}
+            onNewSubtaskTitleChange={setNewSubtaskTitle}
+            onAddSubtask={handleAddSubtask}
+            onSubtaskKeyDown={handleSubtaskKeyDown}
+            aiEnabled={aiEnabled}
+            onGenerateClick={() => setGenerateDialogOpen(true)}
+            maxSubtasks={50}
+          />
 
-          {/* Time Tracking */}
-          {currentUserId && (
+          <TaskTimeTrackingSection
+            taskId={task._id}
+            timeSessions={task.timeSessions ?? []}
+            currentUserId={currentUserId}
+            onStartTracking={onStartTracking}
+            onStopTracking={onStopTracking}
+            onDeleteSession={onDeleteSession}
+          />
+
+          {task.statusHistory && task.statusHistory.length > 0 && (
             <>
               <Separator />
-              <div className="space-y-2">
-                {onStartTracking && onStopTracking && (() => {
-                  const activeSession = task.timeSessions?.find(
-                    (s) => s.userId === currentUserId && !s.endedAt,
-                  );
-                  return activeSession ? (
-                    <Button
-                      variant="outline"
-                      className="w-full text-green-600"
-                      onClick={() => onStopTracking(task._id)}
-                    >
-                      <Square className="mr-2 h-4 w-4 fill-current" />
-                      Stop Tracking
-                    </Button>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => onStartTracking(task._id)}
-                    >
-                      <Play className="mr-2 h-4 w-4" />
-                      Start Tracking
-                    </Button>
-                  );
-                })()}
-                <TimeSessionsList
-                  sessions={task.timeSessions ?? []}
-                  onDeleteSession={(sessionId) =>
-                    onDeleteSession?.(task._id, sessionId)
-                  }
-                />
-              </div>
-            </>
-          )}
-
-          {/* Status History */}
-          {task.statusHistory?.length > 0 && (
-            <>
-              <Separator />
-              <StatusHistory
+              <TaskStatusHistorySection
                 statusHistory={task.statusHistory}
                 columns={columns}
               />
@@ -616,56 +357,15 @@ function TaskSheetForm({
           )}
         </div>
 
-        {/* Actions pinned to bottom */}
-        <div className="mt-auto space-y-2 pt-6">
-          {task.completedAt ? (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                saveField({ completedAt: null });
-              }}
-            >
-              Reopen
-            </Button>
-          ) : (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                saveField({ completedAt: new Date().toISOString() });
-              }}
-            >
-              Mark Complete
-            </Button>
-          )}
-          {onDuplicate && (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => onDuplicate(task)}
-            >
-              Duplicate
-            </Button>
-          )}
-          <Button
-            variant="destructive"
-            className="w-full"
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            Delete
-          </Button>
-        </div>
+        <TaskActionsSection
+          taskId={task._id}
+          taskTitle={task.title}
+          completedAt={task.completedAt ?? null}
+          onUpdate={handleTaskUpdate}
+          onDelete={handleTaskDelete}
+          onClose={onClose}
+        />
       </div>
-      <ConfirmDialog
-        open={showDeleteConfirm}
-        onOpenChange={setShowDeleteConfirm}
-        title="Delete task?"
-        description={`"${task.title}" will be permanently deleted.`}
-        confirmLabel="Delete"
-        variant="destructive"
-        onConfirm={handleDelete}
-      />
       <GenerateSubtasksDialog
         open={generateDialogOpen}
         onOpenChange={setGenerateDialogOpen}

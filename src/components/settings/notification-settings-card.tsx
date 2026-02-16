@@ -13,14 +13,26 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
+import { useNotificationPermission } from "@/hooks/use-notification-permission";
 import type { NotificationPreference } from "@/types";
 
-function getErrorMessage(err: unknown, defaultMsg: string): string {
-  return err instanceof Error ? err.message : defaultMsg;
-}
+const REMINDER_OPTIONS = [
+  { value: 1440, label: "1 day before" },
+  { value: 60, label: "1 hour before" },
+  { value: 15, label: "15 minutes before" },
+];
 
 export function NotificationSettingsCard() {
+  const { permission, requestPermission, isSupported } =
+    useNotificationPermission();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [preferences, setPreferences] = useState<NotificationPreference | null>(
@@ -38,18 +50,10 @@ export function NotificationSettingsCard() {
       if (!res.ok) throw new Error("Failed to fetch preferences");
       const data = await res.json();
       setPreferences(data);
-
-      // Auto-detect and sync browser timezone
-      const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      if (detectedTimezone && detectedTimezone !== data.timezone) {
-        fetch("/api/notifications/preferences", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ timezone: detectedTimezone }),
-        }).catch(() => {});
-      }
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to load preferences"));
+      toast.error(
+        err instanceof Error ? err.message : "Failed to load preferences",
+      );
     } finally {
       setLoading(false);
     }
@@ -75,29 +79,33 @@ export function NotificationSettingsCard() {
       setPreferences(data);
       toast.success("Preferences updated");
     } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to update preferences"));
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update preferences",
+      );
     } finally {
       setSaving(false);
     }
   }
 
-  async function sendTestNotification() {
-    try {
-      const res = await fetch("/api/notifications", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "reminder",
-          title: "Test Notification",
-          message: "Your notification settings are working!",
-        }),
-      });
-
-      if (!res.ok) throw new Error("Failed to send test notification");
-      toast.success("Test notification sent");
-    } catch (err) {
-      toast.error(getErrorMessage(err, "Failed to send test notification"));
+  async function handleBrowserPushToggle(enabled: boolean) {
+    if (enabled && permission !== "granted") {
+      const result = await requestPermission();
+      if (result !== "granted") {
+        toast.error("Browser notifications permission denied");
+        return;
+      }
     }
+    await updatePreferences({ enableBrowserPush: enabled });
+  }
+
+  function handleReminderTimingToggle(timing: number, checked: boolean) {
+    if (!preferences) return;
+
+    const newTimings = checked
+      ? [...preferences.reminderTimings, timing].sort((a, b) => b - a)
+      : preferences.reminderTimings.filter((t) => t !== timing);
+
+    updatePreferences({ reminderTimings: newTimings });
   }
 
   if (loading) {
@@ -131,6 +139,25 @@ export function NotificationSettingsCard() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Browser Push Notifications */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="browser-push">Browser Push Notifications</Label>
+              <p className="text-muted-foreground text-sm">
+                Receive notifications even when the app is closed
+                {!isSupported && " (Not supported in this browser)"}
+              </p>
+            </div>
+            <Switch
+              id="browser-push"
+              checked={preferences.enableBrowserPush}
+              onCheckedChange={handleBrowserPushToggle}
+              disabled={saving || !isSupported}
+            />
+          </div>
+        </div>
+
         {/* In-App Notifications */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
@@ -149,13 +176,87 @@ export function NotificationSettingsCard() {
           />
         </div>
 
+        {/* Reminder Timings */}
+        <div className="space-y-3">
+          <Label>Reminder Timings</Label>
+          <p className="text-muted-foreground text-sm">
+            Choose when to receive reminders before tasks are due
+          </p>
+          <div className="space-y-2">
+            {REMINDER_OPTIONS.map((option) => (
+              <div key={option.value} className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id={`reminder-${option.value}`}
+                  checked={preferences.reminderTimings.includes(option.value)}
+                  onChange={(e) =>
+                    handleReminderTimingToggle(option.value, e.target.checked)
+                  }
+                  disabled={saving}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <Label
+                  htmlFor={`reminder-${option.value}`}
+                  className="cursor-pointer font-normal"
+                >
+                  {option.label}
+                </Label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Email Digest */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="email-digest">Email Digest</Label>
+              <p className="text-muted-foreground text-sm">
+                Receive summary emails of your tasks
+              </p>
+            </div>
+            <Switch
+              id="email-digest"
+              checked={preferences.enableEmailDigest}
+              onCheckedChange={(checked) =>
+                updatePreferences({ enableEmailDigest: checked })
+              }
+              disabled={saving}
+            />
+          </div>
+
+          {preferences.enableEmailDigest && (
+            <div className="space-y-1.5">
+              <Label htmlFor="digest-frequency">Frequency</Label>
+              <Select
+                value={preferences.emailDigestFrequency}
+                onValueChange={(value) =>
+                  updatePreferences({
+                    emailDigestFrequency: value as "daily" | "weekly" | "none",
+                  })
+                }
+                disabled={saving}
+              >
+                <SelectTrigger id="digest-frequency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="daily">Daily</SelectItem>
+                  <SelectItem value="weekly">Weekly</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
         {/* Quiet Hours */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
               <Label htmlFor="quiet-hours">Quiet Hours</Label>
               <p className="text-muted-foreground text-sm">
-                Don't send notifications during these hours
+                Don&apos;t send notifications during these hours
               </p>
             </div>
             <Switch
@@ -201,9 +302,9 @@ export function NotificationSettingsCard() {
         {/* Overdue Summary */}
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label htmlFor="overdue-summary">Overdue Task Alerts</Label>
+            <Label htmlFor="overdue-summary">Overdue Task Summary</Label>
             <p className="text-muted-foreground text-sm">
-              Get notified when individual tasks become overdue
+              Daily summary of overdue tasks
             </p>
           </div>
           <Switch
@@ -216,47 +317,22 @@ export function NotificationSettingsCard() {
           />
         </div>
 
-        {/* Daily Summary */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label htmlFor="daily-summary">Daily Summary</Label>
-              <p className="text-muted-foreground text-sm">
-                Daily notification summarizing due and overdue tasks
-              </p>
-            </div>
-            <Switch
-              id="daily-summary"
-              checked={preferences.enableDailySummary}
-              onCheckedChange={(checked) =>
-                updatePreferences({ enableDailySummary: checked })
-              }
-              disabled={saving}
-            />
-          </div>
-
-          {preferences.enableDailySummary && (
-            <div className="max-w-[200px] space-y-1.5">
-              <Label htmlFor="daily-summary-time">Summary Time</Label>
-              <Input
-                id="daily-summary-time"
-                type="time"
-                value={preferences.dailySummaryTime}
-                onChange={(e) =>
-                  updatePreferences({ dailySummaryTime: e.target.value })
-                }
-                disabled={saving}
-              />
-            </div>
-          )}
-        </div>
-
         {/* Test Notification Button */}
         <div className="border-muted-foreground/20 border-t pt-4">
           <Button
             variant="outline"
-            onClick={sendTestNotification}
-            disabled={saving}
+            onClick={() => {
+              if (isSupported && permission === "granted") {
+                new Notification("Test Notification", {
+                  body: "Your notification settings are working!",
+                  icon: "/icon-192.png",
+                });
+                toast.success("Test notification sent");
+              } else {
+                toast.error("Browser notifications not enabled");
+              }
+            }}
+            disabled={!isSupported || permission !== "granted"}
           >
             <Bell className="mr-2 h-4 w-4" />
             Send Test Notification

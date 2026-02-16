@@ -1,16 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NotificationBell } from "./notification-bell";
 import type { Notification } from "@/types";
 
 // Mock useNotifications hook
 const mockFetchNotifications = vi.fn();
-const mockMarkAsRead = vi.fn();
-const mockMarkAsDismissed = vi.fn();
-const mockDismissAll = vi.fn();
-const mockSnoozeNotification = vi.fn();
-let mockNotifications: Notification[] = [];
+const mockNotifications: Notification[] = [];
 
 vi.mock("@/hooks/use-notifications", () => ({
   useNotifications: () => ({
@@ -19,20 +15,11 @@ vi.mock("@/hooks/use-notifications", () => ({
     loading: false,
     error: null,
     setNotifications: vi.fn(),
-    markAsRead: mockMarkAsRead,
-    markAsDismissed: mockMarkAsDismissed,
-    dismissAll: mockDismissAll,
-    snoozeNotification: mockSnoozeNotification,
+    markAsRead: vi.fn(),
+    markAsDismissed: vi.fn(),
+    snoozeNotification: vi.fn(),
     deleteNotification: vi.fn(),
   }),
-}));
-
-// Mock toast
-vi.mock("sonner", () => ({
-  toast: {
-    success: vi.fn(),
-    error: vi.fn(),
-  },
 }));
 
 describe("NotificationBell", () => {
@@ -70,7 +57,7 @@ describe("NotificationBell", () => {
         _id: "1",
         userId: "user1",
         taskId: "task1",
-        type: "reminder",
+        type: "due-soon",
         title: "Task due soon",
         message: "Your task is due in 1 hour",
         read: false,
@@ -104,7 +91,7 @@ describe("NotificationBell", () => {
       _id: `${i + 1}`,
       userId: "user1",
       taskId: `task${i + 1}`,
-      type: "reminder" as const,
+      type: "due-soon" as const,
       title: `Notification ${i + 1}`,
       message: "Test message",
       read: false,
@@ -125,7 +112,7 @@ describe("NotificationBell", () => {
         _id: "1",
         userId: "user1",
         taskId: "task1",
-        type: "reminder",
+        type: "due-soon",
         title: "Unread notification",
         message: "Test",
         read: false,
@@ -157,7 +144,7 @@ describe("NotificationBell", () => {
         _id: "1",
         userId: "user1",
         taskId: "task1",
-        type: "reminder",
+        type: "due-soon",
         title: "Active notification",
         message: "Test",
         read: false,
@@ -205,7 +192,7 @@ describe("NotificationBell", () => {
       _id: "1",
       userId: "user1",
       taskId: "task1",
-      type: "reminder",
+      type: "due-soon",
       title: "Task due soon",
       message: "Your task is due in 1 hour",
       read: false,
@@ -227,7 +214,7 @@ describe("NotificationBell", () => {
       _id: `${i + 1}`,
       userId: "user1",
       taskId: `task${i + 1}`,
-      type: "reminder" as const,
+      type: "due-soon" as const,
       title: `Notification ${i + 1}`,
       message: "Test message",
       read: false,
@@ -260,112 +247,15 @@ describe("NotificationBell", () => {
     expect(icon).toHaveStyle({ "--icon-size": "24px" });
   });
 
-  it("shows clear all button when notifications exist", async () => {
+  it("styles read notifications differently", async () => {
     const user = userEvent.setup();
-    mockNotifications.push({
-      _id: "1",
-      userId: "user1",
-      taskId: "task1",
-      type: "reminder",
-      title: "Task due soon",
-      message: "Your task is due in 1 hour",
-      read: false,
-      dismissed: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    render(<NotificationBell />);
-    await user.click(screen.getByRole("button", { name: "1 unread notifications" }));
-
-    expect(screen.getByRole("button", { name: /clear all/i })).toBeInTheDocument();
-  });
-
-  it("does not show clear all button when no active notifications", async () => {
-    const user = userEvent.setup();
-    render(<NotificationBell />);
-    await user.click(screen.getByRole("button", { name: "Notifications" }));
-
-    expect(screen.queryByRole("button", { name: /clear all/i })).not.toBeInTheDocument();
-  });
-
-  it("calls dismissAll when clear all is clicked", async () => {
-    const user = userEvent.setup();
-    mockDismissAll.mockResolvedValue(undefined);
-    mockNotifications.push({
-      _id: "1",
-      userId: "user1",
-      taskId: "task1",
-      type: "reminder",
-      title: "Task due soon",
-      message: "Test",
-      read: false,
-      dismissed: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    render(<NotificationBell />);
-    await user.click(screen.getByRole("button", { name: "1 unread notifications" }));
-    await user.click(screen.getByRole("button", { name: /clear all/i }));
-
-    await waitFor(() => {
-      expect(mockDismissAll).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it("shows mark all read button when unread notifications exist", async () => {
-    const user = userEvent.setup();
-    mockNotifications.push({
-      _id: "1",
-      userId: "user1",
-      taskId: "task1",
-      type: "reminder",
-      title: "Task due soon",
-      message: "Test",
-      read: false,
-      dismissed: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    render(<NotificationBell />);
-    await user.click(screen.getByRole("button", { name: "1 unread notifications" }));
-
-    expect(screen.getByRole("button", { name: /mark all read/i })).toBeInTheDocument();
-  });
-
-  it("does not show mark all read button when all are read", async () => {
-    const user = userEvent.setup();
-    mockNotifications.push({
-      _id: "1",
-      userId: "user1",
-      taskId: "task1",
-      type: "reminder",
-      title: "Task due soon",
-      message: "Test",
-      read: true,
-      dismissed: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    render(<NotificationBell />);
-    await user.click(screen.getByRole("button", { name: "Notifications" }));
-
-    expect(screen.queryByRole("button", { name: /mark all read/i })).not.toBeInTheDocument();
-  });
-
-  it("calls markAsRead for all unread when mark all read is clicked", async () => {
-    const user = userEvent.setup();
-    mockMarkAsRead.mockResolvedValue({});
     mockNotifications.push(
       {
         _id: "1",
         userId: "user1",
         taskId: "task1",
-        type: "reminder",
-        title: "Notification 1",
+        type: "due-soon",
+        title: "Unread",
         message: "Test",
         read: false,
         dismissed: false,
@@ -377,9 +267,9 @@ describe("NotificationBell", () => {
         userId: "user1",
         taskId: "task2",
         type: "overdue",
-        title: "Notification 2",
+        title: "Read",
         message: "Test",
-        read: false,
+        read: true,
         dismissed: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -387,36 +277,12 @@ describe("NotificationBell", () => {
     );
 
     render(<NotificationBell />);
-    await user.click(screen.getByRole("button", { name: "2 unread notifications" }));
-    await user.click(screen.getByRole("button", { name: /mark all read/i }));
-
-    await waitFor(() => {
-      expect(mockMarkAsRead).toHaveBeenCalledWith("1");
-      expect(mockMarkAsRead).toHaveBeenCalledWith("2");
-    });
-  });
-
-  it("renders per-item action buttons on hover", async () => {
-    const user = userEvent.setup();
-    mockNotifications.push({
-      _id: "1",
-      userId: "user1",
-      taskId: "task1",
-      type: "reminder",
-      title: "Task due soon",
-      message: "Test",
-      read: false,
-      dismissed: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    });
-
-    render(<NotificationBell />);
     await user.click(screen.getByRole("button", { name: "1 unread notifications" }));
 
-    // NotificationItem renders mark as read, snooze, and dismiss buttons
-    expect(screen.getByRole("button", { name: "Mark as read" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Dismiss notification" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Snooze notification" })).toBeInTheDocument();
+    const unreadNotif = screen.getByText("Unread").parentElement;
+    const readNotif = screen.getByText("Read").parentElement;
+
+    expect(unreadNotif).toHaveClass("bg-background");
+    expect(readNotif).toHaveClass("bg-muted/50", "text-muted-foreground");
   });
 });
