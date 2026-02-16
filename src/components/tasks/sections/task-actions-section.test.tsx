@@ -11,7 +11,13 @@ vi.mock("sonner", () => ({
   },
 }));
 
+vi.mock("@/lib/share-task", () => ({
+  canShareTasks: vi.fn(() => true),
+  shareTask: vi.fn().mockResolvedValue(true),
+}));
+
 import { toast } from "sonner";
+import { canShareTasks, shareTask } from "@/lib/share-task";
 
 describe("TaskActionsSection", () => {
   let onUpdate: ReturnType<typeof vi.fn>;
@@ -23,6 +29,8 @@ describe("TaskActionsSection", () => {
     onDelete = vi.fn().mockResolvedValue(undefined);
     onClose = vi.fn();
     vi.clearAllMocks();
+    vi.mocked(canShareTasks).mockReturnValue(true);
+    vi.mocked(shareTask).mockResolvedValue(true);
   });
 
   it("renders Mark Complete button when task is not completed", () => {
@@ -30,6 +38,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -50,6 +59,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt="2024-01-15T10:00:00Z"
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -70,6 +80,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -91,6 +102,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -116,6 +128,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt="2024-01-15T10:00:00Z"
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -139,6 +152,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -161,6 +175,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -182,6 +197,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -204,6 +220,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -233,6 +250,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-123"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -274,6 +292,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -306,6 +325,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -333,6 +353,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -354,6 +375,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -372,6 +394,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Task with 'quotes' & special <chars>"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -395,6 +418,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -427,6 +451,7 @@ describe("TaskActionsSection", () => {
       <TaskActionsSection
         taskId="task-1"
         taskTitle="Test Task"
+        taskPriority="medium"
         completedAt={null}
         onUpdate={onUpdate}
         onDelete={onDelete}
@@ -450,5 +475,75 @@ describe("TaskActionsSection", () => {
 
     // onClose should not be called when deletion fails
     expect(onClose).not.toHaveBeenCalled();
+  });
+
+  describe("Web Share", () => {
+    it("renders Share button when Web Share API is available", () => {
+      vi.mocked(canShareTasks).mockReturnValue(true);
+
+      render(
+        <TaskActionsSection
+          taskId="task-1"
+          taskTitle="Test Task"
+          taskPriority="medium"
+          completedAt={null}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          onClose={onClose}
+        />,
+      );
+
+      expect(
+        screen.getByRole("button", { name: /share/i }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not render Share button when Web Share API is unavailable", () => {
+      vi.mocked(canShareTasks).mockReturnValue(false);
+
+      render(
+        <TaskActionsSection
+          taskId="task-1"
+          taskTitle="Test Task"
+          taskPriority="medium"
+          completedAt={null}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          onClose={onClose}
+        />,
+      );
+
+      expect(
+        screen.queryByRole("button", { name: /share/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("calls shareTask when Share button is clicked", async () => {
+      const user = userEvent.setup();
+      vi.mocked(canShareTasks).mockReturnValue(true);
+
+      render(
+        <TaskActionsSection
+          taskId="task-1"
+          taskTitle="My Task"
+          taskDescription="Task description"
+          taskPriority="high"
+          taskDueDate="2026-03-01T00:00:00.000Z"
+          completedAt={null}
+          onUpdate={onUpdate}
+          onDelete={onDelete}
+          onClose={onClose}
+        />,
+      );
+
+      await user.click(screen.getByRole("button", { name: /share/i }));
+
+      expect(shareTask).toHaveBeenCalledWith({
+        title: "My Task",
+        description: "Task description",
+        priority: "high",
+        dueDate: "2026-03-01T00:00:00.000Z",
+      });
+    });
   });
 });

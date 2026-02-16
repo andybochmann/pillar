@@ -406,6 +406,9 @@ function TaskSheetForm({
         <TaskActionsSection
           taskId={task._id}
           taskTitle={task.title}
+          taskDescription={task.description}
+          taskPriority={task.priority}
+          taskDueDate={task.dueDate}
           completedAt={task.completedAt ?? null}
           onUpdate={handleTaskUpdate}
           onDelete={handleTaskDelete}

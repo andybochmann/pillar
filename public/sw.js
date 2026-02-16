@@ -156,7 +156,12 @@ self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
   const title = data.title || "Pillar Notification";
   event.waitUntil(
-    self.registration.showNotification(title, buildNotificationOptions(data))
+    Promise.all([
+      self.registration.showNotification(title, buildNotificationOptions(data)),
+      data.overdueCount !== undefined
+        ? self.navigator.setAppBadge(data.overdueCount)
+        : Promise.resolve(),
+    ])
   );
 });
 
@@ -168,6 +173,15 @@ self.addEventListener("message", (event) => {
       title || "Pillar",
       buildNotificationOptions(data)
     );
+  }
+
+  if (event.data?.type === "UPDATE_BADGE") {
+    const count = event.data.count || 0;
+    if (count > 0) {
+      self.navigator.setAppBadge(count);
+    } else {
+      self.navigator.clearAppBadge();
+    }
   }
 });
 
