@@ -30,7 +30,7 @@ export function ListView({
   readOnly,
   onTasksChange,
 }: ListViewProps) {
-  const { tasks, createTask, updateTask, deleteTask } = useTasks(
+  const { tasks, setTasks, createTask, updateTask, deleteTask } = useTasks(
     initialTasks,
     projectId,
   );
@@ -149,16 +149,15 @@ export function ListView({
           taskIds: completedTasks.map((t) => t._id),
         }),
       });
-      // Refetch will happen via sync event; optimistic removal
-      for (const t of completedTasks) {
-        await deleteTask(t._id);
-      }
+      // Remove from local state — bulk endpoint already deleted from DB
+      const completedIds = new Set(completedTasks.map((t) => t._id));
+      setTasks((prev) => prev.filter((t) => !completedIds.has(t._id)));
       toast.success("Completed items deleted");
     } catch {
       toast.error("Failed to delete completed items");
     }
     setShowDeleteAllConfirm(false);
-  }, [completedTasks, deleteTask]);
+  }, [completedTasks, setTasks]);
 
   const handleTaskUpdate = useCallback(
     async (id: string, data: Partial<Task>) => {
