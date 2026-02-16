@@ -11,7 +11,8 @@ import { useTasks } from "@/hooks/use-tasks";
 import { useLabels } from "@/hooks/use-labels";
 import { useCategories } from "@/hooks/use-categories";
 import { toast } from "sonner";
-import { format, addDays, addWeeks, addMonths, addYears } from "date-fns";
+import { format } from "date-fns";
+import { getNextDueDate } from "@/lib/date-utils";
 import type { Task, Project, CalendarViewType } from "@/types";
 import type { CalendarFilters } from "./calendar-filter-bar";
 import { EMPTY_FILTERS } from "./calendar-filter-bar";
@@ -297,23 +298,4 @@ export function CalendarPageClient({
       />
     </>
   );
-}
-
-function getNextDueDate(
-  currentDate: Date,
-  frequency: string,
-  interval: number,
-): Date {
-  switch (frequency) {
-    case "daily":
-      return addDays(currentDate, interval);
-    case "weekly":
-      return addWeeks(currentDate, interval);
-    case "monthly":
-      return addMonths(currentDate, interval);
-    case "yearly":
-      return addYears(currentDate, interval);
-    default:
-      return currentDate;
-  }
 }

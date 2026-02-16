@@ -8,49 +8,33 @@ import {
   requireProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
-import type {
-  LeanTask,
-  SerializedTask,
-  SerializedSubtask,
-  SerializedRecurrence,
-  SerializedStatusHistoryEntry,
-} from "@/lib/mcp-tools/types";
+import { getNextDueDate } from "@/lib/date-utils";
 
-function serializeDate(date: Date | undefined): string | null {
+function serializeDate(date: unknown): string | null {
   if (date instanceof Date) return date.toISOString();
-  return null;
+  return date ? String(date) : null;
 }
 
-function serializeTask(task: LeanTask): SerializedTask {
+function serializeTask(task: unknown) {
+  const t = task as Record<string, unknown>;
   return {
-    _id: task._id.toString(),
-    title: task.title,
-    description: task.description,
-    projectId: task.projectId.toString(),
-    userId: task.userId.toString(),
-    assigneeId: task.assigneeId ? task.assigneeId.toString() : null,
-    columnId: task.columnId,
-    priority: task.priority,
-    dueDate: serializeDate(task.dueDate),
-    recurrence: {
-      frequency: task.recurrence.frequency,
-      interval: task.recurrence.interval,
-      endDate: serializeDate(task.recurrence.endDate),
-    } as SerializedRecurrence,
-    order: task.order,
-    labels: task.labels.map((id) => id.toString()),
-    subtasks: task.subtasks.map((s) => ({
-      _id: s._id.toString(),
-      title: s.title,
-      completed: s.completed,
-    })) as SerializedSubtask[],
-    statusHistory: task.statusHistory.map((h) => ({
-      columnId: h.columnId,
-      timestamp: h.timestamp.toISOString(),
-    })) as SerializedStatusHistoryEntry[],
-    completedAt: serializeDate(task.completedAt),
-    createdAt: task.createdAt.toISOString(),
-    updatedAt: task.updatedAt.toISOString(),
+    _id: String(t._id),
+    title: t.title,
+    description: t.description,
+    projectId: String(t.projectId),
+    userId: String(t.userId),
+    assigneeId: t.assigneeId ? String(t.assigneeId) : null,
+    columnId: t.columnId,
+    priority: t.priority,
+    dueDate: serializeDate(t.dueDate),
+    recurrence: t.recurrence,
+    order: t.order,
+    labels: Array.isArray(t.labels) ? t.labels.map(String) : [],
+    subtasks: t.subtasks,
+    statusHistory: t.statusHistory,
+    completedAt: serializeDate(t.completedAt),
+    createdAt: serializeDate(t.createdAt),
+    updatedAt: serializeDate(t.updatedAt),
   };
 }
 
@@ -193,7 +177,7 @@ export function registerTaskTools(server: McpServer) {
         content: [
           {
             type: "text" as const,
-            text: JSON.stringify(serializeTask(task.toObject())),
+            text: JSON.stringify(serializeTask(task.toObject() as unknown as Record<string, unknown>)),
           },
         ],
       };
@@ -268,7 +252,7 @@ export function registerTaskTools(server: McpServer) {
         entityId: taskId,
         projectId: existing.projectId.toString(),
         targetUserIds,
-        data: serializeTask(task),
+        data: serializeTask(task as unknown as Record<string, unknown>),
         timestamp: Date.now(),
       });
 
@@ -372,7 +356,7 @@ export function registerTaskTools(server: McpServer) {
         entityId: taskId,
         projectId: existing.projectId.toString(),
         targetUserIds,
-        data: serializeTask(task),
+        data: serializeTask(task as unknown as Record<string, unknown>),
         timestamp: Date.now(),
       });
 
@@ -441,7 +425,7 @@ export function registerTaskTools(server: McpServer) {
         entityId: taskId,
         projectId: existing.projectId.toString(),
         targetUserIds,
-        data: serializeTask(task),
+        data: serializeTask(task as unknown as Record<string, unknown>),
         timestamp: Date.now(),
       });
 
@@ -450,7 +434,7 @@ export function registerTaskTools(server: McpServer) {
         existing.recurrence &&
         existing.recurrence.frequency !== "none"
       ) {
-        const nextDue = computeNextDueDate(
+        const nextDue = getNextDueDate(
           existing.dueDate ?? now,
           existing.recurrence.frequency,
           existing.recurrence.interval,
@@ -502,27 +486,4 @@ export function registerTaskTools(server: McpServer) {
       };
     },
   );
-}
-
-function computeNextDueDate(
-  current: Date,
-  frequency: string,
-  interval: number,
-): Date {
-  const next = new Date(current);
-  switch (frequency) {
-    case "daily":
-      next.setDate(next.getDate() + interval);
-      break;
-    case "weekly":
-      next.setDate(next.getDate() + interval * 7);
-      break;
-    case "monthly":
-      next.setMonth(next.getMonth() + interval);
-      break;
-    case "yearly":
-      next.setFullYear(next.getFullYear() + interval);
-      break;
-  }
-  return next;
 }

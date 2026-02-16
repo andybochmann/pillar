@@ -6,8 +6,8 @@ import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
-import { addDays, addWeeks, addMonths, addYears } from "date-fns";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
+import { getNextDueDate } from "@/lib/date-utils";
 
 const UpdateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -36,7 +36,6 @@ const UpdateTaskSchema = z.object({
     .optional(),
   completedAt: z.string().datetime().nullable().optional(),
   assigneeId: z.string().nullable().optional(),
-  reminderAt: z.string().datetime().nullable().optional(),
 });
 
 interface RouteParams {
@@ -104,10 +103,6 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     if (result.data.completedAt !== undefined) {
       updateData.completedAt = result.data.completedAt ? new Date(result.data.completedAt) : null;
-    }
-
-    if (result.data.reminderAt !== undefined) {
-      updateData.reminderAt = result.data.reminderAt ? new Date(result.data.reminderAt) : null;
     }
 
     if (result.data.recurrence) {
@@ -302,23 +297,4 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   });
 
   return NextResponse.json({ success: true });
-}
-
-function getNextDueDate(
-  currentDate: Date,
-  frequency: string,
-  interval: number,
-): Date {
-  switch (frequency) {
-    case "daily":
-      return addDays(currentDate, interval);
-    case "weekly":
-      return addWeeks(currentDate, interval);
-    case "monthly":
-      return addMonths(currentDate, interval);
-    case "yearly":
-      return addYears(currentDate, interval);
-    default:
-      return currentDate;
-  }
 }
