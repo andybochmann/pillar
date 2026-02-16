@@ -170,7 +170,7 @@ export function ShareTaskForm({
         <Button
           type="button"
           variant="outline"
-          onClick={() => router.push("/")}
+          onClick={() => router.push("/home")}
         >
           Cancel
         </Button>

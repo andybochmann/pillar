@@ -92,7 +92,7 @@ export function ProjectView({
       // If archived, navigate away
       if (data.archived) {
         setSettingsOpen(false);
-        router.push("/");
+        router.push("/home");
         router.refresh();
       }
     },
@@ -108,7 +108,7 @@ export function ProjectView({
       throw new Error(body.error || "Failed to delete project");
     }
     toast.success("Project deleted");
-    router.push("/");
+    router.push("/home");
     router.refresh();
   }, [currentProject._id, router]);
 

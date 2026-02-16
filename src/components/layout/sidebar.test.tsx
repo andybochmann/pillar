@@ -92,7 +92,7 @@ describe("Sidebar", () => {
 
       // Find the first navigation link (Dashboard)
       const navLinks = screen.getAllByRole("link");
-      const dashboardLink = navLinks.find((link) => link.getAttribute("href") === "/");
+      const dashboardLink = navLinks.find((link) => link.getAttribute("href") === "/home");
 
       expect(dashboardLink).toBeInTheDocument();
 

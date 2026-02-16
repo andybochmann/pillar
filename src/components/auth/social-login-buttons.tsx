@@ -76,7 +76,7 @@ export function SocialLoginButtons() {
             disabled={loadingProvider !== null}
             onClick={() => {
               setLoadingProvider(provider.id);
-              signIn(provider.id, { callbackUrl: "/" });
+              signIn(provider.id, { callbackUrl: "/home" });
             }}
             className="w-full"
           >

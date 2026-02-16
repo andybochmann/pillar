@@ -11,12 +11,16 @@ export const authConfig: NextAuthConfig = {
       const isAuthPage =
         nextUrl.pathname.startsWith("/login") ||
         nextUrl.pathname.startsWith("/register");
+      const isPublicPage =
+        nextUrl.pathname === "/" ||
+        nextUrl.pathname === "/privacy" ||
+        nextUrl.pathname === "/terms";
 
       if (isAuthPage) {
-        if (isLoggedIn) return Response.redirect(new URL("/", nextUrl));
+        if (isLoggedIn) return Response.redirect(new URL("/home", nextUrl));
         return true;
       }
-
+      if (isPublicPage) return true;
       if (!isLoggedIn) return false;
       return true;
     },

@@ -62,7 +62,7 @@ describe("SocialLoginButtons", () => {
 
     await user.click(screen.getByRole("button", { name: /google/i }));
 
-    expect(mockSignIn).toHaveBeenCalledWith("google", { callbackUrl: "/" });
+    expect(mockSignIn).toHaveBeenCalledWith("google", { callbackUrl: "/home" });
   });
 
   it("shows divider text", async () => {

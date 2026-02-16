@@ -42,7 +42,7 @@ interface SidebarProps {
 }
 
 const navItems = [
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/home", label: "Dashboard", icon: LayoutDashboard },
   { href: "/overview", label: "Overview", icon: ListTodo },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -113,7 +113,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       {/* Header */}
       <div className="flex h-14 items-center justify-between border-b px-4">
         {!collapsed && (
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/home" className="flex items-center gap-2">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary">
               <FolderKanban className="h-4 w-4 text-primary-foreground" />
             </div>
@@ -148,8 +148,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             <>
               {navItems.map((item) => {
                 const isActive =
-                  item.href === "/"
-                    ? pathname === "/"
+                  item.href === "/home"
+                    ? pathname === "/home"
                     : pathname.startsWith(item.href);
                 const Icon = item.icon;
                 return (
@@ -349,8 +349,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
               <div className="flex flex-col items-center gap-1">
                 {navItems.map((item) => {
                   const isActive =
-                    item.href === "/"
-                      ? pathname === "/"
+                    item.href === "/home"
+                      ? pathname === "/home"
                       : pathname.startsWith(item.href);
                   const Icon = item.icon;
                   return (

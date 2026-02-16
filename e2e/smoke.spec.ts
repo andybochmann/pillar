@@ -7,11 +7,37 @@ const TEST_USER = {
   password: "TestPassword123!",
 };
 
-test.describe("Authentication", () => {
-  test("unauthenticated user is redirected to login", async ({ page }) => {
+test.describe("Marketing pages", () => {
+  test("landing page is accessible without auth", async ({ page }) => {
     await page.goto("/");
-    await expect(page).toHaveURL(/\/login/);
-    await expect(page).toHaveTitle(/Pillar/);
+    await expect(
+      page.getByRole("heading", { name: /organize your work with pillar/i }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: "Get Started" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Sign In" })).toBeVisible();
+  });
+
+  test("privacy page is accessible without auth", async ({ page }) => {
+    await page.goto("/privacy");
+    await expect(
+      page.getByRole("heading", { name: /privacy policy/i }),
+    ).toBeVisible();
+  });
+
+  test("terms page is accessible without auth", async ({ page }) => {
+    await page.goto("/terms");
+    await expect(
+      page.getByRole("heading", { name: /terms of service/i }),
+    ).toBeVisible();
+  });
+});
+
+test.describe("Authentication", () => {
+  test("unauthenticated user sees landing page at /", async ({ page }) => {
+    await page.goto("/");
+    await expect(
+      page.getByRole("heading", { name: /organize your work with pillar/i }),
+    ).toBeVisible();
   });
 
   test("login page renders correctly", async ({ page }) => {
@@ -67,7 +93,8 @@ test.describe("Authentication", () => {
     await page.getByLabel("Password").fill(TEST_USER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    // Should redirect to dashboard
+    // Should redirect to /home dashboard
+    await expect(page).toHaveURL(/\/home/, { timeout: 15000 });
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible({
       timeout: 15000,
     });
@@ -172,6 +199,7 @@ test.describe("Dashboard (authenticated)", () => {
     await page.getByLabel("Email").fill(TEST_USER.email);
     await page.getByLabel("Password").fill(TEST_USER.password);
     await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/home/, { timeout: 15000 });
     await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible({
       timeout: 15000,
     });

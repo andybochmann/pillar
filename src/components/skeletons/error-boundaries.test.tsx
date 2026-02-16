@@ -51,6 +51,6 @@ describe("Error boundaries", () => {
 
     expect(screen.getByText("Project not found")).toBeTruthy();
     const link = screen.getByRole("link", { name: "Back to Dashboard" });
-    expect(link.getAttribute("href")).toBe("/");
+    expect(link.getAttribute("href")).toBe("/home");
   });
 });

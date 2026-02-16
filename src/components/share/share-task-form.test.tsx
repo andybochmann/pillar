@@ -207,7 +207,7 @@ describe("ShareTaskForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
-    expect(mockPush).toHaveBeenCalledWith("/");
+    expect(mockPush).toHaveBeenCalledWith("/home");
   });
 
   it("disables submit when no title", async () => {
