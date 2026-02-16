@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
+import { useRouter } from "next/navigation";
 import type { Task, Project, Label } from "@/types";
 
 interface TaskListProps {
@@ -41,6 +42,7 @@ function getDueDateDisplay(dueDateStr?: string) {
 }
 
 export function TaskList({ tasks, projects, labels = [] }: TaskListProps) {
+  const router = useRouter();
   const projectMap = new Map(projects.map((p) => [p._id, p]));
   const labelMap = new Map(labels.map((l) => [l._id, l]));
 
@@ -71,7 +73,11 @@ export function TaskList({ tasks, projects, labels = [] }: TaskListProps) {
             const dueInfo = getDueDateDisplay(task.dueDate);
 
             return (
-              <TableRow key={task._id}>
+              <TableRow
+                key={task._id}
+                className="cursor-pointer"
+                onClick={() => router.push(`/projects/${task.projectId}`)}
+              >
                 <TableCell>
                   <div className="flex flex-col gap-0.5">
                     <span

@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { useBackButton } from "@/hooks/use-back-button";
+import { cleanupOverlay } from "@/lib/overlay-stack";
 
 export function DashboardShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -13,6 +14,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const handleMobileClose = useCallback(() => {
     setMobileOpen(false);
     navClosedAtRef.current = Date.now();
+  }, []);
+
+  // Close drawer after a Link navigation without calling history.back(),
+  // which would undo the navigation that the Link just pushed.
+  const handleNavigateClose = useCallback(() => {
+    cleanupOverlay("mobile-nav");
+    setMobileOpen(false);
   }, []);
 
   useBackButton("mobile-nav", mobileOpen, handleMobileClose);
@@ -41,7 +49,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         <SheetContent side="left" className="w-64 p-0" showCloseButton={false}>
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           <SheetDescription className="sr-only">Main navigation menu</SheetDescription>
-          <Sidebar onNavigate={() => setMobileOpen(false)} />
+          <Sidebar onNavigate={handleNavigateClose} />
         </SheetContent>
       </Sheet>
 
