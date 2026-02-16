@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import {
   Sheet,
   SheetContent,
@@ -22,6 +22,7 @@ import { TaskSubtasksSection } from "@/components/tasks/sections/task-subtasks-s
 import { TaskTimeTrackingSection } from "@/components/tasks/sections/task-time-tracking-section";
 import { TaskStatusHistorySection } from "@/components/tasks/sections/task-status-history-section";
 import { TaskActionsSection } from "@/components/tasks/sections/task-actions-section";
+import { getCompletionForColumnChange } from "@/lib/column-completion";
 import type {
   Task,
   Subtask,
@@ -128,6 +129,13 @@ function TaskSheetForm({
   onStopTracking,
   onDeleteSession,
 }: TaskSheetFormProps) {
+  const sortedColumns = useMemo(
+    () => [...columns].sort((a, b) => a.order - b.order),
+    [columns],
+  );
+  const firstColumnId = sortedColumns.length > 0 ? sortedColumns[0].id : null;
+  const lastColumnId = sortedColumns.length > 0 ? sortedColumns[sortedColumns.length - 1].id : null;
+
   const [priority, setPriority] = useState<Priority>(task.priority);
   const [columnId, setColumnId] = useState(task.columnId);
   const [dueDate, setDueDate] = useState(
@@ -207,8 +215,14 @@ function TaskSheetForm({
   }
 
   function handleColumnChange(value: string) {
+    const prevColumnId = columnId;
     setColumnId(value);
-    saveField({ columnId: value });
+    const completedAt = getCompletionForColumnChange(prevColumnId, value, columns);
+    if (completedAt !== undefined) {
+      saveField({ columnId: value, completedAt });
+    } else {
+      saveField({ columnId: value });
+    }
   }
 
   function handleDueDateChange(value: string) {
@@ -291,7 +305,15 @@ function TaskSheetForm({
   }
 
   async function handleTaskUpdate(data: { completedAt: string | null }) {
-    await onUpdate(task._id, data);
+    const enriched: Partial<Task> = { ...data };
+    if (data.completedAt && lastColumnId !== null) {
+      enriched.columnId = lastColumnId;
+      setColumnId(lastColumnId);
+    } else if (!data.completedAt && firstColumnId !== null) {
+      enriched.columnId = firstColumnId;
+      setColumnId(firstColumnId);
+    }
+    await onUpdate(task._id, enriched);
   }
 
   async function handleTaskDelete(taskId: string) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo, useEffect } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -24,6 +24,7 @@ import {
 import { KanbanColumn } from "./kanban-column";
 import { TaskCard } from "./task-card";
 import { TaskSheet } from "@/components/tasks/task-sheet";
+import { getCompletionForColumnChange } from "@/lib/column-completion";
 import type { BoardFilters } from "./board-filter-bar";
 import { BulkActionsBar } from "./bulk-actions-bar";
 import { useTasks } from "@/hooks/use-tasks";
@@ -77,6 +78,8 @@ export function KanbanBoard({
     () => [...columns].sort((a, b) => a.order - b.order),
     [columns],
   );
+
+  const dragStartColumnRef = useRef<string | null>(null);
 
   // Keyboard shortcut: "n" to open new task form in first column
   useEffect(() => {
@@ -161,6 +164,7 @@ export function KanbanBoard({
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t._id === event.active.id);
     setActiveTask(task ?? null);
+    dragStartColumnRef.current = task?.columnId ?? null;
     if (task) {
       setDndAnnouncement(`Picked up task: ${task.title}`);
     }
@@ -193,6 +197,8 @@ export function KanbanBoard({
 
   async function handleDragEnd(event: DragEndEvent) {
     setActiveTask(null);
+    const startColumn = dragStartColumnRef.current;
+    dragStartColumnRef.current = null;
 
     const { active, over } = event;
     if (!over) {
@@ -240,12 +246,21 @@ export function KanbanBoard({
         if (res.ok) setTasks(await res.json());
       }
     } else {
-      // Cross-column move — just persist the columnId change
+      // Cross-column move — persist columnId and sync completedAt
+      const updateData: Partial<Task> = {
+        columnId: task.columnId,
+        order: task.order,
+      };
+
+      if (startColumn) {
+        const completedAt = getCompletionForColumnChange(startColumn, task.columnId, columns);
+        if (completedAt !== undefined) {
+          updateData.completedAt = completedAt;
+        }
+      }
+
       try {
-        await updateTask(activeId, {
-          columnId: task.columnId,
-          order: task.order,
-        });
+        await updateTask(activeId, updateData);
       } catch {
         const res = await fetch(`/api/tasks?projectId=${projectId}`);
         if (res.ok) setTasks(await res.json());

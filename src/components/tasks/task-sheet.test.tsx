@@ -456,4 +456,49 @@ describe("TaskSheet", () => {
       });
     });
   });
+
+  describe("completedAt and column sync", () => {
+    it("Mark Complete sends completedAt and columnId of last column", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      await user.click(screen.getByRole("button", { name: "Mark Complete" }));
+
+      expect(onUpdate).toHaveBeenCalledWith(
+        "task-1",
+        expect.objectContaining({
+          completedAt: expect.any(String),
+          columnId: "done",
+        }),
+      );
+    });
+
+    it("Reopen sends completedAt null and columnId of first column", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      const completedTask = {
+        ...mockTask,
+        completedAt: "2026-03-01T00:00:00Z",
+        columnId: "done",
+      };
+      render(
+        <TaskSheet {...defaultProps} task={completedTask} onUpdate={onUpdate} />,
+      );
+
+      await user.click(screen.getByRole("button", { name: "Reopen" }));
+
+      expect(onUpdate).toHaveBeenCalledWith(
+        "task-1",
+        expect.objectContaining({
+          completedAt: null,
+          columnId: "todo",
+        }),
+      );
+    });
+
+    // Column dropdown sync logic (moving to/from last column sets/clears completedAt)
+    // is tested via the pure helper in src/lib/column-completion.test.ts.
+    // Radix UI Select cannot be interacted with in jsdom (see note at line 98).
+  });
 });
