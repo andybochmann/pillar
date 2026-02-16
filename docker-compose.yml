@@ -8,7 +8,7 @@ services:
     environment:
       - MONGODB_URI=mongodb://mongo:27017/pillar
       - AUTH_SECRET=${AUTH_SECRET:-change-me-in-production}
-      - AUTH_URL=http://localhost:3000
+      - AUTH_URL=${AUTH_URL:-http://localhost:3000}
       - AUTH_TRUST_HOST=true
       - AI_API_KEY=${AI_API_KEY:-}
       - AI_PROVIDER=${AI_PROVIDER:-openai}
@@ -37,8 +37,6 @@ services:
 
   mongo:
     image: mongo:7
-    ports:
-      - "27017:27017"
     volumes:
       - mongo-data:/data/db
     restart: unless-stopped
@@ -62,6 +60,16 @@ services:
     restart: unless-stopped
     profiles:
       - dev
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   mongo-data:
