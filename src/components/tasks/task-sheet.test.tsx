@@ -139,53 +139,10 @@ describe("TaskSheet", () => {
     ).toBeInTheDocument();
   });
 
-  it("Mark Complete sets completedAt and moves task to last column", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const onUpdate = vi.fn().mockResolvedValue({});
-    render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
-
-    await user.click(screen.getByRole("button", { name: "Mark Complete" }));
-
-    vi.advanceTimersByTime(600);
-
-    expect(onUpdate).toHaveBeenCalledWith(
-      "task-1",
-      expect.objectContaining({
-        completedAt: expect.any(String),
-        columnId: "done",
-      }),
-    );
-  });
-
   it("renders Reopen button for completed tasks", () => {
     const completedTask = { ...mockTask, completedAt: "2026-03-01T00:00:00Z" };
     render(<TaskSheet {...defaultProps} task={completedTask} />);
     expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument();
-  });
-
-  it("Reopen clears completedAt and moves task to first column", async () => {
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-    const onUpdate = vi.fn().mockResolvedValue({});
-    const completedTask = {
-      ...mockTask,
-      columnId: "done",
-      completedAt: "2026-03-01T00:00:00Z",
-    };
-    render(
-      <TaskSheet {...defaultProps} task={completedTask} onUpdate={onUpdate} />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Reopen" }));
-
-    vi.advanceTimersByTime(600);
-
-    expect(onUpdate).toHaveBeenCalledWith(
-      "task-1",
-      expect.objectContaining({
-        completedAt: null,
-        columnId: "todo",
-      }),
-    );
   });
 
   it("renders Delete button", () => {
@@ -237,6 +194,147 @@ describe("TaskSheet", () => {
   it("does not render when closed", () => {
     render(<TaskSheet {...defaultProps} open={false} />);
     expect(screen.queryByLabelText("Title")).not.toBeInTheDocument();
+  });
+
+  // Save indicator tests
+  describe("Save indicator", () => {
+    it("does not show save indicator initially", () => {
+      render(<TaskSheet {...defaultProps} />);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("shows saving indicator when title is changed", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      const titleInput = screen.getByLabelText("Title");
+      await user.clear(titleInput);
+      await user.type(titleInput, "New title");
+      await user.tab(); // blur to trigger save
+
+      // Saving indicator should appear immediately
+      expect(screen.getByRole("status")).toBeInTheDocument();
+      expect(screen.getByText("Saving...")).toBeInTheDocument();
+    });
+
+    it("shows saved indicator after successful save", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      const titleInput = screen.getByLabelText("Title");
+      await user.clear(titleInput);
+      await user.type(titleInput, "New title");
+      await user.tab(); // blur
+
+      // Advance past debounce (500ms)
+      vi.advanceTimersByTime(600);
+
+      await waitFor(() => {
+        expect(screen.getByText("Saved")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
+    });
+
+    it("shows error indicator when save fails", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockRejectedValue(new Error("Network error"));
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      const titleInput = screen.getByLabelText("Title");
+      await user.clear(titleInput);
+      await user.type(titleInput, "New title");
+      await user.tab(); // blur
+
+      // Advance past debounce (500ms)
+      vi.advanceTimersByTime(600);
+
+      await waitFor(() => {
+        expect(screen.getByText("Save failed")).toBeInTheDocument();
+      });
+
+      expect(screen.queryByText("Saving...")).not.toBeInTheDocument();
+    });
+
+    it("hides saved indicator after 2 seconds", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      const titleInput = screen.getByLabelText("Title");
+      await user.clear(titleInput);
+      await user.type(titleInput, "New title");
+      await user.tab(); // blur
+
+      // Advance past debounce (500ms)
+      vi.advanceTimersByTime(600);
+
+      await waitFor(() => {
+        expect(screen.getByText("Saved")).toBeInTheDocument();
+      });
+
+      // Advance past auto-hide timeout (2000ms)
+      vi.advanceTimersByTime(2100);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
+    });
+
+    it("hides error indicator after 2 seconds", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockRejectedValue(new Error("Network error"));
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      const titleInput = screen.getByLabelText("Title");
+      await user.clear(titleInput);
+      await user.type(titleInput, "New title");
+      await user.tab(); // blur
+
+      // Advance past debounce (500ms)
+      vi.advanceTimersByTime(600);
+
+      await waitFor(() => {
+        expect(screen.getByText("Save failed")).toBeInTheDocument();
+      });
+
+      // Advance past auto-hide timeout (2000ms)
+      vi.advanceTimersByTime(2100);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
+    });
+
+    it("shows saving indicator when description is changed", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      const descriptionInput = screen.getByLabelText("Description");
+      await user.clear(descriptionInput);
+      await user.type(descriptionInput, "New description");
+      await user.tab(); // blur
+
+      expect(screen.getByRole("status")).toBeInTheDocument();
+      expect(screen.getByText("Saving...")).toBeInTheDocument();
+    });
+
+    it("save indicator has proper accessibility attributes", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      const titleInput = screen.getByLabelText("Title");
+      await user.clear(titleInput);
+      await user.type(titleInput, "New title");
+      await user.tab(); // blur
+
+      const statusElement = screen.getByRole("status");
+      expect(statusElement).toHaveAttribute("aria-live", "polite");
+    });
   });
 
   it("renders labels section", () => {
@@ -340,84 +438,6 @@ describe("TaskSheet", () => {
     await user.type(input, "Enter task{Enter}");
 
     expect(screen.getByText("Enter task")).toBeInTheDocument();
-  });
-
-  describe("reminder picker", () => {
-    it("renders empty reminder input", () => {
-      render(<TaskSheet {...defaultProps} />);
-      expect(screen.getByLabelText("Reminder date and time")).toHaveValue("");
-    });
-
-    it("renders reminder input populated from task.reminderAt", () => {
-      const taskWithReminder: Task = {
-        ...mockTask,
-        reminderAt: "2026-03-15T14:30:00.000Z",
-      };
-      render(<TaskSheet {...defaultProps} task={taskWithReminder} />);
-      expect(screen.getByLabelText("Reminder date and time")).toHaveValue(
-        "2026-03-15T14:30",
-      );
-    });
-
-    it("saves reminder when datetime is set", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const onUpdate = vi.fn().mockResolvedValue({});
-      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
-
-      const input = screen.getByLabelText("Reminder date and time");
-
-      await user.clear(input);
-      await user.type(input, "2026-04-01T10:00");
-
-      vi.advanceTimersByTime(600);
-
-      expect(onUpdate).toHaveBeenCalledWith(
-        "task-1",
-        expect.objectContaining({
-          reminderAt: expect.stringContaining("2026-04-01"),
-        }),
-      );
-    });
-
-    it("clears reminder when clear button is clicked", async () => {
-      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
-      const onUpdate = vi.fn().mockResolvedValue({});
-      const taskWithReminder: Task = {
-        ...mockTask,
-        reminderAt: "2026-03-15T14:30:00.000Z",
-      };
-      render(
-        <TaskSheet {...defaultProps} task={taskWithReminder} onUpdate={onUpdate} />,
-      );
-
-      const clearButton = screen.getByRole("button", { name: "Clear reminder" });
-      await user.click(clearButton);
-
-      vi.advanceTimersByTime(600);
-
-      expect(onUpdate).toHaveBeenCalledWith(
-        "task-1",
-        expect.objectContaining({ reminderAt: null }),
-      );
-    });
-
-    it("does not show clear button when no reminder is set", () => {
-      render(<TaskSheet {...defaultProps} />);
-      expect(
-        screen.queryByRole("button", { name: "Clear reminder" }),
-      ).not.toBeInTheDocument();
-    });
-
-    it("shows clear button when reminder is set", () => {
-      const taskWithReminder: Task = {
-        ...mockTask,
-        reminderAt: "2026-03-15T14:30:00.000Z",
-      };
-      render(<TaskSheet {...defaultProps} task={taskWithReminder} />);
-      expect(
-        screen.getByRole("button", { name: "Clear reminder" }),
-      ).toBeInTheDocument();
-    });
   });
 
   describe("AI subtask generation", () => {

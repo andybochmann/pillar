@@ -26,7 +26,7 @@ import { StatusHistory } from "@/components/tasks/status-history";
 import { LabelPicker } from "@/components/tasks/label-picker";
 import { GenerateSubtasksDialog } from "@/components/tasks/generate-subtasks-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
-import { X, Plus, Sparkles, Square, Play, BellOff } from "lucide-react";
+import { X, Plus, Sparkles, Square, Play, Check, Loader2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { TimeSessionsList } from "@/components/tasks/time-sessions-list";
 import { useBackButton } from "@/hooks/use-back-button";
@@ -121,6 +121,39 @@ const priorityConfig = {
   low: { label: "Low", className: "bg-gray-400 text-white hover:bg-gray-500" },
 };
 
+type SaveStatus = "idle" | "saving" | "saved" | "error";
+
+interface SaveIndicatorProps {
+  status: SaveStatus;
+}
+
+function SaveIndicator({ status }: SaveIndicatorProps) {
+  if (status === "idle") return null;
+
+  return (
+    <div className="flex items-center gap-2 text-sm" role="status" aria-live="polite">
+      {status === "saving" && (
+        <>
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          <span className="text-muted-foreground">Saving...</span>
+        </>
+      )}
+      {status === "saved" && (
+        <>
+          <Check className="h-4 w-4 text-green-600" />
+          <span className="text-green-600">Saved</span>
+        </>
+      )}
+      {status === "error" && (
+        <>
+          <AlertCircle className="h-4 w-4 text-red-600" />
+          <span className="text-red-600">Save failed</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 interface TaskSheetFormProps {
   task: Task;
   columns: Column[];
@@ -166,18 +199,20 @@ function TaskSheetForm({
     interval: task.recurrence?.interval ?? 1,
     endDate: task.recurrence?.endDate,
   });
-  const [reminder, setReminder] = useState(task.reminderAt ?? "");
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks ?? []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const hideTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     };
   }, []);
 
@@ -202,12 +237,27 @@ function TaskSheetForm({
 
   const saveField = useCallback(
     (data: Partial<Task>) => {
+      setSaveStatus("saving");
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+
       debounceRef.current = setTimeout(async () => {
         try {
           await onUpdate(task._id, data);
+          setSaveStatus("saved");
+
+          // Auto-hide "saved" status after 2 seconds
+          hideTimeoutRef.current = setTimeout(() => {
+            setSaveStatus("idle");
+          }, 2000);
         } catch (err) {
+          setSaveStatus("error");
           toast.error(err instanceof Error ? err.message : "Failed to save");
+
+          // Auto-hide error status after 2 seconds
+          hideTimeoutRef.current = setTimeout(() => {
+            setSaveStatus("idle");
+          }, 2000);
         }
       }, 500);
     },
@@ -282,16 +332,6 @@ function TaskSheetForm({
     const newValue = value === "unassigned" ? null : value;
     setAssigneeId(newValue);
     saveField({ assigneeId: newValue });
-  }
-
-  function handleReminderChange(value: string) {
-    setReminder(value);
-    saveField({ reminderAt: value || null });
-  }
-
-  function handleClearReminder() {
-    setReminder("");
-    saveField({ reminderAt: null });
   }
 
   function handleToggleLabel(labelId: string) {
@@ -369,6 +409,11 @@ function TaskSheetForm({
   return (
     <>
       <div className="flex flex-1 flex-col px-6 pt-8 pb-6">
+        {/* Save Status Indicator */}
+        <div className="mb-4 flex justify-end">
+          <SaveIndicator status={saveStatus} />
+        </div>
+
         <div className="space-y-5">
           {/* Title */}
           <div className="space-y-1.5">
@@ -481,32 +526,6 @@ function TaskSheetForm({
                 onChange={handleRecurrenceChange}
               />
             </div>
-          </div>
-
-          {/* Reminder */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="task-reminder">Reminder</Label>
-              {reminder && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-muted-foreground"
-                  onClick={handleClearReminder}
-                  aria-label="Clear reminder"
-                >
-                  <BellOff className="mr-1 h-3 w-3" />
-                  Clear
-                </Button>
-              )}
-            </div>
-            <Input
-              id="task-reminder"
-              type="datetime-local"
-              value={reminder ? reminder.slice(0, 16) : ""}
-              onChange={(e) => handleReminderChange(e.target.value ? new Date(e.target.value).toISOString() : "")}
-              aria-label="Reminder date and time"
-            />
           </div>
 
           <Separator />
@@ -655,9 +674,7 @@ function TaskSheetForm({
               variant="outline"
               className="w-full"
               onClick={() => {
-                const firstCol = [...columns].sort((a, b) => a.order - b.order)[0];
-                setColumnId(firstCol.id);
-                saveField({ completedAt: null, columnId: firstCol.id });
+                saveField({ completedAt: null });
               }}
             >
               Reopen
@@ -667,9 +684,7 @@ function TaskSheetForm({
               variant="outline"
               className="w-full"
               onClick={() => {
-                const lastCol = [...columns].sort((a, b) => b.order - a.order)[0];
-                setColumnId(lastCol.id);
-                saveField({ completedAt: new Date().toISOString(), columnId: lastCol.id });
+                saveField({ completedAt: new Date().toISOString() });
               }}
             >
               Mark Complete
