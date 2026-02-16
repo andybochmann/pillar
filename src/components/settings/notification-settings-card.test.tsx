@@ -483,7 +483,7 @@ describe("NotificationSettingsCard", () => {
     });
   });
 
-  it("sends test notification when button clicked with permission", async () => {
+  it("sends test notification via service worker when controller available", async () => {
     const user = userEvent.setup();
     const { useNotificationPermission } = await import(
       "@/hooks/use-notification-permission"
@@ -492,6 +492,53 @@ describe("NotificationSettingsCard", () => {
       permission: "granted",
       requestPermission: mockRequestPermission,
       isSupported: true,
+    });
+
+    // Mock service worker controller
+    const mockPostMessage = vi.fn();
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: { controller: { postMessage: mockPostMessage } },
+      configurable: true,
+    });
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockPreferences),
+    } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /Send Test Notification/i }),
+      ).toBeInTheDocument();
+    });
+
+    const button = screen.getByRole("button", { name: /Send Test Notification/i });
+    await user.click(button);
+
+    expect(mockPostMessage).toHaveBeenCalledWith({
+      type: "SHOW_NOTIFICATION",
+      title: "Test Notification",
+      body: "Your notification settings are working!",
+    });
+  });
+
+  it("falls back to Notification constructor when no service worker controller", async () => {
+    const user = userEvent.setup();
+    const { useNotificationPermission } = await import(
+      "@/hooks/use-notification-permission"
+    );
+    vi.mocked(useNotificationPermission).mockReturnValue({
+      permission: "granted",
+      requestPermission: mockRequestPermission,
+      isSupported: true,
+    });
+
+    // No service worker controller
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: { controller: null },
+      configurable: true,
     });
 
     // Mock Notification constructor

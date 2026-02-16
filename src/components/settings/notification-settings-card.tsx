@@ -272,10 +272,18 @@ export function NotificationSettingsCard() {
             variant="outline"
             onClick={() => {
               if (isSupported && permission === "granted") {
-                new Notification("Test Notification", {
-                  body: "Your notification settings are working!",
-                  icon: "/icon-192.png",
-                });
+                if (navigator.serviceWorker?.controller) {
+                  navigator.serviceWorker.controller.postMessage({
+                    type: "SHOW_NOTIFICATION",
+                    title: "Test Notification",
+                    body: "Your notification settings are working!",
+                  });
+                } else {
+                  new Notification("Test Notification", {
+                    body: "Your notification settings are working!",
+                    icon: "/icon-192.png",
+                  });
+                }
                 toast.success("Test notification sent");
               } else {
                 toast.error("Browser notifications not enabled");
