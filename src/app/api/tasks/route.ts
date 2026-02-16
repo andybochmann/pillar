@@ -221,7 +221,9 @@ export async function POST(request: Request) {
     // Auto-schedule reminder from user's reminderTimings preference
     // when task has a dueDate but no explicit reminderAt
     if (result.data.dueDate && !result.data.reminderAt) {
-      scheduleNextReminder(task._id.toString()).catch(() => {});
+      scheduleNextReminder(task._id.toString()).catch((err) => {
+        console.error(`[tasks/POST] Failed to schedule reminder for task ${task._id}:`, err);
+      });
     }
 
     const targetUserIds = await getProjectMemberUserIds(result.data.projectId);

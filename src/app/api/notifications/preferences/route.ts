@@ -99,7 +99,9 @@ export async function PATCH(request: Request) {
 
   // Recalculate reminders for existing tasks when timings change
   if (result.data.reminderTimings) {
-    recalculateRemindersForUser(session.user.id).catch(() => {});
+    recalculateRemindersForUser(session.user.id).catch((err) => {
+      console.error(`[preferences/PATCH] Failed to recalculate reminders for user ${session.user.id}:`, err);
+    });
   }
 
   return NextResponse.json(serializePreferences(preferences));

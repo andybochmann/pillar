@@ -146,6 +146,86 @@ describe("notification-worker push URL", () => {
   });
 });
 
+describe("notification-worker missing preferences", () => {
+  it("creates reminder notifications with defaults when no preference record exists", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    await createTestTask({
+      title: "Reminder without prefs",
+      userId: user._id,
+      projectId: project._id,
+      reminderAt: new Date(Date.now() - 60_000), // 1 min ago
+    });
+
+    // Deliberately NO NotificationPreference created
+
+    await processNotifications(user._id.toString());
+
+    const created = await Notification.find({ userId: user._id });
+    expect(created).toHaveLength(1);
+    expect(created[0].type).toBe("reminder");
+    // Push should NOT be sent (enableBrowserPush defaults to false)
+    expect(pushPayloads).toHaveLength(0);
+  });
+
+  it("creates overdue notifications with defaults when no preference record exists", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    await createTestTask({
+      title: "Overdue without prefs",
+      userId: user._id,
+      projectId: project._id,
+      dueDate: new Date(Date.now() - 24 * 60 * 60_000), // yesterday
+    });
+
+    // Deliberately NO NotificationPreference created
+
+    await processNotifications(user._id.toString());
+
+    const created = await Notification.find({ userId: user._id, type: "overdue" });
+    expect(created).toHaveLength(1);
+    expect(created[0].type).toBe("overdue");
+  });
+
+  it("auto-creates preference record when processing user with missing prefs", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    await createTestTask({
+      title: "Task triggers pref creation",
+      userId: user._id,
+      projectId: project._id,
+      reminderAt: new Date(Date.now() - 60_000),
+    });
+
+    // No prefs record initially
+    const before = await NotificationPreference.findOne({ userId: user._id });
+    expect(before).toBeNull();
+
+    await processNotifications(user._id.toString());
+
+    // Prefs record should now exist with defaults
+    const after = await NotificationPreference.findOne({ userId: user._id });
+    expect(after).not.toBeNull();
+    expect(after!.enableInAppNotifications).toBe(true);
+    expect(after!.enableBrowserPush).toBe(false);
+  });
+});
+
 describe("notification-worker preference gating", () => {
   it("creates reminder notifications when in-app is disabled but browser push is enabled", async () => {
     const user = await createTestUser();

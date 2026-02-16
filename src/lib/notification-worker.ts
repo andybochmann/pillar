@@ -44,13 +44,40 @@ function shouldSkipUser(
 
 /**
  * Batch-load preferences for a set of user IDs.
+ * Auto-creates default preference records for users that don't have one yet,
+ * so notifications work out of the box without requiring a settings page visit.
  */
 async function loadPreferencesMap(
   userIds: mongoose.Types.ObjectId[],
 ): Promise<Map<string, INotificationPreference>> {
   if (userIds.length === 0) return new Map();
   const prefs = await NotificationPreference.find({ userId: { $in: userIds } });
-  return new Map(prefs.map((p) => [p.userId.toString(), p]));
+  const map = new Map(prefs.map((p) => [p.userId.toString(), p]));
+
+  // Auto-create default preferences for users missing records
+  const missingIds = userIds.filter((id) => !map.has(id.toString()));
+  if (missingIds.length > 0) {
+    const created = await Promise.all(
+      missingIds.map((userId) =>
+        NotificationPreference.create({ userId }).catch((err) => {
+          // Unique constraint race: another worker beat us to it
+          if ((err as { code?: number }).code === 11000) {
+            return NotificationPreference.findOne({ userId });
+          }
+          console.error(
+            `[notification-worker] Failed to create default preferences for user ${userId}:`,
+            err,
+          );
+          return null;
+        }),
+      ),
+    );
+    for (const pref of created) {
+      if (pref) map.set(pref.userId.toString(), pref);
+    }
+  }
+
+  return map;
 }
 
 /**
@@ -85,8 +112,8 @@ function emitNotification(
       taskId,
       tag,
       url: projectId ? `/projects/${projectId}` : "/",
-    }).catch(() => {
-      // Push failures are non-blocking
+    }).catch((err) => {
+      console.error(`[notification-worker] Push failed for user ${userId}:`, err);
     });
   }
 }
@@ -245,7 +272,9 @@ async function processReminders(
 
     // Clear reminderAt (one-shot) then schedule next timing
     await Task.updateOne({ _id: task._id }, { $unset: { reminderAt: 1 } });
-    scheduleNextReminder(taskId).catch(() => {});
+    scheduleNextReminder(taskId).catch((err) => {
+      console.error(`[notification-worker] Failed to schedule next reminder for task ${taskId}:`, err);
+    });
   }
 
   return created;

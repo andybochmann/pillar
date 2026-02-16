@@ -185,7 +185,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     ) {
       // Clear existing reminderAt so scheduleNextReminder can set a new one
       await Task.updateOne({ _id: id }, { $unset: { reminderAt: 1 } });
-      scheduleNextReminder(id).catch(() => {});
+      scheduleNextReminder(id).catch((err) => {
+        console.error(`[tasks/PATCH] Failed to schedule reminder for task ${id}:`, err);
+      });
     }
 
     const sessionId = request.headers.get("X-Session-Id") ?? "";

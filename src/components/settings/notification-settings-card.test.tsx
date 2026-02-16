@@ -477,7 +477,7 @@ describe("NotificationSettingsCard", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /Send Test Notification/i }),
+        screen.getByRole("button", { name: /Test Local Notification/i }),
       ).toBeInTheDocument();
     });
   });
@@ -492,7 +492,7 @@ describe("NotificationSettingsCard", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /Send Test Notification/i }),
+        screen.getByRole("button", { name: /Test Local Notification/i }),
       ).toBeDisabled();
     });
   });
@@ -524,17 +524,17 @@ describe("NotificationSettingsCard", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /Send Test Notification/i }),
+        screen.getByRole("button", { name: /Test Local Notification/i }),
       ).toBeInTheDocument();
     });
 
-    const button = screen.getByRole("button", { name: /Send Test Notification/i });
+    const button = screen.getByRole("button", { name: /Test Local Notification/i });
     await user.click(button);
 
     expect(mockPostMessage).toHaveBeenCalledWith({
       type: "SHOW_NOTIFICATION",
-      title: "Test Notification",
-      body: "Your notification settings are working!",
+      title: "Test Local Notification",
+      body: "Browser notification display is working!",
     });
   });
 
@@ -568,17 +568,17 @@ describe("NotificationSettingsCard", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("button", { name: /Send Test Notification/i }),
+        screen.getByRole("button", { name: /Test Local Notification/i }),
       ).toBeInTheDocument();
     });
 
-    const button = screen.getByRole("button", { name: /Send Test Notification/i });
+    const button = screen.getByRole("button", { name: /Test Local Notification/i });
     await user.click(button);
 
     expect(mockNotification).toHaveBeenCalledWith(
-      "Test Notification",
+      "Test Local Notification",
       expect.objectContaining({
-        body: "Your notification settings are working!",
+        body: "Browser notification display is working!",
       }),
     );
   });

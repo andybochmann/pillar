@@ -365,8 +365,8 @@ export function NotificationSettingsCard() {
           />
         </div>
 
-        {/* Test Notification Button */}
-        <div className="border-muted-foreground/20 border-t pt-4">
+        {/* Test Notification Buttons */}
+        <div className="border-muted-foreground/20 space-y-2 border-t pt-4">
           <Button
             variant="outline"
             onClick={() => {
@@ -374,16 +374,16 @@ export function NotificationSettingsCard() {
                 if (navigator.serviceWorker?.controller) {
                   navigator.serviceWorker.controller.postMessage({
                     type: "SHOW_NOTIFICATION",
-                    title: "Test Notification",
-                    body: "Your notification settings are working!",
+                    title: "Test Local Notification",
+                    body: "Browser notification display is working!",
                   });
                 } else {
-                  new Notification("Test Notification", {
-                    body: "Your notification settings are working!",
-                    icon: "/icon-192.png",
+                  new Notification("Test Local Notification", {
+                    body: "Browser notification display is working!",
+                    icon: "/icons/icon-192x192.png",
                   });
                 }
-                toast.success("Test notification sent");
+                toast.success("Local notification sent");
               } else {
                 toast.error("Browser notifications not enabled");
               }
@@ -391,8 +391,33 @@ export function NotificationSettingsCard() {
             disabled={!isSupported || permission !== "granted"}
           >
             <Bell className="mr-2 h-4 w-4" />
-            Send Test Notification
+            Test Local Notification
           </Button>
+          {preferences.enableBrowserPush && (
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const res = await fetch("/api/push/test", { method: "POST" });
+                  const data = await res.json();
+                  if (!res.ok) {
+                    toast.error(data.error || "Push test failed");
+                    return;
+                  }
+                  if (data.sent > 0) {
+                    toast.success(data.message);
+                  } else {
+                    toast.error(data.message);
+                  }
+                } catch {
+                  toast.error("Failed to send test push notification");
+                }
+              }}
+            >
+              <Bell className="mr-2 h-4 w-4" />
+              Test Push Notification (Server)
+            </Button>
+          )}
         </div>
       </CardContent>
     </Card>
