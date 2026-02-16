@@ -125,9 +125,21 @@ interface UseNotificationsReturn {
  * - The hook automatically prevents duplicate notifications from being added
  * - Automatically refetches notifications when reconnecting to network
  */
+interface UseNotificationsOptions {
+  initialNotifications?: Notification[];
+  enableBrowserPush?: boolean;
+}
+
 export function useNotifications(
-  initialNotifications: Notification[] = []
+  initialNotificationsOrOptions?: Notification[] | UseNotificationsOptions
 ): UseNotificationsReturn {
+  // Support both array (legacy) and options object signatures
+  const options =
+    Array.isArray(initialNotificationsOrOptions) || !initialNotificationsOrOptions
+      ? { initialNotifications: initialNotificationsOrOptions ?? [] }
+      : initialNotificationsOrOptions;
+  const initialNotifications = options.initialNotifications ?? [];
+  const enableBrowserPush = options.enableBrowserPush ?? false;
   const [notifications, setNotifications] = useState<Notification[]>(
     initialNotifications
   );
@@ -288,12 +300,13 @@ export function useNotifications(
         return [newNotification, ...prev];
       });
 
-      // Send push notification via service worker when tab is not focused
+      // Send push notification via service worker when tab is not focused,
+      // or when the user has explicitly opted into browser push notifications
       if (
-        !document.hasFocus() &&
         typeof Notification !== "undefined" &&
         Notification.permission === "granted" &&
-        navigator.serviceWorker?.controller
+        navigator.serviceWorker?.controller &&
+        (!document.hasFocus() || enableBrowserPush)
       ) {
         navigator.serviceWorker.controller.postMessage({
           type: "SHOW_NOTIFICATION",
@@ -310,7 +323,7 @@ export function useNotifications(
 
     window.addEventListener("pillar:notification", handler);
     return () => window.removeEventListener("pillar:notification", handler);
-  }, []);
+  }, [enableBrowserPush]);
 
   useRefetchOnReconnect(
     useCallback(() => {

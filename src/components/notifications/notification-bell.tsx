@@ -26,6 +26,18 @@ export function NotificationBell({
   className,
   iconSize = 18,
 }: NotificationBellProps) {
+  const [enableBrowserPush, setEnableBrowserPush] = useState(false);
+
+  // Fetch browser push preference once on mount
+  useEffect(() => {
+    fetch("/api/notifications/preferences")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.enableBrowserPush) setEnableBrowserPush(true);
+      })
+      .catch(() => {});
+  }, []);
+
   const {
     notifications,
     fetchNotifications,
@@ -33,7 +45,7 @@ export function NotificationBell({
     markAsDismissed,
     dismissAll,
     snoozeNotification,
-  } = useNotifications();
+  } = useNotifications({ enableBrowserPush });
   const [open, setOpen] = useState(false);
 
   // Fetch notifications on mount

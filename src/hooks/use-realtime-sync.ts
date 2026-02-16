@@ -35,6 +35,13 @@ export function useRealtimeSync(): void {
       window.dispatchEvent(new CustomEvent("pillar:sync", { detail: data }));
     });
 
+    es.addEventListener("notification", (event: MessageEvent) => {
+      const data = JSON.parse(event.data);
+      window.dispatchEvent(
+        new CustomEvent("pillar:notification", { detail: data }),
+      );
+    });
+
     es.onerror = () => {
       es.close();
       esRef.current = null;

@@ -377,7 +377,7 @@ describe("useNotifications", () => {
       });
     });
 
-    it("does not post to service worker when tab is focused", () => {
+    it("does not post to service worker when tab is focused and enableBrowserPush is false", () => {
       const postMessageMock = vi.fn();
       Object.defineProperty(navigator, "serviceWorker", {
         value: { controller: { postMessage: postMessageMock } },
@@ -403,6 +403,46 @@ describe("useNotifications", () => {
       });
 
       expect(postMessageMock).not.toHaveBeenCalled();
+    });
+
+    it("posts to service worker when tab is focused but enableBrowserPush is true", () => {
+      const postMessageMock = vi.fn();
+      Object.defineProperty(navigator, "serviceWorker", {
+        value: { controller: { postMessage: postMessageMock } },
+        configurable: true,
+        writable: true,
+      });
+      vi.stubGlobal("Notification", { permission: "granted" });
+      vi.spyOn(document, "hasFocus").mockReturnValue(true);
+
+      renderHook(() =>
+        useNotifications({ enableBrowserPush: true })
+      );
+
+      const event: NotificationEvent = {
+        type: "reminder",
+        notificationId: "notif-push-focused",
+        userId: "u1",
+        taskId: "task-push",
+        title: "Push While Focused",
+        message: "Should go to SW",
+        timestamp: Date.now(),
+      };
+
+      act(() => {
+        emitNotification(event);
+      });
+
+      expect(postMessageMock).toHaveBeenCalledWith({
+        type: "SHOW_NOTIFICATION",
+        title: "Push While Focused",
+        body: "Should go to SW",
+        data: {
+          notificationId: "notif-push-focused",
+          taskId: "task-push",
+          url: "/",
+        },
+      });
     });
 
     it("does not post to service worker when permission is denied", () => {

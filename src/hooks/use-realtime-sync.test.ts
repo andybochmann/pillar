@@ -124,6 +124,35 @@ describe("useRealtimeSync", () => {
     });
   });
 
+  it("dispatches pillar:notification CustomEvent on receiving notification message", async () => {
+    const dispatchSpy = vi.spyOn(window, "dispatchEvent");
+    renderHook(() => useRealtimeSync());
+
+    const es = MockEventSource.instances[0];
+    const notifData = {
+      type: "reminder",
+      notificationId: "notif-1",
+      userId: "u1",
+      taskId: "task-1",
+      title: "Reminder",
+      message: "Task is due soon",
+      timestamp: Date.now(),
+    };
+
+    await act(async () => {
+      es._emit("notification", notifData);
+    });
+
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "pillar:notification",
+        detail: notifData,
+      }),
+    );
+
+    dispatchSpy.mockRestore();
+  });
+
   it("dispatches pillar:reconnected on reconnection after error", async () => {
     const dispatchSpy = vi.spyOn(window, "dispatchEvent");
     renderHook(() => useRealtimeSync());
