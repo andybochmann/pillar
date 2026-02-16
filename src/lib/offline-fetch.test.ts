@@ -144,4 +144,84 @@ describe("offlineFetch", () => {
       undefined,
     );
   });
+
+  describe("background sync registration", () => {
+    it("registers background sync after queuing a mutation", async () => {
+      Object.defineProperty(navigator, "onLine", {
+        value: false,
+        writable: true,
+        configurable: true,
+      });
+
+      const syncRegisterMock = vi.fn().mockResolvedValue(undefined);
+      const readyPromise = Promise.resolve({
+        sync: { register: syncRegisterMock },
+      } as unknown as ServiceWorkerRegistration);
+
+      Object.defineProperty(navigator, "serviceWorker", {
+        value: { ready: readyPromise },
+        writable: true,
+        configurable: true,
+      });
+
+      await offlineFetch("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({ title: "Offline task" }),
+      });
+
+      // Wait for the async sync registration
+      await readyPromise;
+      // Allow microtask queue to flush
+      await new Promise((r) => setTimeout(r, 0));
+
+      expect(syncRegisterMock).toHaveBeenCalledWith("pillar-offline-sync");
+    });
+
+    it("does not throw when SyncManager is unavailable", async () => {
+      Object.defineProperty(navigator, "onLine", {
+        value: false,
+        writable: true,
+        configurable: true,
+      });
+
+      const readyPromise = Promise.resolve(
+        {} as ServiceWorkerRegistration,
+      );
+
+      Object.defineProperty(navigator, "serviceWorker", {
+        value: { ready: readyPromise },
+        writable: true,
+        configurable: true,
+      });
+
+      // Should not throw even when sync is undefined
+      await expect(
+        offlineFetch("/api/tasks", {
+          method: "POST",
+          body: JSON.stringify({ title: "No sync" }),
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    it("does not throw when serviceWorker is unavailable", async () => {
+      Object.defineProperty(navigator, "onLine", {
+        value: false,
+        writable: true,
+        configurable: true,
+      });
+
+      Object.defineProperty(navigator, "serviceWorker", {
+        value: undefined,
+        writable: true,
+        configurable: true,
+      });
+
+      await expect(
+        offlineFetch("/api/tasks", {
+          method: "POST",
+          body: JSON.stringify({ title: "No SW" }),
+        }),
+      ).resolves.toBeDefined();
+    });
+  });
 });

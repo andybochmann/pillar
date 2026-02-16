@@ -1,6 +1,16 @@
 import { addToQueue } from "./offline-queue";
 import { getSessionId } from "./session-id";
 
+function requestBackgroundSync() {
+  try {
+    navigator.serviceWorker?.ready.then((reg) => {
+      reg.sync?.register("pillar-offline-sync");
+    });
+  } catch {
+    // SyncManager not supported — fall back to in-app sync on reconnect
+  }
+}
+
 export async function offlineFetch(input: string | URL | Request, init?: RequestInit): Promise<Response> {
   const method = (init?.method ?? "GET").toUpperCase();
   const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
@@ -24,6 +34,7 @@ export async function offlineFetch(input: string | URL | Request, init?: Request
 
   const body = init?.body ? JSON.parse(init.body as string) : undefined;
   await addToQueue({ method: method as "POST" | "PATCH" | "DELETE", url, body });
+  requestBackgroundSync();
 
   const syntheticBody = method === "DELETE" ? {} : { ...body, _id: `offline-${crypto.randomUUID()}` };
   return new Response(JSON.stringify(syntheticBody), {

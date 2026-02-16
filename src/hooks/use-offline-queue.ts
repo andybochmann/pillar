@@ -107,5 +107,19 @@ export function useOfflineQueue() {
     refreshCount();
   }, [isOnline, refreshCount]);
 
+  // Listen for Background Sync completion from service worker
+  useEffect(() => {
+    function onSwMessage(event: MessageEvent) {
+      if (event.data?.type === "SYNC_COMPLETE") {
+        refreshCount();
+        window.dispatchEvent(new CustomEvent("pillar:sync-complete"));
+      }
+    }
+    navigator.serviceWorker?.addEventListener("message", onSwMessage);
+    return () => {
+      navigator.serviceWorker?.removeEventListener("message", onSwMessage);
+    };
+  }, [refreshCount]);
+
   return { isOnline, queueCount, syncing, syncNow, refreshCount };
 }

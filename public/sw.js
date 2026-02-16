@@ -171,6 +171,114 @@ self.addEventListener("message", (event) => {
   }
 });
 
+// Background Sync: replay offline mutation queue
+self.addEventListener("sync", (event) => {
+  if (event.tag === "pillar-offline-sync") {
+    event.waitUntil(replayOfflineQueue());
+  }
+});
+
+async function replayOfflineQueue() {
+  const DB_NAME = "pillar-offline";
+  const STORE_NAME = "mutations";
+  const DB_VERSION = 1;
+  const MAX_RETRIES = 3;
+  const BASE_DELAY_MS = 1000;
+
+  // Generate a session ID for replayed requests
+  const sessionId = crypto.randomUUID();
+
+  // Open IndexedDB directly (can't import from src/ in SW)
+  const db = await new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+
+  // Read all queued mutations sorted by timestamp
+  const mutations = await new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+    req.onsuccess = () => {
+      const items = req.result || [];
+      items.sort((a, b) => a.timestamp - b.timestamp);
+      resolve(items);
+    };
+    req.onerror = () => reject(req.error);
+  });
+
+  if (mutations.length === 0) {
+    db.close();
+    return;
+  }
+
+  let hadFailure = false;
+
+  for (const mutation of mutations) {
+    const ok = await replayOneMutation(mutation, sessionId, MAX_RETRIES, BASE_DELAY_MS);
+    if (ok) {
+      // Delete successful entry from IndexedDB
+      await new Promise((resolve, reject) => {
+        const tx = db.transaction(STORE_NAME, "readwrite");
+        const store = tx.objectStore(STORE_NAME);
+        const req = store.delete(mutation.id);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    } else {
+      hadFailure = true;
+    }
+  }
+
+  db.close();
+
+  // Notify all open clients so the UI refreshes
+  const allClients = await self.clients.matchAll({ type: "window" });
+  for (const client of allClients) {
+    client.postMessage({ type: "SYNC_COMPLETE" });
+  }
+
+  // If any failed, throw so the browser retries the sync event later
+  if (hadFailure) {
+    throw new Error("Some offline mutations failed to sync");
+  }
+}
+
+async function replayOneMutation(mutation, sessionId, maxRetries, baseDelay) {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const init = {
+        method: mutation.method,
+        headers: {
+          "Content-Type": "application/json",
+          "X-Session-Id": sessionId,
+        },
+      };
+      if (mutation.body !== undefined) {
+        init.body = JSON.stringify(mutation.body);
+      }
+
+      const res = await fetch(mutation.url, init);
+      if (res.ok) return true;
+      // Client errors (4xx) are permanent — skip retries
+      if (res.status >= 400 && res.status < 500) return false;
+    } catch {
+      // Network error — retry
+    }
+    if (attempt < maxRetries - 1) {
+      await new Promise((r) => setTimeout(r, baseDelay * Math.pow(2, attempt)));
+    }
+  }
+  return false;
+}
+
 // Notification click: navigate to task or notification center
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
