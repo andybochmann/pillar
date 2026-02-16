@@ -178,6 +178,37 @@ describe("useNotifications", () => {
     ).rejects.toThrow("Not found");
   });
 
+  it("dismisses all notifications optimistically", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true, count: 1 }),
+    } as Response);
+
+    const { result } = renderHook(() => useNotifications(mockNotifications));
+
+    await act(async () => {
+      await result.current.dismissAll();
+    });
+
+    expect(result.current.notifications.every((n) => n.dismissed)).toBe(true);
+    expect(global.fetch).toHaveBeenCalledWith("/api/notifications", expect.objectContaining({
+      method: "DELETE",
+    }));
+  });
+
+  it("throws on dismissAll failure", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "Server error" }),
+    } as Response);
+
+    const { result } = renderHook(() => useNotifications(mockNotifications));
+
+    await expect(
+      act(() => result.current.dismissAll())
+    ).rejects.toThrow("Server error");
+  });
+
   it("throws on markAsDismissed failure", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,

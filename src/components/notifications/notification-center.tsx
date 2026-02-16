@@ -6,7 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { NotificationItem } from "./notification-item";
 import { useNotifications } from "@/hooks/use-notifications";
 import { toast } from "sonner";
-import { CheckCheck, Inbox } from "lucide-react";
+import { CheckCheck, Inbox, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Notification } from "@/types";
 
@@ -30,12 +30,14 @@ export function NotificationCenter({
     fetchNotifications,
     markAsRead,
     markAsDismissed,
+    dismissAll,
     snoozeNotification,
     deleteNotification,
   } = useNotifications(initialNotifications);
 
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
   const [isMarkingAllAsRead, setIsMarkingAllAsRead] = useState(false);
+  const [isDismissingAll, setIsDismissingAll] = useState(false);
 
   // Fetch all notifications on mount
   useEffect(() => {
@@ -136,6 +138,26 @@ export function NotificationCenter({
     }
   }, [notifications, markAsRead]);
 
+  const handleDismissAll = useCallback(async () => {
+    const activeNotifications = notifications.filter((n) => !n.dismissed);
+    if (activeNotifications.length === 0) return;
+
+    setIsDismissingAll(true);
+    try {
+      await dismissAll();
+      toast.success("All notifications cleared");
+    } catch {
+      toast.error("Failed to clear notifications");
+    } finally {
+      setIsDismissingAll(false);
+    }
+  }, [notifications, dismissAll]);
+
+  const hasActiveNotifications = useMemo(
+    () => notifications.some((n) => !n.dismissed),
+    [notifications]
+  );
+
   const renderContent = () => {
     if (error) {
       return (
@@ -199,18 +221,32 @@ export function NotificationCenter({
     <div className={cn("flex flex-col", className)}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold">Notifications</h2>
-        {unreadCount > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleMarkAllAsRead}
-            disabled={isMarkingAllAsRead}
-            className="gap-1.5"
-          >
-            <CheckCheck className="h-4 w-4" />
-            Mark all as read
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleMarkAllAsRead}
+              disabled={isMarkingAllAsRead}
+              className="gap-1.5"
+            >
+              <CheckCheck className="h-4 w-4" />
+              Mark all as read
+            </Button>
+          )}
+          {hasActiveNotifications && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDismissAll}
+              disabled={isDismissingAll}
+              className="gap-1.5"
+            >
+              <Trash2 className="h-4 w-4" />
+              Clear all
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as FilterTab)}>

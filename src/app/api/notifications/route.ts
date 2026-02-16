@@ -55,6 +55,22 @@ export async function GET(request: Request) {
   return NextResponse.json(notifications);
 }
 
+export async function DELETE() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  await connectDB();
+
+  const result = await Notification.updateMany(
+    { userId: session.user.id, dismissed: false },
+    { $set: { dismissed: true } }
+  );
+
+  return NextResponse.json({ success: true, count: result.modifiedCount });
+}
+
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {

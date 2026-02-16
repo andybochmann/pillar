@@ -18,7 +18,7 @@ vi.mock("@/lib/auth", () => ({
 }));
 
 // Import handlers after mocks
-import { GET, POST } from "./route";
+import { GET, POST, DELETE } from "./route";
 
 beforeAll(async () => {
   await setupTestDB();
@@ -259,6 +259,101 @@ describe("GET /api/notifications", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     expect(data).toHaveLength(3);
+  });
+});
+
+describe("DELETE /api/notifications", () => {
+  it("returns 401 if not authenticated", async () => {
+    vi.mocked(await import("@/lib/auth")).auth.mockResolvedValueOnce(null);
+    const response = await DELETE();
+    expect(response.status).toBe(401);
+    const data = await response.json();
+    expect(data.error).toBe("Unauthorized");
+  });
+
+  it("bulk dismisses all non-dismissed notifications for the user", async () => {
+    const user = await createTestUser();
+    session.user.id = user._id.toString();
+
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({ userId: user._id, categoryId: category._id });
+    const task = await createTestTask({ userId: user._id, projectId: project._id });
+
+    await Notification.create({
+      userId: user._id,
+      taskId: task._id,
+      type: "reminder",
+      title: "Active 1",
+      message: "Active notification 1",
+      dismissed: false,
+    });
+
+    await Notification.create({
+      userId: user._id,
+      taskId: task._id,
+      type: "overdue",
+      title: "Active 2",
+      message: "Active notification 2",
+      dismissed: false,
+    });
+
+    await Notification.create({
+      userId: user._id,
+      taskId: task._id,
+      type: "reminder",
+      title: "Already dismissed",
+      message: "Already dismissed",
+      dismissed: true,
+    });
+
+    const response = await DELETE();
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+    expect(data.count).toBe(2);
+
+    // Verify all are now dismissed
+    const remaining = await Notification.find({ userId: user._id, dismissed: false });
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("does not dismiss other users' notifications", async () => {
+    const user = await createTestUser();
+    session.user.id = user._id.toString();
+
+    const otherUser = await createTestUser();
+    const category = await createTestCategory({ userId: otherUser._id });
+    const project = await createTestProject({ userId: otherUser._id, categoryId: category._id });
+    const task = await createTestTask({ userId: otherUser._id, projectId: project._id });
+
+    await Notification.create({
+      userId: otherUser._id,
+      taskId: task._id,
+      type: "reminder",
+      title: "Other user notification",
+      message: "Should not be dismissed",
+      dismissed: false,
+    });
+
+    const response = await DELETE();
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.count).toBe(0);
+
+    // Verify other user's notification is untouched
+    const otherNotifs = await Notification.find({ userId: otherUser._id, dismissed: false });
+    expect(otherNotifs).toHaveLength(1);
+  });
+
+  it("returns count 0 when no notifications to dismiss", async () => {
+    const user = await createTestUser();
+    session.user.id = user._id.toString();
+
+    const response = await DELETE();
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data.success).toBe(true);
+    expect(data.count).toBe(0);
   });
 });
 

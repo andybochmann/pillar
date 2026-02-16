@@ -8,6 +8,7 @@ import type { Notification } from "@/types";
 const mockFetchNotifications = vi.fn();
 const mockMarkAsRead = vi.fn();
 const mockMarkAsDismissed = vi.fn();
+const mockDismissAll = vi.fn();
 const mockSnoozeNotification = vi.fn();
 const mockDeleteNotification = vi.fn();
 let mockNotifications: Notification[] = [];
@@ -23,6 +24,7 @@ vi.mock("@/hooks/use-notifications", () => ({
     fetchNotifications: mockFetchNotifications,
     markAsRead: mockMarkAsRead,
     markAsDismissed: mockMarkAsDismissed,
+    dismissAll: mockDismissAll,
     snoozeNotification: mockSnoozeNotification,
     deleteNotification: mockDeleteNotification,
   }),
@@ -384,5 +386,63 @@ describe("NotificationCenter", () => {
     render(<NotificationCenter />);
     const icon = document.querySelector(".lucide-inbox");
     expect(icon).toBeInTheDocument();
+  });
+
+  it("shows clear all button when there are active notifications", () => {
+    mockNotifications.push(baseNotification);
+    render(<NotificationCenter />);
+    expect(screen.getByRole("button", { name: /clear all/i })).toBeInTheDocument();
+  });
+
+  it("does not show clear all button when all notifications are dismissed", () => {
+    mockNotifications.push({ ...baseNotification, dismissed: true });
+    render(<NotificationCenter />);
+    expect(screen.queryByRole("button", { name: /clear all/i })).not.toBeInTheDocument();
+  });
+
+  it("does not show clear all button when no notifications", () => {
+    render(<NotificationCenter />);
+    expect(screen.queryByRole("button", { name: /clear all/i })).not.toBeInTheDocument();
+  });
+
+  it("calls dismissAll when clear all button is clicked", async () => {
+    const user = userEvent.setup();
+    mockDismissAll.mockResolvedValue(undefined);
+    mockNotifications.push(baseNotification);
+    render(<NotificationCenter />);
+
+    await user.click(screen.getByRole("button", { name: /clear all/i }));
+
+    await waitFor(() => {
+      expect(mockDismissAll).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("shows success toast after clearing all notifications", async () => {
+    const { toast } = await import("sonner");
+    const user = userEvent.setup();
+    mockDismissAll.mockResolvedValue(undefined);
+    mockNotifications.push(baseNotification);
+    render(<NotificationCenter />);
+
+    await user.click(screen.getByRole("button", { name: /clear all/i }));
+
+    await waitFor(() => {
+      expect(toast.success).toHaveBeenCalledWith("All notifications cleared");
+    });
+  });
+
+  it("shows error toast when clear all fails", async () => {
+    const { toast } = await import("sonner");
+    const user = userEvent.setup();
+    mockDismissAll.mockRejectedValue(new Error("Server error"));
+    mockNotifications.push(baseNotification);
+    render(<NotificationCenter />);
+
+    await user.click(screen.getByRole("button", { name: /clear all/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Failed to clear notifications");
+    });
   });
 });

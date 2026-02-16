@@ -25,6 +25,7 @@ interface UseNotificationsReturn {
   }) => Promise<void>;
   markAsRead: (id: string) => Promise<Notification>;
   markAsDismissed: (id: string) => Promise<Notification>;
+  dismissAll: () => Promise<void>;
   snoozeNotification: (id: string, snoozedUntil: string) => Promise<Notification>;
   deleteNotification: (id: string) => Promise<void>;
 }
@@ -119,6 +120,19 @@ export function useNotifications(
       prev.map((n) => (n._id === id ? updated : n))
     );
     return updated;
+  }, []);
+
+  const dismissAll = useCallback(async () => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.dismissed ? n : { ...n, dismissed: true }))
+    );
+    const res = await offlineFetch("/api/notifications", {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const body = await res.json();
+      throw new Error(body.error || "Failed to dismiss all notifications");
+    }
   }, []);
 
   const snoozeNotification = useCallback(
@@ -225,6 +239,7 @@ export function useNotifications(
     fetchNotifications,
     markAsRead,
     markAsDismissed,
+    dismissAll,
     snoozeNotification,
     deleteNotification,
   };
