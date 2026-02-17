@@ -22,4 +22,10 @@ describe("HeroSection", () => {
 
     expect(screen.getByRole("link", { name: "Sign In" })).toHaveAttribute("href", "/login");
   });
+
+  it("renders the product screenshot", () => {
+    render(<HeroSection />);
+
+    expect(screen.getByAltText(/pillar kanban board/i)).toBeInTheDocument();
+  });
 });
