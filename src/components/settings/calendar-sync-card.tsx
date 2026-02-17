@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Calendar, AlertTriangle, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,10 +27,16 @@ export function CalendarSyncCard() {
     refresh,
   } = useCalendarSync();
 
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const handledRef = useRef(false);
 
   useEffect(() => {
     const calendarParam = searchParams.get("calendar");
+    if (!calendarParam || handledRef.current) return;
+
+    handledRef.current = true;
+
     if (calendarParam === "connected") {
       toast.success("Google Calendar connected successfully");
       refresh();
@@ -38,7 +44,10 @@ export function CalendarSyncCard() {
       const reason = searchParams.get("reason") || "unknown";
       toast.error(`Failed to connect Google Calendar: ${reason}`);
     }
-  }, [searchParams, refresh]);
+
+    // Clean up query params to prevent duplicate toasts on refresh
+    router.replace("/settings", { scroll: false });
+  }, [searchParams, refresh, router]);
 
   if (loading) {
     return (
@@ -80,7 +89,6 @@ export function CalendarSyncCard() {
     }
   }
 
-  // Not connected state
   if (!status.connected) {
     return (
       <Card>
@@ -105,7 +113,6 @@ export function CalendarSyncCard() {
     );
   }
 
-  // Connected state
   return (
     <Card>
       <CardHeader>
@@ -138,9 +145,7 @@ export function CalendarSyncCard() {
                 Calendar sync has encountered errors
               </p>
               {status.lastSyncError && (
-                <p className="mt-1 text-muted-foreground">
-                  {status.lastSyncError}
-                </p>
+                <p className="mt-1 text-muted-foreground">{status.lastSyncError}</p>
               )}
               <Button
                 variant="link"

@@ -12,6 +12,12 @@ const UpdateCalendarSyncSchema = z.object({
   enabled: z.boolean(),
 });
 
+function hasCalendarAccess(
+  account: { refresh_token?: string; scope?: string } | null,
+): boolean {
+  return !!(account?.refresh_token && account?.scope?.includes("calendar"));
+}
+
 export async function GET() {
   const session = await auth();
   if (!session?.user?.id) {
@@ -23,18 +29,12 @@ export async function GET() {
   const account = await Account.findOne({
     userId: session.user.id,
     provider: "google",
-  }).select("access_token refresh_token scope");
-
-  const hasCalendarTokens = !!(
-    account?.access_token &&
-    account?.refresh_token &&
-    account?.scope?.includes("calendar")
-  );
+  }).select("refresh_token scope");
 
   const sync = await CalendarSync.findOne({ userId: session.user.id });
 
   const status: CalendarSyncStatus = {
-    connected: hasCalendarTokens,
+    connected: hasCalendarAccess(account),
     enabled: sync?.enabled ?? false,
     calendarId: sync?.calendarId ?? "primary",
     syncErrors: sync?.syncErrors ?? 0,
@@ -64,29 +64,29 @@ export async function PATCH(request: Request) {
 
     await connectDB();
 
-    // Verify user has calendar tokens
     const account = await Account.findOne({
       userId: session.user.id,
       provider: "google",
     }).select("refresh_token scope");
 
-    if (!account?.refresh_token || !account?.scope?.includes("calendar")) {
+    if (!hasCalendarAccess(account)) {
       return NextResponse.json(
         { error: "Google Calendar is not connected. Please connect first." },
         { status: 400 },
       );
     }
 
+    const updateFields = {
+      enabled: result.data.enabled,
+      ...(result.data.enabled && { syncErrors: 0, lastSyncError: undefined }),
+    };
+
     const sync = await CalendarSync.findOneAndUpdate(
       { userId: session.user.id },
-      {
-        enabled: result.data.enabled,
-        ...(result.data.enabled ? { syncErrors: 0, lastSyncError: undefined } : {}),
-      },
+      updateFields,
       { upsert: true, returnDocument: "after" },
     );
 
-    // Trigger bulk sync when enabling
     if (result.data.enabled) {
       bulkSyncTasksToCalendar(session.user.id).catch((err) => {
         console.error("[calendar/PATCH] Bulk sync failed:", err);
@@ -95,11 +95,11 @@ export async function PATCH(request: Request) {
 
     const status: CalendarSyncStatus = {
       connected: true,
-      enabled: sync!.enabled,
-      calendarId: sync!.calendarId,
-      syncErrors: sync!.syncErrors,
-      lastSyncError: sync!.lastSyncError,
-      lastSyncAt: sync!.lastSyncAt?.toISOString(),
+      enabled: sync.enabled,
+      calendarId: sync.calendarId,
+      syncErrors: sync.syncErrors,
+      lastSyncError: sync.lastSyncError,
+      lastSyncAt: sync.lastSyncAt?.toISOString(),
     };
 
     return NextResponse.json(status);

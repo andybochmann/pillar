@@ -127,7 +127,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     // Find task and verify membership
-    const existingTask = await Task.findById(id).select("columnId projectId googleCalendarEventId");
+    const existingTask = await Task.findById(id).select("columnId projectId");
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
@@ -177,14 +177,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Auto-schedule reminder when dueDate is updated and reminderAt wasn't
-    // explicitly set in this request
-    if (
-      result.data.dueDate !== undefined &&
-      result.data.dueDate !== null &&
-      result.data.reminderAt === undefined
-    ) {
-      // Clear existing reminderAt so scheduleNextReminder can set a new one
+    const dueDateUpdated = result.data.dueDate !== undefined && result.data.dueDate !== null;
+    if (dueDateUpdated && result.data.reminderAt === undefined) {
       await Task.updateOne({ _id: id }, { $unset: { reminderAt: 1 } });
       scheduleNextReminder(id).catch((err) => {
         console.error(`[tasks/PATCH] Failed to schedule reminder for task ${id}:`, err);
@@ -206,32 +200,30 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       timestamp: Date.now(),
     });
 
-    // Sync to Google Calendar
-    if (result.data.completedAt || result.data.dueDate === null) {
-      // Task completed or due date removed — remove from calendar
+    const shouldRemoveFromCalendar = result.data.completedAt || result.data.dueDate === null;
+    const shouldSyncToCalendar = result.data.dueDate !== undefined || result.data.title !== undefined;
+
+    if (shouldRemoveFromCalendar) {
       removeTaskFromCalendar(
-        { _id: task._id, googleCalendarEventId: existingTask.googleCalendarEventId },
+        { _id: task._id, googleCalendarEventId: task.googleCalendarEventId },
         session.user.id,
       ).catch((err) => {
         console.error(`[tasks/PATCH] Calendar remove failed for task ${id}:`, err);
       });
-    } else if (result.data.dueDate !== undefined || result.data.title !== undefined) {
-      // Due date or title changed — sync to calendar
+    } else if (shouldSyncToCalendar) {
       syncTaskToCalendar(task, session.user.id).catch((err) => {
         console.error(`[tasks/PATCH] Calendar sync failed for task ${id}:`, err);
       });
     }
 
-    // If task is being completed and has recurrence, create the next occurrence
-    if (
-      result.data.completedAt &&
-      task.recurrence?.frequency !== "none" &&
-      task.dueDate
-    ) {
+    const hasRecurrence =
+      task.recurrence?.frequency !== "none" && task.dueDate;
+
+    if (result.data.completedAt && hasRecurrence) {
       const nextDueDate = getNextDueDate(
-        task.dueDate,
-        task.recurrence.frequency,
-        task.recurrence.interval ?? 1,
+        task.dueDate!,
+        task.recurrence!.frequency,
+        task.recurrence!.interval ?? 1,
       );
 
       const shouldCreate =

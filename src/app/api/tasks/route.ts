@@ -219,8 +219,6 @@ export async function POST(request: Request) {
 
     const task = await Task.create(taskData);
 
-    // Auto-schedule reminder from user's reminderTimings preference
-    // when task has a dueDate but no explicit reminderAt
     if (result.data.dueDate && !result.data.reminderAt) {
       scheduleNextReminder(task._id.toString()).catch((err) => {
         console.error(`[tasks/POST] Failed to schedule reminder for task ${task._id}:`, err);
@@ -240,7 +238,6 @@ export async function POST(request: Request) {
       timestamp: Date.now(),
     });
 
-    // Sync to Google Calendar if task has a due date
     if (result.data.dueDate) {
       syncTaskToCalendar(task, session.user.id).catch((err) => {
         console.error(`[tasks/POST] Calendar sync failed for task ${task._id}:`, err);

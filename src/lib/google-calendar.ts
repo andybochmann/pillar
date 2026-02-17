@@ -16,6 +16,11 @@ interface CalendarEvent {
   end: { date: string };
 }
 
+function formatDate(date: Date | string): string {
+  const d = date instanceof Date ? date : new Date(date);
+  return d.toISOString().split("T")[0];
+}
+
 function taskToEvent(task: {
   title: string;
   description?: string;
@@ -23,39 +28,28 @@ function taskToEvent(task: {
 }): CalendarEvent | null {
   if (!task.dueDate) return null;
 
-  const date =
-    task.dueDate instanceof Date
-      ? task.dueDate.toISOString().split("T")[0]
-      : new Date(task.dueDate).toISOString().split("T")[0];
-
-  // All-day events: end date is exclusive, so next day
-  const endDate = new Date(date);
+  const startDate = formatDate(task.dueDate);
+  const endDate = new Date(startDate);
   endDate.setDate(endDate.getDate() + 1);
-  const endDateStr = endDate.toISOString().split("T")[0];
 
   return {
     summary: task.title,
     description: task.description,
-    start: { date },
-    end: { date: endDateStr },
+    start: { date: startDate },
+    end: { date: formatDate(endDate) },
   };
 }
 
-export async function getValidAccessToken(
+function isTokenExpired(expiresAt: number | undefined): boolean {
+  if (!expiresAt) return true;
+  const now = Math.floor(Date.now() / 1000);
+  return expiresAt <= now + 60; // 60s buffer
+}
+
+async function refreshAccessToken(
+  account: { _id: { toString(): string }; refresh_token: string },
   userId: string,
 ): Promise<string | null> {
-  await connectDB();
-
-  const account = await Account.findOne({ userId, provider: "google" });
-  if (!account?.access_token || !account.refresh_token) return null;
-
-  // Check if token is expired (with 60s buffer)
-  const now = Math.floor(Date.now() / 1000);
-  if (account.expires_at && account.expires_at > now + 60) {
-    return account.access_token;
-  }
-
-  // Refresh the token
   const clientId = process.env.AUTH_GOOGLE_ID;
   const clientSecret = process.env.AUTH_GOOGLE_SECRET;
   if (!clientId || !clientSecret) return null;
@@ -79,19 +73,32 @@ export async function getValidAccessToken(
   }
 
   const data = await res.json();
+  const updateFields = {
+    access_token: data.access_token,
+    expires_at: Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600),
+    ...(data.refresh_token && { refresh_token: data.refresh_token }),
+  };
 
-  await Account.updateOne(
-    { _id: account._id },
-    {
-      access_token: data.access_token,
-      expires_at: Math.floor(Date.now() / 1000) + (data.expires_in ?? 3600),
-      ...(data.refresh_token
-        ? { refresh_token: data.refresh_token }
-        : {}),
-    },
-  );
-
+  await Account.updateOne({ _id: account._id }, updateFields);
   return data.access_token;
+}
+
+export async function getValidAccessToken(
+  userId: string,
+): Promise<string | null> {
+  await connectDB();
+
+  const account = await Account.findOne({ userId, provider: "google" });
+  if (!account?.access_token || !account.refresh_token) return null;
+
+  if (!isTokenExpired(account.expires_at)) {
+    return account.access_token;
+  }
+
+  return refreshAccessToken(
+    { _id: account._id, refresh_token: account.refresh_token },
+    userId,
+  );
 }
 
 async function incrementSyncErrors(
@@ -119,7 +126,7 @@ async function incrementSyncErrors(
 async function resetSyncErrors(userId: string): Promise<void> {
   await CalendarSync.updateOne(
     { userId },
-    { syncErrors: 0, lastSyncError: undefined, lastSyncAt: new Date() },
+    { $set: { syncErrors: 0, lastSyncAt: new Date() }, $unset: { lastSyncError: 1 } },
   );
 }
 
@@ -209,6 +216,32 @@ export async function deleteCalendarEvent(
   return true;
 }
 
+async function syncEventToCalendar(
+  token: string,
+  calendarId: string,
+  eventId: string | undefined,
+  event: CalendarEvent,
+  taskId: string,
+  userId: string,
+): Promise<void> {
+  if (eventId) {
+    const updated = await updateCalendarEvent(token, calendarId, eventId, event);
+    if (updated) {
+      await resetSyncErrors(userId);
+      return;
+    }
+  }
+
+  // Create new event (either no eventId or update failed because event was deleted)
+  const newEventId = await createCalendarEvent(token, calendarId, event);
+  if (newEventId) {
+    await Task.updateOne({ _id: taskId }, { googleCalendarEventId: newEventId });
+    await resetSyncErrors(userId);
+  } else {
+    await incrementSyncErrors(userId, `Failed to create event for task ${taskId}`);
+  }
+}
+
 export async function syncTaskToCalendar(
   task: {
     _id: { toString(): string };
@@ -230,38 +263,14 @@ export async function syncTaskToCalendar(
   const event = taskToEvent(task);
   if (!event) return;
 
-  const taskId = task._id.toString();
-
-  if (task.googleCalendarEventId) {
-    // Update existing event
-    const updated = await updateCalendarEvent(
-      token,
-      sync.calendarId,
-      task.googleCalendarEventId,
-      event,
-    );
-    if (!updated) {
-      // Event not found — create a new one
-      const eventId = await createCalendarEvent(token, sync.calendarId, event);
-      if (eventId) {
-        await Task.updateOne({ _id: taskId }, { googleCalendarEventId: eventId });
-        await resetSyncErrors(userId);
-      } else {
-        await incrementSyncErrors(userId, `Failed to create event for task ${taskId}`);
-      }
-    } else {
-      await resetSyncErrors(userId);
-    }
-  } else {
-    // Create new event
-    const eventId = await createCalendarEvent(token, sync.calendarId, event);
-    if (eventId) {
-      await Task.updateOne({ _id: taskId }, { googleCalendarEventId: eventId });
-      await resetSyncErrors(userId);
-    } else {
-      await incrementSyncErrors(userId, `Failed to create event for task ${taskId}`);
-    }
-  }
+  await syncEventToCalendar(
+    token,
+    sync.calendarId,
+    task.googleCalendarEventId,
+    event,
+    task._id.toString(),
+    userId,
+  );
 }
 
 export async function removeTaskFromCalendar(
@@ -299,10 +308,7 @@ export async function bulkSyncTasksToCalendar(
   const token = await getValidAccessToken(userId);
   if (!token) return { synced: 0, failed: 0 };
 
-  // Get all accessible project IDs for this user
   const projectIds = await getAccessibleProjectIds(userId);
-
-  // Find incomplete tasks with future/today due dates
   const now = new Date();
   now.setHours(0, 0, 0, 0);
 
@@ -319,53 +325,54 @@ export async function bulkSyncTasksToCalendar(
     const event = taskToEvent(task);
     if (!event) continue;
 
-    if (task.googleCalendarEventId) {
-      // Already has an event — update it
-      const updated = await updateCalendarEvent(
-        token,
-        sync.calendarId,
-        task.googleCalendarEventId,
-        event,
-      );
-      if (updated) {
-        synced++;
-      } else {
-        // Event not found — create new
-        const eventId = await createCalendarEvent(token, sync.calendarId, event);
-        if (eventId) {
-          await Task.updateOne(
-            { _id: task._id },
-            { googleCalendarEventId: eventId },
-          );
-          synced++;
-        } else {
-          failed++;
-        }
-      }
+    const success = await syncSingleTask(
+      token,
+      sync.calendarId,
+      task,
+      event,
+    );
+    if (success) {
+      synced++;
     } else {
-      // Create new event
-      const eventId = await createCalendarEvent(token, sync.calendarId, event);
-      if (eventId) {
-        await Task.updateOne(
-          { _id: task._id },
-          { googleCalendarEventId: eventId },
-        );
-        synced++;
-      } else {
-        failed++;
-      }
+      failed++;
     }
   }
 
-  await CalendarSync.updateOne(
-    { userId },
-    {
-      lastSyncAt: new Date(),
-      ...(failed === 0
-        ? { syncErrors: 0, lastSyncError: undefined }
-        : { $inc: { syncErrors: 1 }, lastSyncError: `Bulk sync: ${failed} failed` }),
-    },
-  );
-
+  if (failed === 0) {
+    await CalendarSync.updateOne(
+      { userId },
+      { $set: { syncErrors: 0, lastSyncAt: new Date() }, $unset: { lastSyncError: 1 } },
+    );
+  } else {
+    await CalendarSync.updateOne(
+      { userId },
+      { $set: { lastSyncAt: new Date(), lastSyncError: `Bulk sync: ${failed} failed` }, $inc: { syncErrors: 1 } },
+    );
+  }
   return { synced, failed };
+}
+
+async function syncSingleTask(
+  token: string,
+  calendarId: string,
+  task: { _id: { toString(): string }; googleCalendarEventId?: string },
+  event: CalendarEvent,
+): Promise<boolean> {
+  if (task.googleCalendarEventId) {
+    const updated = await updateCalendarEvent(
+      token,
+      calendarId,
+      task.googleCalendarEventId,
+      event,
+    );
+    if (updated) return true;
+  }
+
+  const eventId = await createCalendarEvent(token, calendarId, event);
+  if (eventId) {
+    await Task.updateOne({ _id: task._id }, { googleCalendarEventId: eventId });
+    return true;
+  }
+
+  return false;
 }

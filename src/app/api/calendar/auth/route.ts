@@ -31,7 +31,7 @@ export async function GET() {
     access_type: "offline",
     prompt: "consent",
     state,
-    ...(session.user.email ? { login_hint: session.user.email } : {}),
+    ...(session.user.email && { login_hint: session.user.email }),
   });
 
   const url = `${GOOGLE_AUTH_URL}?${params.toString()}`;
@@ -41,7 +41,7 @@ export async function GET() {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
-    maxAge: 600, // 10 minutes
+    maxAge: 600,
     path: "/",
   });
 
