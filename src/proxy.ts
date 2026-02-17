@@ -54,6 +54,6 @@ export const config = {
      * - favicon.ico
      * - public files
      */
-    "/((?!api/auth|api/mcp|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons).*)",
+    "/((?!api/auth|api/mcp|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons|images).*)",
   ],
 };

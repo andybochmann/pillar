@@ -2,7 +2,7 @@
   "name": "Pillar — Task Management",
   "short_name": "Pillar",
   "description": "Kanban-based task management for work and personal projects",
-  "start_url": "/",
+  "start_url": "/home",
   "display": "standalone",
   "theme_color": "#ffffff",
   "background_color": "#ffffff",
