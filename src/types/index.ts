@@ -183,6 +183,15 @@ export interface PushSubscriptionRecord {
   updatedAt: string;
 }
 
+export interface CalendarSyncStatus {
+  connected: boolean;
+  enabled: boolean;
+  calendarId: string;
+  syncErrors: number;
+  lastSyncError?: string;
+  lastSyncAt?: string;
+}
+
 export interface NotificationPreference {
   id: string;
   userId: string;

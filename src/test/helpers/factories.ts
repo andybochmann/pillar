@@ -18,6 +18,10 @@ import {
   type IPushSubscription,
 } from "@/models/push-subscription";
 import { Account, type IAccount } from "@/models/account";
+import {
+  CalendarSync,
+  type ICalendarSync,
+} from "@/models/calendar-sync";
 import { hash } from "bcryptjs";
 import { generateToken, hashToken } from "@/lib/mcp-auth";
 
@@ -193,6 +197,11 @@ interface CreateAccountInput {
   userId: mongoose.Types.ObjectId;
   provider?: string;
   providerAccountId?: string;
+  access_token?: string;
+  refresh_token?: string;
+  expires_at?: number;
+  scope?: string;
+  token_type?: string;
 }
 
 export async function createTestAccount(
@@ -203,6 +212,33 @@ export async function createTestAccount(
     provider: overrides.provider ?? "credentials",
     providerAccountId:
       overrides.providerAccountId ?? overrides.userId.toString(),
+    access_token: overrides.access_token,
+    refresh_token: overrides.refresh_token,
+    expires_at: overrides.expires_at,
+    scope: overrides.scope,
+    token_type: overrides.token_type,
+  });
+}
+
+interface CreateCalendarSyncInput {
+  userId: mongoose.Types.ObjectId;
+  enabled?: boolean;
+  calendarId?: string;
+  syncErrors?: number;
+  lastSyncError?: string;
+  lastSyncAt?: Date;
+}
+
+export async function createTestCalendarSync(
+  overrides: CreateCalendarSyncInput,
+): Promise<ICalendarSync> {
+  return CalendarSync.create({
+    userId: overrides.userId,
+    enabled: overrides.enabled ?? true,
+    calendarId: overrides.calendarId ?? "primary",
+    syncErrors: overrides.syncErrors ?? 0,
+    lastSyncError: overrides.lastSyncError,
+    lastSyncAt: overrides.lastSyncAt,
   });
 }
 

@@ -11,6 +11,7 @@ import { ProjectMember } from "@/models/project-member";
 import { AccessToken } from "@/models/access-token";
 import { PushSubscription } from "@/models/push-subscription";
 import { Account } from "@/models/account";
+import { CalendarSync } from "@/models/calendar-sync";
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -105,6 +106,7 @@ export async function DELETE() {
       AccessToken.deleteMany({ userId: session.user.id }),
       PushSubscription.deleteMany({ userId: session.user.id }),
       Account.deleteMany({ userId: session.user.id }),
+      CalendarSync.deleteMany({ userId: session.user.id }),
     ]);
 
     return NextResponse.json({ message: "Account deleted" });

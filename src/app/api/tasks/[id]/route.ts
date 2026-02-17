@@ -9,6 +9,7 @@ import { Project } from "@/models/project";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 import { getNextDueDate } from "@/lib/date-utils";
 import { scheduleNextReminder } from "@/lib/reminder-scheduler";
+import { syncTaskToCalendar, removeTaskFromCalendar } from "@/lib/google-calendar";
 
 const UpdateTaskSchema = z.object({
   title: z.string().min(1).max(200).optional(),
@@ -126,7 +127,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     // Find task and verify membership
-    const existingTask = await Task.findById(id).select("columnId projectId");
+    const existingTask = await Task.findById(id).select("columnId projectId googleCalendarEventId");
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
@@ -204,6 +205,22 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       data: task.toJSON(),
       timestamp: Date.now(),
     });
+
+    // Sync to Google Calendar
+    if (result.data.completedAt || result.data.dueDate === null) {
+      // Task completed or due date removed — remove from calendar
+      removeTaskFromCalendar(
+        { _id: task._id, googleCalendarEventId: existingTask.googleCalendarEventId },
+        session.user.id,
+      ).catch((err) => {
+        console.error(`[tasks/PATCH] Calendar remove failed for task ${id}:`, err);
+      });
+    } else if (result.data.dueDate !== undefined || result.data.title !== undefined) {
+      // Due date or title changed — sync to calendar
+      syncTaskToCalendar(task, session.user.id).catch((err) => {
+        console.error(`[tasks/PATCH] Calendar sync failed for task ${id}:`, err);
+      });
+    }
 
     // If task is being completed and has recurrence, create the next occurrence
     if (
@@ -300,6 +317,13 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       { error: "Viewers cannot delete tasks" },
       { status: 403 },
     );
+  }
+
+  // Remove from Google Calendar before deleting task
+  if (task.googleCalendarEventId) {
+    removeTaskFromCalendar(task, session.user.id).catch((err) => {
+      console.error(`[tasks/DELETE] Calendar remove failed for task ${id}:`, err);
+    });
   }
 
   await Task.deleteOne({ _id: id });

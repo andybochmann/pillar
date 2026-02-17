@@ -50,6 +50,7 @@ export interface ITask extends Document {
   statusHistory: IStatusHistoryEntry[];
   reminderAt?: Date;
   completedAt?: Date;
+  googleCalendarEventId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -149,6 +150,7 @@ const TaskSchema = new Schema<ITask>(
     statusHistory: { type: [StatusHistoryEntrySchema], default: [] },
     reminderAt: { type: Date },
     completedAt: { type: Date },
+    googleCalendarEventId: { type: String },
   },
   { timestamps: true },
 );
@@ -159,6 +161,7 @@ TaskSchema.index({ userId: 1, priority: 1 });
 TaskSchema.index({ title: "text", description: "text" });
 TaskSchema.index({ "timeSessions.userId": 1, "timeSessions.endedAt": 1 });
 TaskSchema.index({ reminderAt: 1 });
+TaskSchema.index({ googleCalendarEventId: 1 }, { sparse: true });
 
 export const Task: Model<ITask> =
   mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema);

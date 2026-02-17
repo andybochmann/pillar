@@ -33,6 +33,7 @@ import { InstallPromptCard } from "./install-prompt-card";
 import { ApiTokensCard } from "./api-tokens-card";
 import { NotificationSettingsCard } from "./notification-settings-card";
 import { ConnectedAccountsCard } from "./connected-accounts-card";
+import { CalendarSyncCard } from "./calendar-sync-card";
 
 interface Profile {
   id: string;
@@ -213,6 +214,9 @@ export function SettingsClient({ profile }: SettingsClientProps) {
 
       {/* Connected accounts */}
       <ConnectedAccountsCard providers={profile.providers} />
+
+      {/* Google Calendar sync */}
+      <CalendarSyncCard />
 
       {/* Password section */}
       <Card>

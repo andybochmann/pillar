@@ -7,6 +7,9 @@ vi.mock("next/navigation", () => ({
     refresh: vi.fn(),
     push: vi.fn(),
   }),
+  useSearchParams: () => ({
+    get: vi.fn().mockReturnValue(null),
+  }),
 }));
 
 vi.mock("next-auth/react", () => ({
@@ -33,6 +36,19 @@ function mockFetchResponses(
       return Promise.resolve({
         ok: true,
         json: () => Promise.resolve([]),
+      } as Response);
+    }
+
+    // Return default calendar sync status
+    if (urlStr.includes("/api/settings/calendar")) {
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({
+          connected: false,
+          enabled: false,
+          calendarId: "primary",
+          syncErrors: 0,
+        }),
       } as Response);
     }
 

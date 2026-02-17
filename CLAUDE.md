@@ -180,6 +180,7 @@ Detailed documentation for each major feature lives in the `docs/` folder:
 | AI features | [docs/ai-features.md](docs/ai-features.md) |
 | Kanban drag & drop | [docs/kanban-dnd.md](docs/kanban-dnd.md) |
 | OAuth social login | [docs/oauth-social-login.md](docs/oauth-social-login.md) |
+| Google Calendar sync | [docs/google-calendar-sync.md](docs/google-calendar-sync.md) |
 
 ## Test Credentials (Dev/E2E)
 

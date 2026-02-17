@@ -142,7 +142,7 @@ import { GET, POST } from "./route";
 ## Feature Documentation
 
 Detailed docs for each major feature in the `docs/` folder:
-`realtime-sync.md`, `project-sharing.md`, `time-tracking.md`, `offline-pwa.md`, `ai-features.md`, `kanban-dnd.md`, `oauth-social-login.md`
+`realtime-sync.md`, `project-sharing.md`, `time-tracking.md`, `offline-pwa.md`, `ai-features.md`, `kanban-dnd.md`, `oauth-social-login.md`, `google-calendar-sync.md`
 
 ## Test Credentials (Dev/E2E)
 

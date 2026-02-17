@@ -11,6 +11,7 @@ import { startOfDay, endOfDay } from "date-fns";
 import { parseLocalDate } from "@/lib/date-utils";
 import { getAccessibleProjectIds, getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 import { scheduleNextReminder } from "@/lib/reminder-scheduler";
+import { syncTaskToCalendar } from "@/lib/google-calendar";
 
 const CreateTaskSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
@@ -238,6 +239,13 @@ export async function POST(request: Request) {
       data: task.toJSON(),
       timestamp: Date.now(),
     });
+
+    // Sync to Google Calendar if task has a due date
+    if (result.data.dueDate) {
+      syncTaskToCalendar(task, session.user.id).catch((err) => {
+        console.error(`[tasks/POST] Calendar sync failed for task ${task._id}:`, err);
+      });
+    }
 
     return NextResponse.json(task, { status: 201 });
   } catch {
