@@ -65,7 +65,7 @@ export async function handleOAuthSignIn(
   const newUser = await User.create({
     name: profile.name ?? profile.email.split("@")[0],
     email: profile.email.toLowerCase(),
-    image: profile.image,
+    image: profile.image ?? undefined,
   });
 
   await Account.create({
