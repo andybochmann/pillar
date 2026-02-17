@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Check, ListChecks } from "lucide-react";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
+import { toLocalDate } from "@/lib/date-utils";
 import { TimeTrackingButton } from "@/components/tasks/time-tracking-button";
 import type { Task, Subtask, Priority } from "@/types";
 
@@ -58,7 +59,7 @@ const priorityConfig = {
 
 function getDueDateStyle(dueDateStr?: string) {
   if (!dueDateStr) return null;
-  const dueDate = new Date(dueDateStr);
+  const dueDate = toLocalDate(dueDateStr);
   if (isPast(dueDate) && !isToday(dueDate))
     return {
       label: format(dueDate, "MMM d"),

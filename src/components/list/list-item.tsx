@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Trash2 } from "lucide-react";
 import { format } from "date-fns";
+import { toLocalDate } from "@/lib/date-utils";
 import type { Task } from "@/types";
 
 interface ListItemProps {
@@ -49,7 +50,7 @@ export function ListItem({
       <div className="flex items-center gap-2">
         {task.dueDate && (
           <span className="text-xs text-muted-foreground">
-            {format(new Date(task.dueDate), "MMM d")}
+            {format(toLocalDate(task.dueDate), "MMM d")}
           </span>
         )}
         {task.assigneeId && memberNames?.get(task.assigneeId) && (

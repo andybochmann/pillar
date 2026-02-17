@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { format, isPast, isToday } from "date-fns";
+import { toLocalDate } from "@/lib/date-utils";
 import { useRouter } from "next/navigation";
 import type { Task, Project, Label } from "@/types";
 
@@ -29,7 +30,7 @@ const priorityConfig = {
 
 function getDueDateDisplay(dueDateStr?: string) {
   if (!dueDateStr) return null;
-  const dueDate = new Date(dueDateStr);
+  const dueDate = toLocalDate(dueDateStr);
   const overdue = isPast(dueDate) && !isToday(dueDate);
   return {
     label: isToday(dueDate) ? "Today" : format(dueDate, "MMM d, yyyy"),

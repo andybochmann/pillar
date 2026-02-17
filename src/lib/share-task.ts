@@ -1,3 +1,4 @@
+import { toLocalDate } from "@/lib/date-utils";
 import type { Priority } from "@/types";
 
 export function canShareTasks(): boolean {
@@ -14,7 +15,7 @@ export function buildShareText(task: {
   if (task.description) lines.push(task.description);
   lines.push(`Priority: ${task.priority}`);
   if (task.dueDate) {
-    lines.push(`Due: ${new Date(task.dueDate).toLocaleDateString()}`);
+    lines.push(`Due: ${toLocalDate(task.dueDate).toLocaleDateString()}`);
   }
   return lines.join("\n");
 }

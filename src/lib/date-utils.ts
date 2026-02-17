@@ -5,6 +5,11 @@ export function parseLocalDate(dateStr: string): Date {
   return parse(dateStr, "yyyy-MM-dd", new Date(2000, 0, 1));
 }
 
+/** Convert an ISO datetime string to a local-midnight Date (strips time/timezone). */
+export function toLocalDate(isoString: string): Date {
+  return parseLocalDate(isoString.slice(0, 10));
+}
+
 /**
  * Calculate the next due date for a recurring task.
  * @param currentDate - The current due date

@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { format } from "date-fns";
+import { toLocalDate } from "@/lib/date-utils";
 import { ListItem } from "./list-item";
 import type { Task } from "@/types";
 
@@ -149,8 +150,8 @@ describe("ListItem", () => {
         onDelete={vi.fn()}
       />,
     );
-    // Verify a date is rendered (exact text depends on timezone)
-    const expected = format(new Date(dueDate), "MMM d");
+    // toLocalDate strips time/timezone so date is always correct
+    const expected = format(toLocalDate(dueDate), "MMM d");
     expect(screen.getByText(expected)).toBeInTheDocument();
   });
 });

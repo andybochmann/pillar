@@ -31,6 +31,7 @@ import { useTasks } from "@/hooks/use-tasks";
 import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
 import { isToday, isBefore, startOfDay, endOfWeek } from "date-fns";
+import { toLocalDate } from "@/lib/date-utils";
 import { useTimeTracking } from "@/hooks/use-time-tracking";
 import type { Task, Column, Priority, ProjectMember } from "@/types";
 
@@ -119,7 +120,7 @@ export function KanbanBoard({
       if (filters.dueDateRange) {
         if (!t.dueDate) return false;
 
-        const due = new Date(t.dueDate);
+        const due = toLocalDate(t.dueDate);
         const now = new Date();
 
         if (filters.dueDateRange === "overdue") {

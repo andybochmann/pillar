@@ -5,6 +5,7 @@ import { HoverCard as HoverCardPrimitive } from "radix-ui";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { toLocalDate } from "@/lib/date-utils";
 import type { Task, Label } from "@/types";
 
 const priorityConfig: Record<string, { label: string; className: string }> = {
@@ -76,7 +77,7 @@ export function TaskHoverCard({
 
               {task.dueDate && (
                 <span className="text-xs text-muted-foreground">
-                  Due: {format(new Date(task.dueDate), "MMM d, yyyy")}
+                  Due: {format(toLocalDate(task.dueDate), "MMM d, yyyy")}
                 </span>
               )}
             </div>

@@ -12,7 +12,7 @@ import { useLabels } from "@/hooks/use-labels";
 import { useCategories } from "@/hooks/use-categories";
 import { toast } from "sonner";
 import { format } from "date-fns";
-import { getNextDueDate } from "@/lib/date-utils";
+import { getNextDueDate, toLocalDate } from "@/lib/date-utils";
 import type { Task, Project, CalendarViewType } from "@/types";
 import type { CalendarFilters } from "./calendar-filter-bar";
 import { EMPTY_FILTERS } from "./calendar-filter-bar";
@@ -161,7 +161,7 @@ export function CalendarPageClient({
       updated.dueDate
     ) {
       const nextDate = getNextDueDate(
-        new Date(updated.dueDate),
+        toLocalDate(updated.dueDate),
         updated.recurrence.frequency,
         updated.recurrence.interval,
       );

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseLocalDate, getNextDueDate } from "./date-utils";
+import { parseLocalDate, toLocalDate, getNextDueDate } from "./date-utils";
 
 describe("parseLocalDate", () => {
   it("parses a date string as local midnight", () => {
@@ -33,6 +33,47 @@ describe("parseLocalDate", () => {
     expect(date.getFullYear()).toBe(2026);
     expect(date.getMonth()).toBe(0);
     expect(date.getDate()).toBe(1);
+  });
+});
+
+describe("toLocalDate", () => {
+  it("extracts the correct local date from a UTC midnight ISO string", () => {
+    // This is the core bug: new Date("2025-01-15T00:00:00.000Z") in EST
+    // would be Jan 14 at 7pm, but toLocalDate should return Jan 15
+    const date = toLocalDate("2025-01-15T00:00:00.000Z");
+    expect(date.getFullYear()).toBe(2025);
+    expect(date.getMonth()).toBe(0); // January
+    expect(date.getDate()).toBe(15);
+    expect(date.getHours()).toBe(0);
+    expect(date.getMinutes()).toBe(0);
+  });
+
+  it("works with non-midnight UTC times", () => {
+    const date = toLocalDate("2025-01-15T05:00:00.000Z");
+    expect(date.getFullYear()).toBe(2025);
+    expect(date.getMonth()).toBe(0);
+    expect(date.getDate()).toBe(15);
+  });
+
+  it("works with timezone offsets in the string", () => {
+    const date = toLocalDate("2025-06-20T18:30:00+05:30");
+    expect(date.getFullYear()).toBe(2025);
+    expect(date.getMonth()).toBe(5); // June
+    expect(date.getDate()).toBe(20);
+  });
+
+  it("handles year boundaries correctly", () => {
+    const date = toLocalDate("2025-12-31T00:00:00.000Z");
+    expect(date.getFullYear()).toBe(2025);
+    expect(date.getMonth()).toBe(11);
+    expect(date.getDate()).toBe(31);
+  });
+
+  it("handles date-only prefix extraction correctly", () => {
+    const date = toLocalDate("2026-02-20T00:00:00.000Z");
+    expect(date.getFullYear()).toBe(2026);
+    expect(date.getMonth()).toBe(1); // February
+    expect(date.getDate()).toBe(20);
   });
 });
 
