@@ -15,6 +15,7 @@ const UpdateCategorySchema = z.object({
     .optional(),
   icon: z.string().max(50).optional(),
   order: z.number().int().min(0).optional(),
+  collapsed: z.boolean().optional(),
 });
 
 interface RouteParams {

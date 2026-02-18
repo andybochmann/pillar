@@ -7,6 +7,7 @@ export interface ICategory extends Document {
   icon?: string;
   userId: mongoose.Types.ObjectId;
   order: number;
+  collapsed: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -23,6 +24,7 @@ const CategorySchema = new Schema<ICategory>(
       index: true,
     },
     order: { type: Number, required: true, default: 0 },
+    collapsed: { type: Boolean, required: true, default: false },
   },
   { timestamps: true },
 );

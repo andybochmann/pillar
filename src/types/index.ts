@@ -29,6 +29,7 @@ export interface Category {
   icon?: string;
   userId: string;
   order: number;
+  collapsed: boolean;
   createdAt: string;
   updatedAt: string;
 }

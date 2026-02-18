@@ -18,7 +18,7 @@ interface UseCategoriesReturn {
   }) => Promise<Category>;
   updateCategory: (
     id: string,
-    data: Partial<Pick<Category, "name" | "color" | "icon" | "order">>,
+    data: Partial<Pick<Category, "name" | "color" | "icon" | "order" | "collapsed">>,
   ) => Promise<Category>;
   deleteCategory: (id: string) => Promise<void>;
   refresh: () => Promise<void>;
@@ -136,7 +136,7 @@ export function useCategories(): UseCategoriesReturn {
   const updateCategory = useCallback(
     async (
       id: string,
-      data: Partial<Pick<Category, "name" | "color" | "icon" | "order">>,
+      data: Partial<Pick<Category, "name" | "color" | "icon" | "order" | "collapsed">>,
     ) => {
       const res = await offlineFetch(`/api/categories/${id}`, {
         method: "PATCH",

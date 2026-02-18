@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -52,6 +52,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const {
     categories,
+    loading: categoriesLoading,
     createCategory,
     updateCategory,
     deleteCategory,
@@ -69,6 +70,17 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
     new Set(),
   );
+  const hasInitializedCollapsed = useRef(false);
+
+  // Initialize collapsed state from DB once categories have loaded
+  useEffect(() => {
+    if (!categoriesLoading && !hasInitializedCollapsed.current) {
+      hasInitializedCollapsed.current = true;
+      setCollapsedCategories(
+        new Set(categories.filter((c) => c.collapsed).map((c) => c._id)),
+      );
+    }
+  }, [categoriesLoading, categories]);
 
   // Re-fetch when navigating or archive toggle changes
   useEffect(() => {
@@ -94,13 +106,25 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     setShowProjectDialog(true);
   }
 
-  function toggleCategory(catId: string) {
+  async function toggleCategory(catId: string) {
+    const willBeCollapsed = !collapsedCategories.has(catId);
     setCollapsedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(catId)) next.delete(catId);
       else next.add(catId);
       return next;
     });
+    try {
+      await updateCategory(catId, { collapsed: willBeCollapsed });
+    } catch {
+      // Revert on failure
+      setCollapsedCategories((prev) => {
+        const next = new Set(prev);
+        if (willBeCollapsed) next.delete(catId);
+        else next.add(catId);
+        return next;
+      });
+    }
   }
 
   return (
