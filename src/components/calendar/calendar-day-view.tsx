@@ -13,7 +13,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
 } from "@dnd-kit/core";
-import { addDays, subDays, format, isToday } from "date-fns";
+import { addDays, format, isToday, parse } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { CalendarViewToggle } from "./calendar-view-toggle";
@@ -102,8 +102,11 @@ export function CalendarDayView({
   }
 
   function navigateDay(offset: number) {
-    const newDate =
-      offset > 0 ? addDays(currentDay, offset) : subDays(currentDay, Math.abs(offset));
+    const monthParam = searchParams.get("month");
+    const current = monthParam
+      ? parse(monthParam, "yyyy-MM", new Date(2000, 0, 1))
+      : currentDay;
+    const newDate = addDays(current, offset);
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", format(newDate, "yyyy-MM"));
     router.push(`/calendar?${params.toString()}`);

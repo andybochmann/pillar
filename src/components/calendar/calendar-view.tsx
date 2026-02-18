@@ -19,8 +19,8 @@ import {
   eachDayOfInterval,
   isSameMonth,
   addMonths,
-  subMonths,
   format,
+  parse,
 } from "date-fns";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -104,10 +104,11 @@ export function CalendarView({
   }
 
   function navigateMonth(offset: number) {
-    const newDate =
-      offset > 0
-        ? addMonths(currentMonth, offset)
-        : subMonths(currentMonth, Math.abs(offset));
+    const monthParam = searchParams.get("month");
+    const current = monthParam
+      ? parse(monthParam, "yyyy-MM", new Date(2000, 0, 1))
+      : currentMonth;
+    const newDate = addMonths(current, offset);
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", format(newDate, "yyyy-MM"));
     router.push(`/calendar?${params.toString()}`);

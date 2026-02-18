@@ -16,8 +16,8 @@ import {
   endOfWeek,
   eachDayOfInterval,
   addWeeks,
-  subWeeks,
   format,
+  parse,
 } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -97,10 +97,11 @@ export function CalendarWeekView({
   }
 
   function navigateWeek(offset: number) {
-    const newDate =
-      offset > 0
-        ? addWeeks(currentWeek, offset)
-        : subWeeks(currentWeek, Math.abs(offset));
+    const monthParam = searchParams.get("month");
+    const current = monthParam
+      ? parse(monthParam, "yyyy-MM", new Date(2000, 0, 1))
+      : currentWeek;
+    const newDate = addWeeks(current, offset);
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", format(newDate, "yyyy-MM"));
     router.push(`/calendar?${params.toString()}`);

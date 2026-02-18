@@ -4,11 +4,14 @@ import { CalendarView } from "./calendar-view";
 import { EMPTY_FILTERS } from "./calendar-filter-bar";
 import type { Task, Project, Label } from "@/types";
 
-// Mock next/navigation
+// Mock next/navigation with configurable searchParams
 const mockPush = vi.fn();
+const mockSearchParams = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, refresh: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams.current,
 }));
 
 // Mock @dnd-kit
@@ -54,6 +57,7 @@ const mockTasks: Task[] = [
 
 beforeEach(() => {
   vi.restoreAllMocks();
+  mockSearchParams.current = new URLSearchParams();
 });
 
 describe("CalendarView", () => {
@@ -167,5 +171,39 @@ describe("CalendarView", () => {
   it("renders view toggle component", () => {
     render(<CalendarView {...defaultProps} />);
     expect(screen.getByTestId("calendar-view-toggle")).toBeInTheDocument();
+  });
+
+  it("navigates next based on URL month when prop is stale", async () => {
+    // Simulate: URL says March (after a previous navigation) but prop is still February (stale)
+    mockSearchParams.current = new URLSearchParams("month=2026-03");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    render(
+      <CalendarView {...defaultProps} currentMonth={new Date(2026, 1, 1)} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Next month" }));
+    // Should navigate to April (March + 1), not March (stale Feb + 1)
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining("month=2026-04"),
+    );
+  });
+
+  it("navigates prev based on URL month when prop is stale", async () => {
+    // Simulate: URL says March but prop is still February (stale)
+    mockSearchParams.current = new URLSearchParams("month=2026-03");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    render(
+      <CalendarView {...defaultProps} currentMonth={new Date(2026, 1, 1)} />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Previous month" }),
+    );
+    // Should navigate to February (March - 1), not January (stale Feb - 1)
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining("month=2026-02"),
+    );
   });
 });
