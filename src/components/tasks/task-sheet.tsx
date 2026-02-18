@@ -72,7 +72,10 @@ export function TaskSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto p-0 sm:max-w-lg">
+      <SheetContent
+        className="overflow-y-auto p-0 sm:max-w-lg"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <SheetHeader className="sr-only">
           <SheetTitle>Edit Task</SheetTitle>
           <SheetDescription>Edit task details</SheetDescription>

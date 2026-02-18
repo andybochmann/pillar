@@ -66,7 +66,7 @@ export function EditCategoryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Edit Category</DialogTitle>
           <DialogDescription className="sr-only">Edit category name and color</DialogDescription>
@@ -80,7 +80,6 @@ export function EditCategoryDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={50}
-              autoFocus
             />
           </div>
 

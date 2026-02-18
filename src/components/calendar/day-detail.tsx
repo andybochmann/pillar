@@ -58,7 +58,7 @@ export function DayDetail({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="overflow-y-auto sm:max-w-md">
+      <SheetContent className="overflow-y-auto sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <SheetHeader>
           <SheetTitle>{format(date, "EEEE, MMMM d, yyyy")}</SheetTitle>
           <SheetDescription className="sr-only">Tasks for this day</SheetDescription>

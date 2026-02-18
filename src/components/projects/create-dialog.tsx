@@ -86,7 +86,7 @@ export function CreateProjectDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" onOpenAutoFocus={(e) => e.preventDefault()}>
         <DialogHeader>
           <DialogTitle>Create Project</DialogTitle>
           <DialogDescription className="sr-only">Create a new project with name, category, and columns</DialogDescription>
@@ -100,7 +100,6 @@ export function CreateProjectDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={100}
-              autoFocus
             />
           </div>
 
