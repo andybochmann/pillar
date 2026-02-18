@@ -2,7 +2,7 @@
 
 ## Overview
 
-Pillar supports per-task time tracking through embedded time sessions on the Task model. Users can start and stop timers on individual tasks, and the system enforces a single active session per user across all tasks by auto-stopping any running timer when a new one starts.
+Pillar supports per-task time tracking through embedded time sessions on the Task model. Users can start and stop timers on individual tasks. Multiple tasks can be tracked simultaneously — there is no single-timer restriction.
 
 ## Key Files
 
@@ -38,22 +38,16 @@ A session with a `startedAt` but no `endedAt` is considered active (timer runnin
 
 Accepts a JSON body with `action`:
 
-- **`"start"`** — Creates a new time session on the specified task. Before creating, the API auto-stops any active session for that user across ALL tasks (not just the current one). This enforces a single running timer per user.
+- **`"start"`** — Creates a new time session on the specified task. Multiple tasks can be tracked concurrently.
 - **`"stop"`** — Sets `endedAt` on the user's active session for this task.
 
 ### `DELETE /api/tasks/[id]/time-sessions/[sessionId]`
 
 Removes a specific time session from the task's `timeSessions` array.
 
-## Auto-Stop Behavior
+## Concurrent Timers
 
-When a user starts a timer on Task B while Task A has an active session:
-
-1. The API finds all tasks with an active session for that user (`endedAt` is null, `userId` matches).
-2. It sets `endedAt = now` on every active session found.
-3. It then creates the new session on Task B.
-
-This guarantees at most one active timer per user at any given time.
+Multiple tasks can be tracked simultaneously. Starting a timer on Task B while Task A is already running does not stop Task A. Each task maintains its own independent active session. Users can stop individual timers independently via the Stop button on each task card.
 
 ## Client Hook
 

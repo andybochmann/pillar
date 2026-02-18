@@ -8,7 +8,7 @@ interface UseTimeTrackingReturn {
   startTracking: (taskId: string) => Promise<Task>;
   stopTracking: (taskId: string) => Promise<Task>;
   deleteSession: (taskId: string, sessionId: string) => Promise<Task>;
-  activeTaskId: string | null;
+  activeTaskIds: Set<string>;
 }
 
 /**
@@ -27,10 +27,10 @@ interface UseTimeTrackingReturn {
  * @param {string} currentUserId - ID of the current user to filter sessions
  *
  * @returns {UseTimeTrackingReturn} Object containing:
- *   - `startTracking`: Function to start a new time session (auto-stops other active sessions)
+ *   - `startTracking`: Function to start a new time session
  *   - `stopTracking`: Function to stop the active time session for a task
  *   - `deleteSession`: Function to delete a specific historical time session
- *   - `activeTaskId`: ID of the task currently being tracked by the user, or null
+ *   - `activeTaskIds`: Set of task IDs currently being tracked by the user
  *
  * @example
  * ```tsx
@@ -41,7 +41,7 @@ interface UseTimeTrackingReturn {
  *     startTracking,
  *     stopTracking,
  *     deleteSession,
- *     activeTaskId
+ *     activeTaskIds
  *   } = useTimeTracking(tasks, setTasks, session?.user?.id || "");
  *
  *   const handleStart = async (taskId: string) => {
@@ -66,7 +66,7 @@ interface UseTimeTrackingReturn {
  *     <div>
  *       {tasks.map(task => (
  *         <div key={task._id}>
- *           {activeTaskId === task._id ? (
+ *           {activeTaskIds.has(task._id) ? (
  *             <Button onClick={() => handleStop(task._id)}>Stop</Button>
  *           ) : (
  *             <Button onClick={() => handleStart(task._id)}>Start</Button>
@@ -79,13 +79,9 @@ interface UseTimeTrackingReturn {
  * ```
  *
  * @remarks
- * **Auto-Stop Behavior:**
- * - When `startTracking` is called, the API automatically stops any other active session for the current user
- * - The hook optimistically updates local state to close all other active sessions immediately
- * - This ensures only one task can be tracked at a time per user
- *
- * **Derived State:**
- * - `activeTaskId` is computed via `useMemo` by finding the first task with an open session for the current user
+ * **Concurrent Timers:**
+ * - Multiple tasks can be tracked simultaneously — there is no auto-stop behavior
+ * - `activeTaskIds` is a Set of all task IDs with an open session for the current user
  * - Recalculates whenever `tasks` or `currentUserId` changes
  *
  * **Side Effects:**
@@ -98,13 +94,17 @@ export function useTimeTracking(
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>,
   currentUserId: string,
 ): UseTimeTrackingReturn {
-  const activeTaskId = useMemo(
+  const activeTaskIds = useMemo(
     () =>
-      tasks.find((task) =>
-        task.timeSessions?.some(
-          (s) => s.userId === currentUserId && !s.endedAt,
-        ),
-      )?._id ?? null,
+      new Set(
+        tasks
+          .filter((task) =>
+            task.timeSessions?.some(
+              (s) => s.userId === currentUserId && !s.endedAt,
+            ),
+          )
+          .map((task) => task._id),
+      ),
     [tasks, currentUserId],
   );
 
@@ -131,33 +131,10 @@ export function useTimeTracking(
       }
 
       const updated: Task = await res.json();
-
-      // API auto-stops other tasks; update all affected tasks locally
-      setTasks((prev) =>
-        prev.map((t) => {
-          if (t._id === updated._id) return updated;
-          // Close any active session for this user on other tasks
-          if (
-            t.timeSessions?.some(
-              (s) => s.userId === currentUserId && !s.endedAt,
-            )
-          ) {
-            return {
-              ...t,
-              timeSessions: t.timeSessions.map((s) =>
-                s.userId === currentUserId && !s.endedAt
-                  ? { ...s, endedAt: new Date().toISOString() }
-                  : s,
-              ),
-            };
-          }
-          return t;
-        }),
-      );
-
+      updateTaskInList(updated);
       return updated;
     },
-    [setTasks, currentUserId],
+    [updateTaskInList],
   );
 
   const stopTracking = useCallback(
@@ -199,5 +176,5 @@ export function useTimeTracking(
     [updateTaskInList],
   );
 
-  return { startTracking, stopTracking, deleteSession, activeTaskId };
+  return { startTracking, stopTracking, deleteSession, activeTaskIds };
 }

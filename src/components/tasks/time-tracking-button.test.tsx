@@ -69,4 +69,21 @@ describe("TimeTrackingButton", () => {
     await user.click(screen.getByRole("button", { name: /start tracking/i }));
     expect(parentClick).not.toHaveBeenCalled();
   });
+
+  it("shows total tracked time when idle with historical sessions", () => {
+    render(
+      <TimeTrackingButton
+        {...defaultProps}
+        totalTrackedMs={5400000}
+      />,
+    );
+    expect(screen.getByText(/1h 30m 0s/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start tracking/i })).toBeInTheDocument();
+  });
+
+  it("does not show time badge when totalTrackedMs is zero", () => {
+    render(<TimeTrackingButton {...defaultProps} totalTrackedMs={0} />);
+    expect(screen.queryByText(/h.*m.*s/)).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /start tracking/i })).toBeInTheDocument();
+  });
 });

@@ -21,6 +21,7 @@ import { Check, ListChecks } from "lucide-react";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
 import { toLocalDate } from "@/lib/date-utils";
 import { TimeTrackingButton } from "@/components/tasks/time-tracking-button";
+import { computeTotalTrackedTime } from "@/lib/time-format";
 import type { Task, Subtask, Priority } from "@/types";
 
 interface TaskCardProps {
@@ -110,12 +111,16 @@ export function TaskCard({
   const priority = priorityConfig[task.priority];
   const dueDateStyle = getDueDateStyle(task.dueDate);
 
-  const activeSession = task.timeSessions?.find((s) => !s.endedAt);
-  const isCurrentUserActive =
-    !!currentUserId &&
-    !!activeSession &&
-    activeSession.userId === currentUserId;
-  const isOtherUserActive = !!activeSession && !isCurrentUserActive;
+  const currentUserSession = task.timeSessions?.find(
+    (s) => !s.endedAt && s.userId === currentUserId,
+  );
+  const isCurrentUserActive = !!currentUserId && !!currentUserSession;
+  const isOtherUserActive =
+    !isCurrentUserActive &&
+    !!task.timeSessions?.some((s) => !s.endedAt && s.userId !== currentUserId);
+
+  const completedSessions = (task.timeSessions ?? []).filter((s) => !!s.endedAt);
+  const historicalMs = computeTotalTrackedTime(completedSessions);
 
   return (
     <Card
@@ -272,7 +277,8 @@ export function TaskCard({
               taskId={task._id}
               isActive={isCurrentUserActive}
               isOtherUserActive={isOtherUserActive}
-              activeStartedAt={isCurrentUserActive ? activeSession?.startedAt : null}
+              activeStartedAt={isCurrentUserActive ? currentUserSession?.startedAt : null}
+              totalTrackedMs={historicalMs}
               onStart={onStartTracking}
               onStop={onStopTracking}
             />

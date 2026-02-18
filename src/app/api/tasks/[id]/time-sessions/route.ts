@@ -75,28 +75,6 @@ export async function POST(request: Request, { params }: RouteParams) {
     const userId = session.user.id;
 
     if (result.data.action === "start") {
-      // Auto-stop any active session on any task for this user
-      const taskWithActive = await Task.findOne({
-        "timeSessions": {
-          $elemMatch: { userId, endedAt: null },
-        },
-      });
-
-      if (taskWithActive) {
-        await Task.updateOne(
-          {
-            _id: taskWithActive._id,
-            "timeSessions": { $elemMatch: { userId, endedAt: null } },
-          },
-          { $set: { "timeSessions.$.endedAt": new Date() } },
-        );
-
-        const updatedAutoStopped = await Task.findById(taskWithActive._id);
-        if (updatedAutoStopped) {
-          await emitTaskSync(updatedAutoStopped, userId, sessionId);
-        }
-      }
-
       const updated = await Task.findByIdAndUpdate(
         id,
         {

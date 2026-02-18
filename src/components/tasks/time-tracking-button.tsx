@@ -10,6 +10,7 @@ interface TimeTrackingButtonProps {
   isActive: boolean;
   isOtherUserActive: boolean;
   activeStartedAt?: string | null;
+  totalTrackedMs?: number;
   onStart: (taskId: string) => void;
   onStop: (taskId: string) => void;
 }
@@ -19,6 +20,7 @@ export function TimeTrackingButton({
   isActive,
   isOtherUserActive,
   activeStartedAt,
+  totalTrackedMs,
   onStart,
   onStop,
 }: TimeTrackingButtonProps) {
@@ -74,7 +76,7 @@ export function TimeTrackingButton({
     );
   }
 
-  return (
+  const playButton = (
     <button
       type="button"
       onClick={(e) => {
@@ -91,4 +93,18 @@ export function TimeTrackingButton({
       <Play className="h-3 w-3" />
     </button>
   );
+
+  if (totalTrackedMs && totalTrackedMs > 0) {
+    return (
+      <>
+        <span className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground bg-muted tabular-nums">
+          <Clock className="h-3 w-3" />
+          {formatDuration(totalTrackedMs)}
+        </span>
+        {playButton}
+      </>
+    );
+  }
+
+  return playButton;
 }
