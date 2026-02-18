@@ -165,10 +165,7 @@ export function CalendarView({
           {format(currentMonth, "MMMM yyyy")}
         </h2>
         <div className="flex items-center justify-between gap-4">
-          <CalendarViewToggle
-            viewType={viewType}
-            onChange={onViewTypeChange}
-          />
+          <CalendarViewToggle viewType={viewType} onChange={onViewTypeChange} />
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={goToToday}>
               Today

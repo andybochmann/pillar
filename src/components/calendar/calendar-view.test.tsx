@@ -198,9 +198,7 @@ describe("CalendarView", () => {
       <CalendarView {...defaultProps} currentMonth={new Date(2026, 1, 1)} />,
     );
 
-    await user.click(
-      screen.getByRole("button", { name: "Previous month" }),
-    );
+    await user.click(screen.getByRole("button", { name: "Previous month" }));
     // Should navigate to February (March - 1), not January (stale Feb - 1)
     expect(mockPush).toHaveBeenCalledWith(
       expect.stringContaining("month=2026-02"),

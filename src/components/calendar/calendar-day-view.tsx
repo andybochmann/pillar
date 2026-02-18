@@ -190,14 +190,15 @@ export function CalendarDayView({
       {/* Day navigation */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-xl font-semibold">
-          <span className="sm:hidden">{format(currentDay, "EEE, MMM d, yyyy")}</span>
-          <span className="hidden sm:inline">{format(currentDay, "EEEE, MMMM d, yyyy")}</span>
+          <span className="sm:hidden">
+            {format(currentDay, "EEE, MMM d, yyyy")}
+          </span>
+          <span className="hidden sm:inline">
+            {format(currentDay, "EEEE, MMMM d, yyyy")}
+          </span>
         </h2>
         <div className="flex items-center justify-between gap-4">
-          <CalendarViewToggle
-            viewType={viewType}
-            onChange={onViewTypeChange}
-          />
+          <CalendarViewToggle viewType={viewType} onChange={onViewTypeChange} />
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={goToToday}>
               Today
@@ -309,13 +310,16 @@ interface TimeSlotProps {
   onTaskClick: (task: Task) => void;
 }
 
-function TimeSlot({ hour, tasks, labels, isCurrent, onTaskClick }: TimeSlotProps) {
+function TimeSlot({
+  hour,
+  tasks,
+  labels,
+  isCurrent,
+  onTaskClick,
+}: TimeSlotProps) {
   const { setNodeRef, isOver } = useDroppable({ id: `hour-${hour}` });
 
-  const formattedHour = format(
-    new Date(2000, 0, 1, hour, 0),
-    "h:00 a",
-  );
+  const formattedHour = format(new Date(2000, 0, 1, hour, 0), "h:00 a");
 
   return (
     <div

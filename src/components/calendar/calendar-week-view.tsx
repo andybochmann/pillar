@@ -31,7 +31,15 @@ import {
 import { toast } from "sonner";
 import type { Task, CalendarViewType, Label, Project } from "@/types";
 
-const WEEKDAYS_FULL = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+const WEEKDAYS_FULL = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 interface CalendarWeekViewProps {
@@ -158,10 +166,7 @@ export function CalendarWeekView({
           {format(weekStart, "MMM d")} - {format(weekEnd, "MMM d, yyyy")}
         </h2>
         <div className="flex items-center justify-between gap-4">
-          <CalendarViewToggle
-            viewType={viewType}
-            onChange={onViewTypeChange}
-          />
+          <CalendarViewToggle viewType={viewType} onChange={onViewTypeChange} />
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={goToToday}>
               Today
