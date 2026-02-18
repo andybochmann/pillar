@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { SwRegistrar } from "@/components/layout/sw-registrar";
 import { OfflineBanner } from "@/components/layout/offline-banner";
 import { NotificationPromptBanner } from "@/components/layout/notification-prompt-banner";
+import { UpdateBanner } from "@/components/layout/update-banner";
 import { RealtimeProvider } from "@/components/layout/realtime-provider";
 import { PrecacheProvider } from "@/components/layout/precache-provider";
 
@@ -22,6 +23,7 @@ export default function DashboardLayout({
         Skip to content
       </a>
       <OfflineBanner />
+      <UpdateBanner />
       <NotificationPromptBanner />
       <RealtimeProvider />
       <PrecacheProvider />
