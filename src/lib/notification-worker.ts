@@ -504,6 +504,134 @@ export async function processDailySummary(
 }
 
 /**
+ * Process overdue digest notifications.
+ * For each user with enableOverdueSummary, checks:
+ * 1. Current time in user's timezone is at or past overdueSummaryTime
+ * 2. No overdue-digest sent yet for today (in user's timezone)
+ * 3. There are overdue tasks (owner or assignee)
+ * Creates a single aggregated notification with count + task previews.
+ */
+export async function processOverdueDigest(
+  now: Date,
+  scopeUserId?: string,
+): Promise<number> {
+  let created = 0;
+
+  const prefFilter: Record<string, unknown> = {
+    enableOverdueSummary: true,
+    $or: [{ enableInAppNotifications: true }, { enableBrowserPush: true }],
+  };
+  if (scopeUserId) {
+    prefFilter.userId = scopeUserId;
+  }
+
+  const prefs = await NotificationPreference.find(prefFilter);
+
+  // Batch-load existing overdue digests from last 36 hours for dedup
+  const recentCutoff = new Date(now.getTime() - 36 * 60 * 60 * 1000);
+  const prefUserIds = prefs.map((p) => p.userId);
+  const existingDigests = await Notification.find({
+    userId: { $in: prefUserIds },
+    type: "overdue-digest",
+    createdAt: { $gte: recentCutoff },
+  });
+
+  // Map userId → Set of overdueSummaryDate strings for dedup
+  const digestDates = new Map<string, Set<string>>();
+  for (const d of existingDigests) {
+    const uid = d.userId.toString();
+    if (!digestDates.has(uid)) digestDates.set(uid, new Set());
+    const dateStr = (d.metadata as Record<string, unknown>)
+      ?.overdueSummaryDate as string;
+    if (dateStr) digestDates.get(uid)!.add(dateStr);
+  }
+
+  for (const pref of prefs) {
+    const userId = pref.userId.toString();
+    const timezone = pref.timezone || "UTC";
+
+    // Check if current time is at or past the configured overdue summary time
+    const currentMinutes = getMinutesInTimezone(now, timezone);
+    const summaryTime = pref.overdueSummaryTime || "09:00";
+    const [summaryHour, summaryMinute] = summaryTime.split(":").map(Number);
+    const summaryMinutes = summaryHour * 60 + summaryMinute;
+    if (currentMinutes < summaryMinutes) continue;
+
+    // Check quiet hours (timezone-aware)
+    if (
+      isWithinQuietHours(
+        now,
+        pref.quietHoursEnabled,
+        pref.quietHoursStart,
+        pref.quietHoursEnd,
+        timezone,
+      )
+    ) {
+      continue;
+    }
+
+    // Check if we already sent an overdue digest for today (in user's timezone)
+    const todayStr = getDateStringInTimezone(now, timezone);
+    if (digestDates.get(userId)?.has(todayStr)) continue;
+
+    // Compute "today" start in UTC based on the user's local calendar date
+    const todayStart = new Date(todayStr + "T00:00:00.000Z");
+
+    // Find overdue tasks where user is owner OR assignee
+    const overdueTasks = await Task.find({
+      $or: [{ userId: pref.userId }, { assigneeId: pref.userId }],
+      dueDate: { $lt: todayStart },
+      completedAt: null,
+    }).sort({ dueDate: 1 });
+
+    const overdueCount = overdueTasks.length;
+    if (overdueCount === 0) continue;
+
+    // Build task previews with days overdue (up to 10)
+    const taskPreviews = overdueTasks.slice(0, 10).map((t) => {
+      const daysOverdue = Math.floor(
+        (todayStart.getTime() - t.dueDate!.getTime()) / (24 * 60 * 60 * 1000),
+      );
+      return {
+        id: t._id.toString(),
+        title: t.title,
+        priority: t.priority,
+        projectId: t.projectId.toString(),
+        dueDate: t.dueDate!.toISOString(),
+        daysOverdue,
+      };
+    });
+
+    // Build message
+    const taskList = taskPreviews
+      .slice(0, 5)
+      .map((t) => `${t.title} (${t.daysOverdue}d overdue)`)
+      .join(", ");
+    const message =
+      overdueCount <= 5
+        ? `You have ${overdueCount} overdue task${overdueCount === 1 ? "" : "s"}: ${taskList}`
+        : `You have ${overdueCount} overdue tasks: ${taskList}, and ${overdueCount - 5} more`;
+
+    const notification = await Notification.create({
+      userId: pref.userId,
+      type: "overdue-digest",
+      title: "Overdue Tasks Summary",
+      message,
+      metadata: {
+        overdueSummaryDate: todayStr,
+        overdueCount,
+        tasks: taskPreviews,
+      },
+    });
+
+    emitNotification(notification, userId, undefined, pref.enableBrowserPush);
+    created++;
+  }
+
+  return created;
+}
+
+/**
  * Main notification processing function.
  * Called by the interval worker (no userId = all users) and the
  * manual check-due-dates endpoint (with userId = scoped to that user).
@@ -512,6 +640,7 @@ export async function processNotifications(scopeUserId?: string): Promise<{
   reminders: number;
   overdue: number;
   dailySummaries: number;
+  overdueDigests: number;
 }> {
   await connectDB();
   const now = new Date();
@@ -519,17 +648,19 @@ export async function processNotifications(scopeUserId?: string): Promise<{
   const reminders = await processReminders(now, scopeUserId);
   const overdue = await processOverdue(now, scopeUserId);
   const dailySummaries = await processDailySummary(now, scopeUserId);
+  const overdueDigests = await processOverdueDigest(now, scopeUserId);
 
-  const total = reminders + overdue + dailySummaries;
+  const total = reminders + overdue + dailySummaries + overdueDigests;
   if (total > 0) {
     console.log(`[notification-worker] Created ${total} notifications`, {
       reminders,
       overdue,
       dailySummaries,
+      overdueDigests,
     });
   }
 
-  return { reminders, overdue, dailySummaries };
+  return { reminders, overdue, dailySummaries, overdueDigests };
 }
 
 /**

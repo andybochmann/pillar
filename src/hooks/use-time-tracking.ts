@@ -46,7 +46,7 @@ interface UseTimeTrackingReturn {
  *
  *   const handleStart = async (taskId: string) => {
  *     try {
- *       await startTracking(taskId); // Auto-stops other tasks
+ *       await startTracking(taskId);
  *       toast.success("Timer started");
  *     } catch (err) {
  *       toast.error((err as Error).message);

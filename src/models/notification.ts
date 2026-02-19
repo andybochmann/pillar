@@ -1,6 +1,10 @@
 import mongoose, { Schema, type Document, type Model } from "mongoose";
 
-export type NotificationType = "reminder" | "overdue" | "daily-summary";
+export type NotificationType =
+  | "reminder"
+  | "overdue"
+  | "daily-summary"
+  | "overdue-digest";
 
 export interface INotification extends Document {
   _id: mongoose.Types.ObjectId;
@@ -34,7 +38,7 @@ const NotificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ["reminder", "overdue", "daily-summary"],
+      enum: ["reminder", "overdue", "daily-summary", "overdue-digest"],
       required: true,
     },
     title: {

@@ -14,6 +14,7 @@ export interface INotificationPreference extends Document {
   quietHoursStart: string; // format: "HH:mm" (e.g., "22:00")
   quietHoursEnd: string; // format: "HH:mm" (e.g., "08:00")
   enableOverdueSummary: boolean;
+  overdueSummaryTime: string; // format: "HH:mm" (e.g., "09:00")
   enableDailySummary: boolean;
   dailySummaryTime: string; // format: "HH:mm" (e.g., "09:00")
   dueDateReminders: IDueDateReminder[]; // e.g., [{ daysBefore: 1, time: "09:00" }]
@@ -51,6 +52,14 @@ const NotificationPreferenceSchema = new Schema<INotificationPreference>(
       },
     },
     enableOverdueSummary: { type: Boolean, default: true },
+    overdueSummaryTime: {
+      type: String,
+      default: "09:00",
+      validate: {
+        validator: (v: string) => /^([0-1]\d|2[0-3]):[0-5]\d$/.test(v),
+        message: "overdueSummaryTime must be in HH:mm format (e.g., 09:00)",
+      },
+    },
     enableDailySummary: { type: Boolean, default: true },
     dailySummaryTime: {
       type: String,

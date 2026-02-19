@@ -22,11 +22,14 @@ const mockProfile = {
   createdAt: new Date().toISOString(),
 };
 
-function mockFetchResponses(
-  responses: Record<string, unknown> = {},
-) {
+function mockFetchResponses(responses: Record<string, unknown> = {}) {
   const mockFn = vi.fn((url: string | URL | Request, init?: RequestInit) => {
-    const urlStr = typeof url === "string" ? url : url instanceof URL ? url.toString() : url.url;
+    const urlStr =
+      typeof url === "string"
+        ? url
+        : url instanceof URL
+          ? url.toString()
+          : url.url;
 
     // Always return empty array for token fetches
     if (urlStr.includes("/api/settings/tokens")) {
@@ -37,19 +40,29 @@ function mockFetchResponses(
     }
 
     // Return default notification preferences for GET requests
-    if (urlStr.includes("/api/notifications/preferences") && !init?.method || init?.method === "GET") {
+    if (
+      (urlStr.includes("/api/notifications/preferences") && !init?.method) ||
+      init?.method === "GET"
+    ) {
       return Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({
-          enableInAppNotifications: true,
-          quietHoursEnabled: false,
-          quietHoursStart: "22:00",
-          quietHoursEnd: "08:00",
-          enableOverdueSummary: true,
-          enableDailySummary: true,
-          dailySummaryTime: "09:00",
-          timezone: "UTC",
-        }),
+        json: () =>
+          Promise.resolve({
+            enableInAppNotifications: true,
+            enableBrowserPush: false,
+            quietHoursEnabled: false,
+            quietHoursStart: "22:00",
+            quietHoursEnd: "08:00",
+            enableOverdueSummary: true,
+            overdueSummaryTime: "09:00",
+            enableDailySummary: true,
+            dailySummaryTime: "09:00",
+            dueDateReminders: [
+              { daysBefore: 1, time: "09:00" },
+              { daysBefore: 0, time: "08:00" },
+            ],
+            timezone: "UTC",
+          }),
       } as Response);
     }
 

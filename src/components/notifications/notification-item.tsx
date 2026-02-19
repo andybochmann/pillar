@@ -21,6 +21,7 @@ const notificationTypeLabels: Record<NotificationType, string> = {
   reminder: "Reminder",
   overdue: "Overdue",
   "daily-summary": "Daily Summary",
+  "overdue-digest": "Overdue Digest",
 };
 
 const notificationTypeColors: Record<
@@ -30,6 +31,7 @@ const notificationTypeColors: Record<
   reminder: "secondary",
   overdue: "destructive",
   "daily-summary": "default",
+  "overdue-digest": "destructive",
 };
 
 export function NotificationItem({
@@ -84,7 +86,7 @@ export function NotificationItem({
           ? "bg-muted/50 text-muted-foreground"
           : "bg-background hover:bg-accent/50",
         disabled && "opacity-50 cursor-not-allowed",
-        className
+        className,
       )}
     >
       <div className="mb-2 flex items-start justify-between gap-2">

@@ -18,6 +18,10 @@ const UpdatePreferencesSchema = z.object({
     .optional(),
   enableBrowserPush: z.boolean().optional(),
   enableOverdueSummary: z.boolean().optional(),
+  overdueSummaryTime: z
+    .string()
+    .regex(/^([0-1]\d|2[0-3]):[0-5]\d$/, "Must be in HH:mm format")
+    .optional(),
   enableDailySummary: z.boolean().optional(),
   dailySummaryTime: z
     .string()
@@ -49,6 +53,7 @@ function serializePreferences(
     quietHoursStart: preferences.quietHoursStart,
     quietHoursEnd: preferences.quietHoursEnd,
     enableOverdueSummary: preferences.enableOverdueSummary,
+    overdueSummaryTime: preferences.overdueSummaryTime,
     enableDailySummary: preferences.enableDailySummary,
     dailySummaryTime: preferences.dailySummaryTime,
     dueDateReminders: preferences.dueDateReminders,

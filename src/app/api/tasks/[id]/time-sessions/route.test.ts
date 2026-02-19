@@ -1,4 +1,12 @@
-import { describe, it, expect, vi, beforeAll, afterAll, afterEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  vi,
+  beforeAll,
+  afterAll,
+  afterEach,
+} from "vitest";
 import mongoose from "mongoose";
 import {
   setupTestDB,
@@ -12,7 +20,11 @@ import {
 import { Task } from "@/models/task";
 
 const session = vi.hoisted(() => ({
-  user: { id: "000000000000000000000000", name: "Test User", email: "test@example.com" },
+  user: {
+    id: "000000000000000000000000",
+    name: "Test User",
+    email: "test@example.com",
+  },
   expires: "2099-01-01T00:00:00.000Z",
 }));
 
@@ -51,7 +63,10 @@ describe("POST /api/tasks/[id]/time-sessions", () => {
     userId = user._id;
     session.user.id = userId.toString();
     const category = await createTestCategory({ userId });
-    const project = await createTestProject({ userId, categoryId: category._id });
+    const project = await createTestProject({
+      userId,
+      categoryId: category._id,
+    });
     projectId = project._id;
     await createTestProjectMember({
       projectId,
@@ -132,35 +147,6 @@ describe("POST /api/tasks/[id]/time-sessions", () => {
       params: Promise.resolve({ id: task._id.toString() }),
     });
     expect(res.status).toBe(404);
-  });
-
-  it("auto-stops active session on another task when starting", async () => {
-    await setupFixtures();
-    const task1 = await createTestTask({
-      projectId,
-      userId,
-      title: "Task 1",
-      timeSessions: [{ startedAt: new Date(), userId }],
-    });
-    const task2 = await createTestTask({
-      projectId,
-      userId,
-      title: "Task 2",
-    });
-
-    const res = await POST(makeRequest({ action: "start" }), {
-      params: Promise.resolve({ id: task2._id.toString() }),
-    });
-    expect(res.status).toBe(200);
-
-    // Task 2 should have new active session
-    const data = await res.json();
-    expect(data.timeSessions).toHaveLength(1);
-    expect(data.timeSessions[0].endedAt).toBeUndefined();
-
-    // Task 1's session should be stopped
-    const updatedTask1 = await Task.findById(task1._id);
-    expect(updatedTask1!.timeSessions[0].endedAt).toBeDefined();
   });
 
   it("returns 404 for non-existent task", async () => {

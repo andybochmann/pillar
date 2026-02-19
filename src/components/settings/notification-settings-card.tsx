@@ -418,22 +418,82 @@ export function NotificationSettingsCard() {
           )}
         </div>
 
-        {/* Overdue Summary */}
-        <div className="flex items-center justify-between">
-          <div className="space-y-0.5">
-            <Label htmlFor="overdue-summary">Overdue Task Summary</Label>
-            <p className="text-muted-foreground text-sm">
-              Get notified when tasks become overdue
-            </p>
+        {/* Daily Summary */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="daily-summary">Daily Task Summary</Label>
+              <p className="text-muted-foreground text-sm">
+                Receive a daily summary of tasks due today and overdue tasks
+              </p>
+            </div>
+            <Switch
+              id="daily-summary"
+              checked={preferences.enableDailySummary}
+              onCheckedChange={(checked) =>
+                updatePreferences({ enableDailySummary: checked })
+              }
+              disabled={saving}
+            />
           </div>
-          <Switch
-            id="overdue-summary"
-            checked={preferences.enableOverdueSummary}
-            onCheckedChange={(checked) =>
-              updatePreferences({ enableOverdueSummary: checked })
-            }
-            disabled={saving}
-          />
+
+          {preferences.enableDailySummary && (
+            <div className="space-y-1.5">
+              <Label htmlFor="daily-summary-time">Summary Time</Label>
+              <Input
+                id="daily-summary-time"
+                type="time"
+                value={preferences.dailySummaryTime}
+                onChange={(e) =>
+                  updatePreferences({ dailySummaryTime: e.target.value })
+                }
+                disabled={saving}
+                className="w-[130px]"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Overdue Summary */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5">
+              <Label htmlFor="overdue-summary">
+                Overdue Task Notifications
+              </Label>
+              <p className="text-muted-foreground text-sm">
+                Get individual alerts when tasks become overdue, plus a daily
+                overdue digest
+              </p>
+            </div>
+            <Switch
+              id="overdue-summary"
+              checked={preferences.enableOverdueSummary}
+              onCheckedChange={(checked) =>
+                updatePreferences({ enableOverdueSummary: checked })
+              }
+              disabled={saving}
+            />
+          </div>
+
+          {preferences.enableOverdueSummary && (
+            <div className="space-y-1.5">
+              <Label htmlFor="overdue-digest-time">Overdue Digest Time</Label>
+              <p className="text-muted-foreground text-sm">
+                Daily summary of all overdue tasks sent at this time
+              </p>
+              <Input
+                id="overdue-digest-time"
+                type="time"
+                value={preferences.overdueSummaryTime}
+                onChange={(e) =>
+                  updatePreferences({ overdueSummaryTime: e.target.value })
+                }
+                disabled={saving}
+                className="w-[130px]"
+              />
+            </div>
+          )}
         </div>
 
         {/* Test Notification Buttons */}

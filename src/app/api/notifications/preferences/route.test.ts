@@ -82,6 +82,7 @@ describe("/api/notifications/preferences", () => {
       expect(body.quietHoursStart).toBe("22:00");
       expect(body.quietHoursEnd).toBe("08:00");
       expect(body.enableOverdueSummary).toBe(true);
+      expect(body.overdueSummaryTime).toBe("09:00");
       expect(body.enableDailySummary).toBe(true);
       expect(body.dailySummaryTime).toBe("09:00");
       expect(body.enableBrowserPush).toBe(false);
@@ -350,6 +351,47 @@ describe("/api/notifications/preferences", () => {
           method: "PATCH",
           body: JSON.stringify({
             dailySummaryTime: "25:00",
+          }),
+        },
+      );
+
+      const res = await PATCH(req);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.error).toContain("HH:mm");
+    });
+
+    it("updates overdueSummaryTime", async () => {
+      const user = await seedUser();
+
+      await NotificationPreference.create({ userId: user._id });
+
+      const req = new NextRequest(
+        "http://localhost/api/notifications/preferences",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            overdueSummaryTime: "10:30",
+          }),
+        },
+      );
+
+      const res = await PATCH(req);
+      expect(res.status).toBe(200);
+
+      const body = await res.json();
+      expect(body.overdueSummaryTime).toBe("10:30");
+    });
+
+    it("validates overdueSummaryTime format", async () => {
+      await seedUser();
+
+      const req = new NextRequest(
+        "http://localhost/api/notifications/preferences",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            overdueSummaryTime: "25:00",
           }),
         },
       );

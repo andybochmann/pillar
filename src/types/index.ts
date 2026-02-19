@@ -156,7 +156,11 @@ export interface SyncResult {
   failed: number;
 }
 
-export type NotificationType = "reminder" | "overdue" | "daily-summary";
+export type NotificationType =
+  | "reminder"
+  | "overdue"
+  | "daily-summary"
+  | "overdue-digest";
 
 export interface Notification {
   _id: string;
@@ -198,6 +202,7 @@ export interface NotificationPreference {
   quietHoursStart: string;
   quietHoursEnd: string;
   enableOverdueSummary: boolean;
+  overdueSummaryTime: string;
   enableDailySummary: boolean;
   dailySummaryTime: string;
   dueDateReminders: DueDateReminder[];

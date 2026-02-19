@@ -13,7 +13,7 @@ export interface SyncEvent {
 }
 
 export interface NotificationEvent {
-  type: "reminder" | "overdue" | "daily-summary";
+  type: "reminder" | "overdue" | "daily-summary" | "overdue-digest";
   notificationId: string;
   userId: string;
   taskId?: string;
@@ -27,8 +27,8 @@ declare global {
   var syncEventBus: EventEmitter | undefined;
 }
 
-export const syncEventBus: EventEmitter =
-  global.syncEventBus ??= new EventEmitter();
+export const syncEventBus: EventEmitter = (global.syncEventBus ??=
+  new EventEmitter());
 
 syncEventBus.setMaxListeners(200);
 

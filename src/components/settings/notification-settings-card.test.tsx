@@ -43,6 +43,9 @@ const mockPreferences = {
   quietHoursStart: "22:00",
   quietHoursEnd: "08:00",
   enableOverdueSummary: true,
+  overdueSummaryTime: "09:00",
+  enableDailySummary: true,
+  dailySummaryTime: "09:00",
   timezone: "UTC",
   createdAt: "2025-01-01T00:00:00.000Z",
   updatedAt: "2025-01-01T00:00:00.000Z",
@@ -441,10 +444,12 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Overdue Task Notifications"),
+      ).toBeInTheDocument();
     });
 
-    const toggle = screen.getByLabelText("Overdue Task Summary");
+    const toggle = screen.getByLabelText("Overdue Task Notifications");
     await user.click(toggle);
 
     await waitFor(() => {
@@ -504,10 +509,12 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Overdue Task Notifications"),
+      ).toBeInTheDocument();
     });
 
-    const toggle = screen.getByLabelText("Overdue Task Summary");
+    const toggle = screen.getByLabelText("Overdue Task Notifications");
     await user.click(toggle);
 
     await waitFor(() => {
@@ -532,10 +539,12 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Overdue Task Notifications"),
+      ).toBeInTheDocument();
     });
 
-    const toggle = screen.getByLabelText("Overdue Task Summary");
+    const toggle = screen.getByLabelText("Overdue Task Notifications");
     await user.click(toggle);
 
     await waitFor(() => {
@@ -690,10 +699,12 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Overdue Task Notifications"),
+      ).toBeInTheDocument();
     });
 
-    const toggle = screen.getByLabelText("Overdue Task Summary");
+    const toggle = screen.getByLabelText("Overdue Task Notifications");
     await user.click(toggle);
 
     await waitFor(() => {
@@ -732,10 +743,12 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Overdue Task Notifications"),
+      ).toBeInTheDocument();
     });
 
-    const toggle = screen.getByLabelText("Overdue Task Summary");
+    const toggle = screen.getByLabelText("Overdue Task Notifications");
     await user.click(toggle);
 
     await waitFor(() => {
@@ -745,6 +758,111 @@ describe("NotificationSettingsCard", () => {
           method: "PATCH",
           // Should NOT include timezone since browser matches stored
           body: JSON.stringify({ enableOverdueSummary: false }),
+        }),
+      );
+    });
+  });
+
+  it("renders daily summary toggle and time picker", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockPreferences),
+    } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Daily Task Summary")).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText("Daily Task Summary")).toBeChecked();
+    expect(screen.getByLabelText("Summary Time")).toHaveValue("09:00");
+  });
+
+  it("hides daily summary time picker when toggle is off", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({ ...mockPreferences, enableDailySummary: false }),
+    } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Daily Task Summary")).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText("Daily Task Summary")).not.toBeChecked();
+    expect(screen.queryByLabelText("Summary Time")).not.toBeInTheDocument();
+  });
+
+  it("renders overdue digest time picker when overdue summary is enabled", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockPreferences),
+    } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText("Overdue Task Notifications"),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText("Overdue Digest Time")).toHaveValue("09:00");
+  });
+
+  it("hides overdue digest time picker when overdue summary is off", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({ ...mockPreferences, enableOverdueSummary: false }),
+    } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText("Overdue Task Notifications"),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByLabelText("Overdue Digest Time"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("saves overdue digest time change", async () => {
+    const user = userEvent.setup();
+
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve(mockPreferences),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({ ...mockPreferences, overdueSummaryTime: "10:30" }),
+      } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Overdue Digest Time")).toBeInTheDocument();
+    });
+
+    const timeInput = screen.getByLabelText("Overdue Digest Time");
+    await user.clear(timeInput);
+    await user.type(timeInput, "10:30");
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "/api/notifications/preferences",
+        expect.objectContaining({
+          method: "PATCH",
+          body: expect.stringContaining("overdueSummaryTime"),
         }),
       );
     });
