@@ -103,12 +103,17 @@ export function CalendarDayView({
 
   function navigateDay(offset: number) {
     const monthParam = searchParams.get("month");
-    const current = monthParam
-      ? parse(monthParam, "yyyy-MM", new Date(2000, 0, 1))
-      : currentDay;
+    let current: Date;
+    if (monthParam) {
+      current = /^\d{4}-\d{2}-\d{2}$/.test(monthParam)
+        ? parse(monthParam, "yyyy-MM-dd", new Date(2000, 0, 1))
+        : parse(monthParam, "yyyy-MM", new Date(2000, 0, 1));
+    } else {
+      current = currentDay;
+    }
     const newDate = addDays(current, offset);
     const params = new URLSearchParams(searchParams.toString());
-    params.set("month", format(newDate, "yyyy-MM"));
+    params.set("month", format(newDate, "yyyy-MM-dd"));
     router.push(`/calendar?${params.toString()}`);
   }
 

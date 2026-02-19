@@ -4,11 +4,14 @@ import { CalendarDayView } from "./calendar-day-view";
 import { EMPTY_FILTERS } from "./calendar-filter-bar";
 import type { Task, Project, Label } from "@/types";
 
-// Mock next/navigation
+// Mock next/navigation with configurable searchParams
 const mockPush = vi.fn();
+const mockSearchParams = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, refresh: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams.current,
 }));
 
 // Mock @dnd-kit
@@ -88,6 +91,7 @@ const mockTasks: Task[] = [
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockSearchParams.current = new URLSearchParams();
 });
 
 describe("CalendarDayView", () => {
@@ -169,7 +173,7 @@ describe("CalendarDayView", () => {
 
     await user.click(screen.getByRole("button", { name: "Previous day" }));
     expect(mockPush).toHaveBeenCalledWith(
-      expect.stringContaining("month=2026-02"),
+      expect.stringContaining("month=2026-02-14"),
     );
   });
 
@@ -180,7 +184,7 @@ describe("CalendarDayView", () => {
 
     await user.click(screen.getByRole("button", { name: "Next day" }));
     expect(mockPush).toHaveBeenCalledWith(
-      expect.stringContaining("month=2026-02"),
+      expect.stringContaining("month=2026-02-16"),
     );
   });
 
@@ -239,5 +243,37 @@ describe("CalendarDayView", () => {
     render(<CalendarDayView {...defaultProps} tasks={tasksInSameHour} />);
     expect(screen.getByText("First 9am task")).toBeInTheDocument();
     expect(screen.getByText("Second 9am task")).toBeInTheDocument();
+  });
+
+  it("navigates next day based on URL date when prop is stale", async () => {
+    // Simulate: URL says Feb 20 (after previous navigation) but prop is still Feb 15 (stale)
+    mockSearchParams.current = new URLSearchParams("month=2026-02-20");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    render(
+      <CalendarDayView {...defaultProps} currentDay={new Date(2026, 1, 15)} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Next day" }));
+    // Should navigate to Feb 21 (Feb 20 + 1 day), not Feb 16 (stale Feb 15 + 1 day)
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining("month=2026-02-21"),
+    );
+  });
+
+  it("navigates prev day based on URL date when prop is stale", async () => {
+    // Simulate: URL says Feb 20 but prop is still Feb 15 (stale)
+    mockSearchParams.current = new URLSearchParams("month=2026-02-20");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    render(
+      <CalendarDayView {...defaultProps} currentDay={new Date(2026, 1, 15)} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Previous day" }));
+    // Should navigate to Feb 19 (Feb 20 - 1 day), not Feb 14 (stale Feb 15 - 1 day)
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining("month=2026-02-19"),
+    );
   });
 });

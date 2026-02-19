@@ -204,4 +204,20 @@ describe("CalendarView", () => {
       expect.stringContaining("month=2026-02"),
     );
   });
+
+  it("navigates correctly when URL has yyyy-MM-dd format from week/day view", async () => {
+    // Simulate: user was in week view (yyyy-MM-dd) and switched to month view
+    mockSearchParams.current = new URLSearchParams("month=2026-03-15");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    render(
+      <CalendarView {...defaultProps} currentMonth={new Date(2026, 1, 1)} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Next month" }));
+    // Should navigate to April (March + 1), parsing the full date correctly
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining("month=2026-04"),
+    );
+  });
 });

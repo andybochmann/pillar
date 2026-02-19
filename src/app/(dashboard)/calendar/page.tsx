@@ -40,8 +40,11 @@ export default async function CalendarPage({
       : "month";
 
   // Parse month from URL or use current month
+  // Supports both yyyy-MM (month view) and yyyy-MM-dd (week/day views)
   let currentMonth: Date;
-  if (params.month && /^\d{4}-\d{2}$/.test(params.month)) {
+  if (params.month && /^\d{4}-\d{2}-\d{2}$/.test(params.month)) {
+    currentMonth = parse(params.month, "yyyy-MM-dd", new Date());
+  } else if (params.month && /^\d{4}-\d{2}$/.test(params.month)) {
     currentMonth = parse(params.month, "yyyy-MM", new Date());
   } else {
     currentMonth = new Date();

@@ -105,9 +105,14 @@ export function CalendarView({
 
   function navigateMonth(offset: number) {
     const monthParam = searchParams.get("month");
-    const current = monthParam
-      ? parse(monthParam, "yyyy-MM", new Date(2000, 0, 1))
-      : currentMonth;
+    let current: Date;
+    if (monthParam) {
+      current = /^\d{4}-\d{2}-\d{2}$/.test(monthParam)
+        ? parse(monthParam, "yyyy-MM-dd", new Date(2000, 0, 1))
+        : parse(monthParam, "yyyy-MM", new Date(2000, 0, 1));
+    } else {
+      current = currentMonth;
+    }
     const newDate = addMonths(current, offset);
     const params = new URLSearchParams(searchParams.toString());
     params.set("month", format(newDate, "yyyy-MM"));

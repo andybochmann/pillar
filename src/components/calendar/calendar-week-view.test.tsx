@@ -4,11 +4,14 @@ import { CalendarWeekView } from "./calendar-week-view";
 import { EMPTY_FILTERS } from "./calendar-filter-bar";
 import type { Task, Project, Label } from "@/types";
 
-// Mock next/navigation
+// Mock next/navigation with configurable searchParams
 const mockPush = vi.fn();
+const mockSearchParams = vi.hoisted(() => ({
+  current: new URLSearchParams(),
+}));
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, refresh: vi.fn() }),
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: () => mockSearchParams.current,
 }));
 
 // Mock @dnd-kit
@@ -72,6 +75,7 @@ const mockTasks: Task[] = [
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockSearchParams.current = new URLSearchParams();
 });
 
 describe("CalendarWeekView", () => {
@@ -147,7 +151,7 @@ describe("CalendarWeekView", () => {
 
     await user.click(screen.getByRole("button", { name: "Previous week" }));
     expect(mockPush).toHaveBeenCalledWith(
-      expect.stringContaining("month=2026-02"),
+      expect.stringContaining("month=2026-02-02"),
     );
   });
 
@@ -158,7 +162,7 @@ describe("CalendarWeekView", () => {
 
     await user.click(screen.getByRole("button", { name: "Next week" }));
     expect(mockPush).toHaveBeenCalledWith(
-      expect.stringContaining("month=2026-02"),
+      expect.stringContaining("month=2026-02-16"),
     );
   });
 
@@ -193,5 +197,37 @@ describe("CalendarWeekView", () => {
     expect(screen.getByText("12")).toBeInTheDocument();
     expect(screen.getByText("13")).toBeInTheDocument();
     expect(screen.getByText("14")).toBeInTheDocument();
+  });
+
+  it("navigates next week based on URL date when prop is stale", async () => {
+    // Simulate: URL says Feb 16 (after previous navigation) but prop is still Feb 9 (stale)
+    mockSearchParams.current = new URLSearchParams("month=2026-02-16");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    render(
+      <CalendarWeekView {...defaultProps} currentWeek={new Date(2026, 1, 9)} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Next week" }));
+    // Should navigate to Feb 23 (Feb 16 + 1 week), not Feb 16 (stale Feb 9 + 1 week)
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining("month=2026-02-23"),
+    );
+  });
+
+  it("navigates prev week based on URL date when prop is stale", async () => {
+    // Simulate: URL says Feb 16 but prop is still Feb 9 (stale)
+    mockSearchParams.current = new URLSearchParams("month=2026-02-16");
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+    render(
+      <CalendarWeekView {...defaultProps} currentWeek={new Date(2026, 1, 9)} />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Previous week" }));
+    // Should navigate to Feb 9 (Feb 16 - 1 week), not Feb 2 (stale Feb 9 - 1 week)
+    expect(mockPush).toHaveBeenCalledWith(
+      expect.stringContaining("month=2026-02-09"),
+    );
   });
 });
