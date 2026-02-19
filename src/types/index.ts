@@ -184,6 +184,11 @@ export interface PushSubscriptionRecord {
   updatedAt: string;
 }
 
+export interface DueDateReminder {
+  daysBefore: number;
+  time: string; // HH:mm format
+}
+
 export interface NotificationPreference {
   id: string;
   userId: string;
@@ -195,7 +200,7 @@ export interface NotificationPreference {
   enableOverdueSummary: boolean;
   enableDailySummary: boolean;
   dailySummaryTime: string;
-  reminderTimings: number[];
+  dueDateReminders: DueDateReminder[];
   timezone: string;
   createdAt: string;
   updatedAt: string;

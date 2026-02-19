@@ -35,7 +35,10 @@ const mockPreferences = {
   userId: "user1",
   enableBrowserPush: false,
   enableInAppNotifications: true,
-  reminderTimings: [1440, 60, 15],
+  dueDateReminders: [
+    { daysBefore: 1, time: "09:00" },
+    { daysBefore: 0, time: "08:00" },
+  ],
   quietHoursEnabled: false,
   quietHoursStart: "22:00",
   quietHoursEnd: "08:00",
@@ -88,7 +91,9 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByText("Failed to load preferences")).toBeInTheDocument();
+      expect(
+        screen.getByText("Failed to load preferences"),
+      ).toBeInTheDocument();
     });
   });
 
@@ -110,7 +115,9 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Browser Push Notifications")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Browser Push Notifications"),
+      ).toBeInTheDocument();
     });
 
     const toggle = screen.getByLabelText("Browser Push Notifications");
@@ -141,7 +148,9 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Browser Push Notifications")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Browser Push Notifications"),
+      ).toBeInTheDocument();
     });
 
     const toggle = screen.getByLabelText("Browser Push Notifications");
@@ -154,7 +163,11 @@ describe("NotificationSettingsCard", () => {
     // PATCH should not be called
     expect(
       Array.from(
-        (globalThis.fetch as typeof fetch & { mock: { calls: [string, RequestInit][] } }).mock.calls,
+        (
+          globalThis.fetch as typeof fetch & {
+            mock: { calls: [string, RequestInit][] };
+          }
+        ).mock.calls,
       ).filter(([, opts]) => opts?.method === "PATCH"),
     ).toHaveLength(0);
   });
@@ -170,7 +183,10 @@ describe("NotificationSettingsCard", () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
-          Promise.resolve({ ...mockPreferences, enableInAppNotifications: false }),
+          Promise.resolve({
+            ...mockPreferences,
+            enableInAppNotifications: false,
+          }),
       } as Response);
 
     render(<NotificationSettingsCard />);
@@ -193,7 +209,23 @@ describe("NotificationSettingsCard", () => {
     });
   });
 
-  it("toggles reminder timing checkboxes", async () => {
+  it("displays due date reminders", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(mockPreferences),
+    } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Due Date Reminders")).toBeInTheDocument();
+    });
+
+    // Should show 2 reminders
+    expect(screen.getAllByLabelText(/Reminder \d+ time/)).toHaveLength(2);
+  });
+
+  it("adds a new reminder when Add button is clicked", async () => {
     const user = userEvent.setup();
 
     vi.spyOn(globalThis, "fetch")
@@ -204,68 +236,95 @@ describe("NotificationSettingsCard", () => {
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
-          Promise.resolve({ ...mockPreferences, reminderTimings: [1440, 60] }),
+          Promise.resolve({
+            ...mockPreferences,
+            dueDateReminders: [
+              ...mockPreferences.dueDateReminders,
+              { daysBefore: 1, time: "09:00" },
+            ],
+          }),
       } as Response);
 
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("15 minutes before")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Add reminder/i }),
+      ).toBeInTheDocument();
     });
 
-    const checkbox = screen.getByLabelText("15 minutes before");
-    expect(checkbox).toBeChecked();
-
-    await user.click(checkbox);
+    await user.click(screen.getByRole("button", { name: /Add reminder/i }));
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
         "/api/notifications/preferences",
         expect.objectContaining({
           method: "PATCH",
-          body: JSON.stringify({ reminderTimings: [1440, 60] }),
+          body: JSON.stringify({
+            dueDateReminders: [
+              { daysBefore: 1, time: "09:00" },
+              { daysBefore: 0, time: "08:00" },
+              { daysBefore: 1, time: "09:00" },
+            ],
+          }),
         }),
       );
     });
   });
 
-  it("adds reminder timing when checkbox is checked", async () => {
+  it("removes a reminder when trash button is clicked", async () => {
     const user = userEvent.setup();
-    const prefsWithoutReminders = {
-      ...mockPreferences,
-      reminderTimings: [],
-    };
 
     vi.spyOn(globalThis, "fetch")
       .mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(prefsWithoutReminders),
+        json: () => Promise.resolve(mockPreferences),
       } as Response)
       .mockResolvedValueOnce({
         ok: true,
         json: () =>
-          Promise.resolve({ ...prefsWithoutReminders, reminderTimings: [1440] }),
+          Promise.resolve({
+            ...mockPreferences,
+            dueDateReminders: [{ daysBefore: 0, time: "08:00" }],
+          }),
       } as Response);
 
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("1 day before")).toBeInTheDocument();
+      expect(screen.getByLabelText("Remove reminder 1")).toBeInTheDocument();
     });
 
-    const checkbox = screen.getByLabelText("1 day before");
-    expect(checkbox).not.toBeChecked();
-
-    await user.click(checkbox);
+    await user.click(screen.getByLabelText("Remove reminder 1"));
 
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith(
         "/api/notifications/preferences",
         expect.objectContaining({
           method: "PATCH",
-          body: JSON.stringify({ reminderTimings: [1440] }),
+          body: JSON.stringify({
+            dueDateReminders: [{ daysBefore: 0, time: "08:00" }],
+          }),
         }),
       );
+    });
+  });
+
+  it("shows empty state when no reminders configured", async () => {
+    const prefsWithoutReminders = {
+      ...mockPreferences,
+      dueDateReminders: [],
+    };
+
+    vi.spyOn(globalThis, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve(prefsWithoutReminders),
+    } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/No reminders configured/)).toBeInTheDocument();
     });
   });
 
@@ -384,9 +443,8 @@ describe("NotificationSettingsCard", () => {
   });
 
   it("disables browser push toggle when not supported", async () => {
-    const { useNotificationPermission } = await import(
-      "@/hooks/use-notification-permission"
-    );
+    const { useNotificationPermission } =
+      await import("@/hooks/use-notification-permission");
     vi.mocked(useNotificationPermission).mockReturnValue({
       permission: "default",
       requestPermission: mockRequestPermission,
@@ -401,7 +459,9 @@ describe("NotificationSettingsCard", () => {
     render(<NotificationSettingsCard />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText("Browser Push Notifications")).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("Browser Push Notifications"),
+      ).toBeInTheDocument();
     });
 
     expect(screen.getByLabelText("Browser Push Notifications")).toBeDisabled();
@@ -499,9 +559,8 @@ describe("NotificationSettingsCard", () => {
 
   it("sends test notification via service worker when controller available", async () => {
     const user = userEvent.setup();
-    const { useNotificationPermission } = await import(
-      "@/hooks/use-notification-permission"
-    );
+    const { useNotificationPermission } =
+      await import("@/hooks/use-notification-permission");
     vi.mocked(useNotificationPermission).mockReturnValue({
       permission: "granted",
       requestPermission: mockRequestPermission,
@@ -528,7 +587,9 @@ describe("NotificationSettingsCard", () => {
       ).toBeInTheDocument();
     });
 
-    const button = screen.getByRole("button", { name: /Test Local Notification/i });
+    const button = screen.getByRole("button", {
+      name: /Test Local Notification/i,
+    });
     await user.click(button);
 
     expect(mockPostMessage).toHaveBeenCalledWith({
@@ -540,9 +601,8 @@ describe("NotificationSettingsCard", () => {
 
   it("falls back to Notification constructor when no service worker controller", async () => {
     const user = userEvent.setup();
-    const { useNotificationPermission } = await import(
-      "@/hooks/use-notification-permission"
-    );
+    const { useNotificationPermission } =
+      await import("@/hooks/use-notification-permission");
     vi.mocked(useNotificationPermission).mockReturnValue({
       permission: "granted",
       requestPermission: mockRequestPermission,
@@ -572,7 +632,9 @@ describe("NotificationSettingsCard", () => {
       ).toBeInTheDocument();
     });
 
-    const button = screen.getByRole("button", { name: /Test Local Notification/i });
+    const button = screen.getByRole("button", {
+      name: /Test Local Notification/i,
+    });
     await user.click(button);
 
     expect(mockNotification).toHaveBeenCalledWith(

@@ -1,5 +1,10 @@
 import mongoose, { Schema, type Document, type Model } from "mongoose";
 
+export interface IDueDateReminder {
+  daysBefore: number;
+  time: string; // format: "HH:mm" (e.g., "09:00")
+}
+
 export interface INotificationPreference extends Document {
   _id: mongoose.Types.ObjectId;
   userId: mongoose.Types.ObjectId;
@@ -11,7 +16,7 @@ export interface INotificationPreference extends Document {
   enableOverdueSummary: boolean;
   enableDailySummary: boolean;
   dailySummaryTime: string; // format: "HH:mm" (e.g., "09:00")
-  reminderTimings: number[]; // minutes before due (e.g., [1440, 60, 15])
+  dueDateReminders: IDueDateReminder[]; // e.g., [{ daysBefore: 1, time: "09:00" }]
   timezone: string; // IANA timezone (e.g., "America/New_York")
   createdAt: Date;
   updatedAt: Date;
@@ -55,9 +60,25 @@ const NotificationPreferenceSchema = new Schema<INotificationPreference>(
         message: "dailySummaryTime must be in HH:mm format (e.g., 09:00)",
       },
     },
-    reminderTimings: {
-      type: [Number],
-      default: [1440, 60, 15],
+    dueDateReminders: {
+      type: [
+        {
+          _id: false,
+          daysBefore: { type: Number, required: true, min: 0, max: 30 },
+          time: {
+            type: String,
+            required: true,
+            validate: {
+              validator: (v: string) => /^([0-1]\d|2[0-3]):[0-5]\d$/.test(v),
+              message: "time must be in HH:mm format (e.g., 09:00)",
+            },
+          },
+        },
+      ],
+      default: [
+        { daysBefore: 1, time: "09:00" },
+        { daysBefore: 0, time: "08:00" },
+      ],
     },
     timezone: {
       type: String,

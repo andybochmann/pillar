@@ -9,7 +9,11 @@ import { Project } from "@/models/project";
 import { ProjectMember } from "@/models/project-member";
 import { startOfDay, endOfDay } from "date-fns";
 import { parseLocalDate } from "@/lib/date-utils";
-import { getAccessibleProjectIds, getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
+import {
+  getAccessibleProjectIds,
+  getProjectRole,
+  getProjectMemberUserIds,
+} from "@/lib/project-access";
 import { scheduleNextReminder } from "@/lib/reminder-scheduler";
 
 const CreateTaskSchema = z.object({
@@ -73,7 +77,9 @@ export async function GET(request: Request) {
   } else {
     // All accessible projects
     const accessibleIds = await getAccessibleProjectIds(session.user.id);
-    filter.projectId = { $in: accessibleIds.map((id) => new mongoose.Types.ObjectId(id)) };
+    filter.projectId = {
+      $in: accessibleIds.map((id) => new mongoose.Types.ObjectId(id)),
+    };
   }
 
   if (assigneeId) filter.assigneeId = assigneeId;
@@ -162,10 +168,7 @@ export async function POST(request: Request) {
     // Verify project membership (editor+ can create tasks)
     const role = await getProjectRole(session.user.id, result.data.projectId);
     if (!role) {
-      return NextResponse.json(
-        { error: "Project not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
     if (role === "viewer") {
       return NextResponse.json(
@@ -176,7 +179,10 @@ export async function POST(request: Request) {
 
     // Validate assigneeId is a project member
     if (result.data.assigneeId) {
-      const assigneeRole = await getProjectRole(result.data.assigneeId, result.data.projectId);
+      const assigneeRole = await getProjectRole(
+        result.data.assigneeId,
+        result.data.projectId,
+      );
       if (!assigneeRole) {
         return NextResponse.json(
           { error: "Assignee is not a project member" },
@@ -194,7 +200,9 @@ export async function POST(request: Request) {
       ...result.data,
       userId: session.user.id,
       order: result.data.order ?? taskCount,
-      statusHistory: [{ columnId: result.data.columnId, timestamp: new Date() }],
+      statusHistory: [
+        { columnId: result.data.columnId, timestamp: new Date() },
+      ],
     };
 
     if (result.data.dueDate) {
@@ -218,11 +226,14 @@ export async function POST(request: Request) {
 
     const task = await Task.create(taskData);
 
-    // Auto-schedule reminder from user's reminderTimings preference
+    // Auto-schedule reminder from user's dueDateReminders preference
     // when task has a dueDate but no explicit reminderAt
     if (result.data.dueDate && !result.data.reminderAt) {
       scheduleNextReminder(task._id.toString()).catch((err) => {
-        console.error(`[tasks/POST] Failed to schedule reminder for task ${task._id}:`, err);
+        console.error(
+          `[tasks/POST] Failed to schedule reminder for task ${task._id}:`,
+          err,
+        );
       });
     }
 

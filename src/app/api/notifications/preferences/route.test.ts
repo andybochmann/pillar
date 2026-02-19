@@ -80,7 +80,10 @@ describe("/api/notifications/preferences", () => {
       expect(body.enableDailySummary).toBe(true);
       expect(body.dailySummaryTime).toBe("09:00");
       expect(body.enableBrowserPush).toBe(false);
-      expect(body.reminderTimings).toEqual([1440, 60, 15]);
+      expect(body.dueDateReminders).toEqual([
+        { daysBefore: 1, time: "09:00" },
+        { daysBefore: 0, time: "08:00" },
+      ]);
       expect(body.timezone).toBe("UTC");
       expect(body.createdAt).toBeDefined();
       expect(body.updatedAt).toBeDefined();
@@ -212,7 +215,7 @@ describe("/api/notifications/preferences", () => {
       expect(saved?.enableBrowserPush).toBe(true);
     });
 
-    it("persists reminderTimings", async () => {
+    it("persists dueDateReminders", async () => {
       const user = await seedUser();
 
       await NotificationPreference.create({ userId: user._id });
@@ -221,7 +224,12 @@ describe("/api/notifications/preferences", () => {
         "http://localhost/api/notifications/preferences",
         {
           method: "PATCH",
-          body: JSON.stringify({ reminderTimings: [60, 15] }),
+          body: JSON.stringify({
+            dueDateReminders: [
+              { daysBefore: 2, time: "10:00" },
+              { daysBefore: 0, time: "20:00" },
+            ],
+          }),
         },
       );
 
@@ -229,11 +237,19 @@ describe("/api/notifications/preferences", () => {
       expect(res.status).toBe(200);
 
       const body = await res.json();
-      expect(body.reminderTimings).toEqual([60, 15]);
+      expect(body.dueDateReminders).toEqual([
+        { daysBefore: 2, time: "10:00" },
+        { daysBefore: 0, time: "20:00" },
+      ]);
 
       // Verify persisted in DB
       const saved = await NotificationPreference.findOne({ userId: user._id });
-      expect(saved?.reminderTimings).toEqual([60, 15]);
+      expect(saved?.dueDateReminders).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ daysBefore: 2, time: "10:00" }),
+          expect.objectContaining({ daysBefore: 0, time: "20:00" }),
+        ]),
+      );
     });
 
     it("validates quietHoursStart format", async () => {

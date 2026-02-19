@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, Globe } from "lucide-react";
+import { Bell, Globe, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,12 +23,15 @@ import {
 import { toast } from "sonner";
 import { useNotificationPermission } from "@/hooks/use-notification-permission";
 import { usePushSubscription } from "@/hooks/use-push-subscription";
-import type { NotificationPreference } from "@/types";
+import type { NotificationPreference, DueDateReminder } from "@/types";
 
-const REMINDER_OPTIONS = [
-  { value: 1440, label: "1 day before" },
-  { value: 60, label: "1 hour before" },
-  { value: 15, label: "15 minutes before" },
+const DAYS_BEFORE_OPTIONS = [
+  { value: 0, label: "Day of" },
+  { value: 1, label: "1 day before" },
+  { value: 2, label: "2 days before" },
+  { value: 3, label: "3 days before" },
+  { value: 7, label: "1 week before" },
+  { value: 14, label: "2 weeks before" },
 ];
 
 const COMMON_TIMEZONES = [
@@ -158,14 +161,29 @@ export function NotificationSettingsCard() {
     await updatePreferences({ enableBrowserPush: true });
   }
 
-  function handleReminderTimingToggle(timing: number, checked: boolean) {
+  function handleAddReminder() {
     if (!preferences) return;
+    const newReminder: DueDateReminder = { daysBefore: 1, time: "09:00" };
+    const updated = [...preferences.dueDateReminders, newReminder];
+    updatePreferences({ dueDateReminders: updated });
+  }
 
-    const newTimings = checked
-      ? [...preferences.reminderTimings, timing].sort((a, b) => b - a)
-      : preferences.reminderTimings.filter((t) => t !== timing);
+  function handleRemoveReminder(index: number) {
+    if (!preferences) return;
+    const updated = preferences.dueDateReminders.filter((_, i) => i !== index);
+    updatePreferences({ dueDateReminders: updated });
+  }
 
-    updatePreferences({ reminderTimings: newTimings });
+  function handleUpdateReminder(
+    index: number,
+    field: keyof DueDateReminder,
+    value: string | number,
+  ) {
+    if (!preferences) return;
+    const updated = preferences.dueDateReminders.map((r, i) =>
+      i === index ? { ...r, [field]: value } : r,
+    );
+    updatePreferences({ dueDateReminders: updated });
   }
 
   if (loading) {
@@ -236,31 +254,75 @@ export function NotificationSettingsCard() {
           />
         </div>
 
-        {/* Reminder Timings */}
+        {/* Due Date Reminders */}
         <div className="space-y-3">
-          <Label>Reminder Timings</Label>
-          <p className="text-muted-foreground text-sm">
-            Choose when to receive reminders before tasks are due
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>Due Date Reminders</Label>
+              <p className="text-muted-foreground text-sm">
+                Choose when to be reminded about upcoming due dates
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleAddReminder}
+              disabled={saving || preferences.dueDateReminders.length >= 10}
+              aria-label="Add reminder"
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              Add
+            </Button>
+          </div>
+          {preferences.dueDateReminders.length === 0 && (
+            <p className="text-muted-foreground text-sm italic">
+              No reminders configured. Click &quot;Add&quot; to create one.
+            </p>
+          )}
           <div className="space-y-2">
-            {REMINDER_OPTIONS.map((option) => (
-              <div key={option.value} className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id={`reminder-${option.value}`}
-                  checked={preferences.reminderTimings?.includes(option.value) ?? false}
-                  onChange={(e) =>
-                    handleReminderTimingToggle(option.value, e.target.checked)
+            {preferences.dueDateReminders.map((reminder, index) => (
+              <div key={index} className="flex items-center gap-2">
+                <Select
+                  value={String(reminder.daysBefore)}
+                  onValueChange={(val) =>
+                    handleUpdateReminder(index, "daysBefore", parseInt(val, 10))
                   }
                   disabled={saving}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                <Label
-                  htmlFor={`reminder-${option.value}`}
-                  className="cursor-pointer font-normal"
                 >
-                  {option.label}
-                </Label>
+                  <SelectTrigger
+                    className="w-[160px]"
+                    aria-label={`Reminder ${index + 1} days before`}
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS_BEFORE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={String(opt.value)}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <span className="text-muted-foreground text-sm">at</span>
+                <Input
+                  type="time"
+                  value={reminder.time}
+                  onChange={(e) =>
+                    handleUpdateReminder(index, "time", e.target.value)
+                  }
+                  disabled={saving}
+                  className="w-[130px]"
+                  aria-label={`Reminder ${index + 1} time`}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleRemoveReminder(index)}
+                  disabled={saving}
+                  aria-label={`Remove reminder ${index + 1}`}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </div>
             ))}
           </div>
@@ -285,7 +347,9 @@ export function NotificationSettingsCard() {
             </SelectTrigger>
             <SelectContent>
               {(() => {
-                const timezones = COMMON_TIMEZONES.includes(preferences.timezone)
+                const timezones = COMMON_TIMEZONES.includes(
+                  preferences.timezone,
+                )
                   ? COMMON_TIMEZONES
                   : [preferences.timezone, ...COMMON_TIMEZONES];
                 return timezones.map((tz) => (

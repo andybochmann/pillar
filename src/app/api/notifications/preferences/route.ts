@@ -23,11 +23,23 @@ const UpdatePreferencesSchema = z.object({
     .string()
     .regex(/^([0-1]\d|2[0-3]):[0-5]\d$/, "Must be in HH:mm format")
     .optional(),
-  reminderTimings: z.array(z.number().int().positive()).optional(),
+  dueDateReminders: z
+    .array(
+      z.object({
+        daysBefore: z.number().int().min(0).max(30),
+        time: z
+          .string()
+          .regex(/^([0-1]\d|2[0-3]):[0-5]\d$/, "Must be in HH:mm format"),
+      }),
+    )
+    .max(10)
+    .optional(),
   timezone: z.string().min(1).max(100).optional(),
 });
 
-function serializePreferences(preferences: InstanceType<typeof NotificationPreference>) {
+function serializePreferences(
+  preferences: InstanceType<typeof NotificationPreference>,
+) {
   return {
     id: preferences._id.toString(),
     userId: preferences.userId.toString(),
@@ -39,7 +51,7 @@ function serializePreferences(preferences: InstanceType<typeof NotificationPrefe
     enableOverdueSummary: preferences.enableOverdueSummary,
     enableDailySummary: preferences.enableDailySummary,
     dailySummaryTime: preferences.dailySummaryTime,
-    reminderTimings: preferences.reminderTimings,
+    dueDateReminders: preferences.dueDateReminders,
     timezone: preferences.timezone,
     createdAt: preferences.createdAt.toISOString(),
     updatedAt: preferences.updatedAt.toISOString(),
@@ -100,9 +112,12 @@ export async function PATCH(request: Request) {
   }
 
   // Recalculate reminders for existing tasks when timings change
-  if (result.data.reminderTimings) {
+  if (result.data.dueDateReminders) {
     recalculateRemindersForUser(userId).catch((err) => {
-      console.error(`[preferences/PATCH] Failed to recalculate reminders for user ${userId}:`, err);
+      console.error(
+        `[preferences/PATCH] Failed to recalculate reminders for user ${userId}:`,
+        err,
+      );
     });
   }
 

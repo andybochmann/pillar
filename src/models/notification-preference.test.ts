@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  afterEach,
+  beforeEach,
+} from "vitest";
 import { setupTestDB, teardownTestDB, clearTestDB } from "@/test/helpers";
 import { NotificationPreference } from "@/models/notification-preference";
 import { User } from "@/models/user";
@@ -41,6 +49,11 @@ describe("NotificationPreference Model", () => {
     expect(pref.enableOverdueSummary).toBe(true);
     expect(pref.enableDailySummary).toBe(true);
     expect(pref.dailySummaryTime).toBe("09:00");
+    expect(pref.dueDateReminders).toHaveLength(2);
+    expect(pref.dueDateReminders[0].daysBefore).toBe(1);
+    expect(pref.dueDateReminders[0].time).toBe("09:00");
+    expect(pref.dueDateReminders[1].daysBefore).toBe(0);
+    expect(pref.dueDateReminders[1].time).toBe("08:00");
     expect(pref.timezone).toBe("UTC");
     expect(pref.createdAt).toBeInstanceOf(Date);
     expect(pref.updatedAt).toBeInstanceOf(Date);
@@ -170,5 +183,30 @@ describe("NotificationPreference Model", () => {
     expect(pref.updatedAt.getTime()).toBeGreaterThan(
       originalUpdatedAt.getTime(),
     );
+  });
+
+  it("stores custom dueDateReminders", async () => {
+    const pref = await NotificationPreference.create({
+      userId,
+      dueDateReminders: [
+        { daysBefore: 7, time: "10:00" },
+        { daysBefore: 0, time: "20:00" },
+      ],
+    });
+
+    expect(pref.dueDateReminders).toHaveLength(2);
+    expect(pref.dueDateReminders[0].daysBefore).toBe(7);
+    expect(pref.dueDateReminders[0].time).toBe("10:00");
+    expect(pref.dueDateReminders[1].daysBefore).toBe(0);
+    expect(pref.dueDateReminders[1].time).toBe("20:00");
+  });
+
+  it("validates dueDateReminder time format", async () => {
+    await expect(
+      NotificationPreference.create({
+        userId,
+        dueDateReminders: [{ daysBefore: 1, time: "25:00" }],
+      }),
+    ).rejects.toThrow(/time must be in HH:mm format/i);
   });
 });
