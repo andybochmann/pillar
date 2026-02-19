@@ -111,8 +111,8 @@ export async function PATCH(request: Request) {
     );
   }
 
-  // Recalculate reminders for existing tasks when timings change
-  if (result.data.dueDateReminders) {
+  // Recalculate reminders for existing tasks when timings or timezone change
+  if (result.data.dueDateReminders || result.data.timezone) {
     recalculateRemindersForUser(userId).catch((err) => {
       console.error(
         `[preferences/PATCH] Failed to recalculate reminders for user ${userId}:`,

@@ -555,7 +555,161 @@ describe("scheduleNextReminder", () => {
   });
 });
 
+describe("scheduleNextReminder — grace window", () => {
+  it("schedules a reminder whose computed time is within the 30-min grace window", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    // Due tomorrow
+    const dueDate = new Date();
+    dueDate.setUTCDate(dueDate.getUTCDate() + 1);
+    dueDate.setUTCHours(0, 0, 0, 0);
+
+    const task = await createTestTask({
+      title: "Grace window task",
+      userId: user._id,
+      projectId: project._id,
+      dueDate,
+    });
+
+    // Configure a reminder that computed time is ~15 min in the past:
+    // daysBefore=1 means "today" (dueDate - 1). Pick a time that was 15 min ago.
+    const nowUTC = new Date();
+    const fifteenMinAgo = new Date(nowUTC.getTime() - 15 * 60_000);
+    const pastTime = `${String(fifteenMinAgo.getUTCHours()).padStart(2, "0")}:${String(fifteenMinAgo.getUTCMinutes()).padStart(2, "0")}`;
+
+    await NotificationPreference.create({
+      userId: user._id,
+      dueDateReminders: [{ daysBefore: 1, time: pastTime }],
+      timezone: "UTC",
+    });
+
+    await scheduleNextReminder(task._id.toString());
+
+    const updated = await Task.findById(task._id);
+    // Should be scheduled because 15 min ago is within the 30-min grace window
+    expect(updated?.reminderAt).toBeDefined();
+  });
+
+  it("does NOT schedule a reminder whose computed time is beyond the 30-min grace window", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    // Due tomorrow
+    const dueDate = new Date();
+    dueDate.setUTCDate(dueDate.getUTCDate() + 1);
+    dueDate.setUTCHours(0, 0, 0, 0);
+
+    const task = await createTestTask({
+      title: "Beyond grace window",
+      userId: user._id,
+      projectId: project._id,
+      dueDate,
+    });
+
+    // Configure a reminder that computed time is ~45 min in the past
+    const nowUTC = new Date();
+    const fortyFiveMinAgo = new Date(nowUTC.getTime() - 45 * 60_000);
+    const pastTime = `${String(fortyFiveMinAgo.getUTCHours()).padStart(2, "0")}:${String(fortyFiveMinAgo.getUTCMinutes()).padStart(2, "0")}`;
+
+    await NotificationPreference.create({
+      userId: user._id,
+      dueDateReminders: [{ daysBefore: 1, time: pastTime }],
+      timezone: "UTC",
+    });
+
+    await scheduleNextReminder(task._id.toString());
+
+    const updated = await Task.findById(task._id);
+    // Should NOT be scheduled because 45 min ago is outside the 30-min grace window
+    expect(updated?.reminderAt).toBeUndefined();
+  });
+});
+
 describe("recalculateRemindersForUser", () => {
+  it("includes tasks whose dueDate midnight-UTC has passed but local due date is still future", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    // Simulate: task due "today" stored as midnight UTC, but it's now past
+    // midnight UTC (e.g., 1:40 AM UTC = 8:40 PM EST the day before).
+    // The old filter `dueDate: { $gt: new Date() }` would exclude this task.
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    // Task with dueDate at midnight UTC today (which is in the past by up to 24h)
+    const task = await createTestTask({
+      title: "Today due task",
+      userId: user._id,
+      projectId: project._id,
+      dueDate: today,
+    });
+
+    // Set a day-of reminder at 23:00 UTC — still in the future
+    await NotificationPreference.create({
+      userId: user._id,
+      dueDateReminders: [{ daysBefore: 0, time: "23:00" }],
+      timezone: "UTC",
+    });
+
+    await recalculateRemindersForUser(user._id.toString());
+
+    const updated = await Task.findById(task._id);
+    // With the 24h buffer fix, this task should be included in recalculation
+    // and get a reminderAt set (day-of at 23:00 UTC is likely still in the future)
+    const expectedReminder = computeReminderDate(
+      today,
+      { daysBefore: 0, time: "23:00" },
+      "UTC",
+    );
+    if (expectedReminder.getTime() > Date.now() - 30 * 60_000) {
+      expect(updated?.reminderAt).toBeDefined();
+    }
+  });
+
+  it("still excludes tasks with dueDate more than 24h in the past", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    // Task due 3 days ago — should still be excluded
+    const pastDate = new Date(Date.now() - 3 * 24 * 60 * 60_000);
+    pastDate.setUTCHours(0, 0, 0, 0);
+
+    const task = await createTestTask({
+      title: "Old task",
+      userId: user._id,
+      projectId: project._id,
+      dueDate: pastDate,
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      dueDateReminders: [{ daysBefore: 0, time: "09:00" }],
+      timezone: "UTC",
+    });
+
+    await recalculateRemindersForUser(user._id.toString());
+
+    const updated = await Task.findById(task._id);
+    expect(updated?.reminderAt).toBeUndefined();
+  });
+
   it("recalculates reminderAt for incomplete future tasks", async () => {
     const user = await createTestUser();
     const category = await createTestCategory({ userId: user._id });

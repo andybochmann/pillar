@@ -112,6 +112,13 @@ export function NotificationSettingsCard() {
   async function updatePreferences(updates: Partial<NotificationPreference>) {
     if (!preferences) return;
 
+    // Auto-include the browser's timezone so the server always has the
+    // current timezone for reminder scheduling, quiet hours, etc.
+    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (detectedTimezone && detectedTimezone !== preferences.timezone) {
+      updates = { ...updates, timezone: detectedTimezone };
+    }
+
     setSaving(true);
     try {
       const res = await fetch("/api/notifications/preferences", {

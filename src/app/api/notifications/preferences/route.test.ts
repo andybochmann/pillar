@@ -34,6 +34,11 @@ vi.mock("@/lib/db", () => ({
   connectDB: vi.fn().mockResolvedValue(undefined),
 }));
 
+const mockRecalculate = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock("@/lib/reminder-scheduler", () => ({
+  recalculateRemindersForUser: mockRecalculate,
+}));
+
 describe("/api/notifications/preferences", () => {
   beforeAll(async () => {
     await setupTestDB();
@@ -385,6 +390,76 @@ describe("/api/notifications/preferences", () => {
       expect(body.quietHoursStart).toBe("22:30");
       expect(body.quietHoursEnd).toBe("08:30");
       expect(body.enableOverdueSummary).toBe(false);
+    });
+
+    it("triggers recalculateRemindersForUser when dueDateReminders change", async () => {
+      const user = await seedUser();
+      mockRecalculate.mockClear();
+
+      await NotificationPreference.create({ userId: user._id });
+
+      const req = new NextRequest(
+        "http://localhost/api/notifications/preferences",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            dueDateReminders: [{ daysBefore: 2, time: "10:00" }],
+          }),
+        },
+      );
+
+      const res = await PATCH(req);
+      expect(res.status).toBe(200);
+
+      // Give the fire-and-forget promise a tick to resolve
+      await new Promise((r) => setTimeout(r, 10));
+      expect(mockRecalculate).toHaveBeenCalledWith(user._id.toString());
+    });
+
+    it("triggers recalculateRemindersForUser when only timezone changes", async () => {
+      const user = await seedUser();
+      mockRecalculate.mockClear();
+
+      await NotificationPreference.create({ userId: user._id });
+
+      const req = new NextRequest(
+        "http://localhost/api/notifications/preferences",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            timezone: "America/New_York",
+          }),
+        },
+      );
+
+      const res = await PATCH(req);
+      expect(res.status).toBe(200);
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(mockRecalculate).toHaveBeenCalledWith(user._id.toString());
+    });
+
+    it("does NOT trigger recalculateRemindersForUser for unrelated changes", async () => {
+      const user = await seedUser();
+      mockRecalculate.mockClear();
+
+      await NotificationPreference.create({ userId: user._id });
+
+      const req = new NextRequest(
+        "http://localhost/api/notifications/preferences",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            enableInAppNotifications: false,
+          }),
+        },
+      );
+
+      const res = await PATCH(req);
+      expect(res.status).toBe(200);
+
+      await new Promise((r) => setTimeout(r, 10));
+      expect(mockRecalculate).not.toHaveBeenCalled();
     });
   });
 });

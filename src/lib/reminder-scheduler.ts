@@ -2,6 +2,9 @@ import { Task } from "@/models/task";
 import { NotificationPreference } from "@/models/notification-preference";
 import type { IDueDateReminder } from "@/models/notification-preference";
 
+/** Grace window (ms) — reminders computed up to this far in the past still fire. */
+const GRACE_MS = 30 * 60_000; // 30 minutes
+
 /**
  * Compute the absolute Date for a due-date reminder given a due date,
  * a reminder config (daysBefore + time), and a timezone.
@@ -115,6 +118,7 @@ export async function scheduleNextReminder(taskId: string): Promise<void> {
 
   // Collect all reminder dates from all users
   const now = new Date();
+  const cutoff = now.getTime() - GRACE_MS;
   const futureReminderTimes: Date[] = [];
 
   for (const pref of prefs) {
@@ -125,7 +129,7 @@ export async function scheduleNextReminder(taskId: string): Promise<void> {
         reminder,
         timezone,
       );
-      if (reminderDate.getTime() > now.getTime()) {
+      if (reminderDate.getTime() > cutoff) {
         futureReminderTimes.push(reminderDate);
       }
     }
@@ -141,13 +145,18 @@ export async function scheduleNextReminder(taskId: string): Promise<void> {
  * Recalculate reminderAt for all incomplete future-due tasks where the
  * given user is owner or assignee. Called when a user changes their
  * dueDateReminders preference so existing tasks get updated retroactively.
+ *
+ * Uses a 24-hour buffer on the date filter so tasks whose dueDate (stored
+ * as midnight UTC) has technically passed in UTC but is still "today" or
+ * "tomorrow" in negative-UTC timezones are included.
  */
 export async function recalculateRemindersForUser(
   userId: string,
 ): Promise<void> {
+  const cutoff = new Date(Date.now() - 24 * 60 * 60_000);
   const tasks = await Task.find({
     $or: [{ userId }, { assigneeId: userId }],
-    dueDate: { $gt: new Date() },
+    dueDate: { $gte: cutoff },
     completedAt: null,
   }).select("_id");
 

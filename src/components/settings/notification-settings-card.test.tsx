@@ -43,16 +43,32 @@ const mockPreferences = {
   quietHoursStart: "22:00",
   quietHoursEnd: "08:00",
   enableOverdueSummary: true,
+  timezone: "UTC",
   createdAt: "2025-01-01T00:00:00.000Z",
   updatedAt: "2025-01-01T00:00:00.000Z",
 };
 
 describe("NotificationSettingsCard", () => {
+  let resolvedOptionsSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.restoreAllMocks();
     mockRequestPermission.mockReset();
     mockPushSubscribe.mockReset().mockResolvedValue(true);
     mockPushUnsubscribe.mockReset().mockResolvedValue(true);
+
+    // Default: browser timezone matches stored "UTC" so auto-inject doesn't
+    // add timezone to every PATCH request, keeping existing tests stable.
+    resolvedOptionsSpy = vi.spyOn(
+      Intl.DateTimeFormat.prototype,
+      "resolvedOptions",
+    );
+    resolvedOptionsSpy.mockReturnValue({
+      locale: "en-US",
+      calendar: "gregory",
+      numberingSystem: "latn",
+      timeZone: "UTC",
+    } as Intl.ResolvedDateTimeFormatOptions);
   });
 
   it("shows loading state initially", () => {
@@ -643,5 +659,94 @@ describe("NotificationSettingsCard", () => {
         body: "Browser notification display is working!",
       }),
     );
+  });
+
+  it("auto-includes detected timezone when it differs from stored preference", async () => {
+    const user = userEvent.setup();
+
+    // Browser timezone differs from stored "UTC"
+    resolvedOptionsSpy.mockReturnValue({
+      locale: "en-US",
+      calendar: "gregory",
+      numberingSystem: "latn",
+      timeZone: "America/Chicago",
+    } as Intl.ResolvedDateTimeFormatOptions);
+
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ ...mockPreferences, timezone: "UTC" }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            ...mockPreferences,
+            enableOverdueSummary: false,
+            timezone: "America/Chicago",
+          }),
+      } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText("Overdue Task Summary");
+    await user.click(toggle);
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "/api/notifications/preferences",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            enableOverdueSummary: false,
+            timezone: "America/Chicago",
+          }),
+        }),
+      );
+    });
+  });
+
+  it("does not include timezone when browser timezone matches stored preference", async () => {
+    const user = userEvent.setup();
+
+    // resolvedOptionsSpy already returns "UTC" from beforeEach
+
+    vi.spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ ...mockPreferences, timezone: "UTC" }),
+      } as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            ...mockPreferences,
+            enableOverdueSummary: false,
+          }),
+      } as Response);
+
+    render(<NotificationSettingsCard />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Overdue Task Summary")).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByLabelText("Overdue Task Summary");
+    await user.click(toggle);
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith(
+        "/api/notifications/preferences",
+        expect.objectContaining({
+          method: "PATCH",
+          // Should NOT include timezone since browser matches stored
+          body: JSON.stringify({ enableOverdueSummary: false }),
+        }),
+      );
+    });
   });
 });
