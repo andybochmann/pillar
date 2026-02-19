@@ -10,7 +10,10 @@ interface TaskTitleDescriptionSectionProps {
   taskId: string;
   initialTitle: string;
   initialDescription: string;
-  onUpdate: (data: { title?: string; description?: string }) => Promise<unknown>;
+  onUpdate: (data: {
+    title?: string;
+    description?: string;
+  }) => Promise<unknown>;
 }
 
 export function TaskTitleDescriptionSection({
@@ -23,25 +26,42 @@ export function TaskTitleDescriptionSection({
   const [description, setDescription] = useState(initialDescription);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
+  // Refs to track latest values for the cleanup effect
+  const titleRef = useRef(title);
+  const descriptionRef = useRef(description);
+  const initialTitleRef = useRef(initialTitle);
+  const initialDescriptionRef = useRef(initialDescription);
+  const onUpdateRef = useRef(onUpdate);
 
-  // Save any pending changes when component unmounts or task changes
+  // Keep refs in sync with latest values
+  useEffect(() => {
+    titleRef.current = title;
+  }, [title]);
+  useEffect(() => {
+    descriptionRef.current = description;
+  }, [description]);
+  useEffect(() => {
+    initialTitleRef.current = initialTitle;
+  }, [initialTitle]);
+  useEffect(() => {
+    initialDescriptionRef.current = initialDescription;
+  }, [initialDescription]);
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+  }, [onUpdate]);
+
+  // Flush unsaved changes on unmount or task change
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
       // Flush unsaved title
-      const trimmed = title.trim();
-      if (trimmed && trimmed !== initialTitle) {
-        onUpdate({ title: trimmed });
+      const trimmed = titleRef.current.trim();
+      if (trimmed && trimmed !== initialTitleRef.current) {
+        onUpdateRef.current({ title: trimmed });
       }
       // Flush unsaved description
-      if (description !== initialDescription) {
-        onUpdate({ description });
+      if (descriptionRef.current !== initialDescriptionRef.current) {
+        onUpdateRef.current({ description: descriptionRef.current });
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

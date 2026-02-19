@@ -101,28 +101,38 @@ describe("TaskSheet", () => {
 
   it("renders priority select with urgent priority", () => {
     render(
-      <TaskSheet {...defaultProps} task={{ ...mockTask, priority: "urgent" }} />,
+      <TaskSheet
+        {...defaultProps}
+        task={{ ...mockTask, priority: "urgent" }}
+      />,
     );
     const prioritySelect = screen.getByLabelText("Priority");
     expect(prioritySelect).toBeInTheDocument();
   });
 
   it("renders priority select with high priority", () => {
-    render(<TaskSheet {...defaultProps} task={{ ...mockTask, priority: "high" }} />);
+    render(
+      <TaskSheet {...defaultProps} task={{ ...mockTask, priority: "high" }} />,
+    );
     const prioritySelect = screen.getByLabelText("Priority");
     expect(prioritySelect).toBeInTheDocument();
   });
 
   it("renders priority select with medium priority", () => {
     render(
-      <TaskSheet {...defaultProps} task={{ ...mockTask, priority: "medium" }} />,
+      <TaskSheet
+        {...defaultProps}
+        task={{ ...mockTask, priority: "medium" }}
+      />,
     );
     const prioritySelect = screen.getByLabelText("Priority");
     expect(prioritySelect).toBeInTheDocument();
   });
 
   it("renders priority select with low priority", () => {
-    render(<TaskSheet {...defaultProps} task={{ ...mockTask, priority: "low" }} />);
+    render(
+      <TaskSheet {...defaultProps} task={{ ...mockTask, priority: "low" }} />,
+    );
     const prioritySelect = screen.getByLabelText("Priority");
     expect(prioritySelect).toBeInTheDocument();
   });
@@ -279,7 +289,9 @@ describe("TaskSheet", () => {
       ...mockTask,
       subtasks: [{ _id: "s1", title: "Do thing", completed: false }],
     };
-    render(<TaskSheet {...defaultProps} task={taskWithSub} onUpdate={onUpdate} />);
+    render(
+      <TaskSheet {...defaultProps} task={taskWithSub} onUpdate={onUpdate} />,
+    );
 
     await user.click(screen.getByRole("checkbox", { name: "Toggle Do thing" }));
 
@@ -299,11 +311,11 @@ describe("TaskSheet", () => {
       ...mockTask,
       subtasks: [{ _id: "s1", title: "Remove me", completed: false }],
     };
-    render(<TaskSheet {...defaultProps} task={taskWithSub} onUpdate={onUpdate} />);
-
-    await user.click(
-      screen.getByRole("button", { name: "Delete Remove me" }),
+    render(
+      <TaskSheet {...defaultProps} task={taskWithSub} onUpdate={onUpdate} />,
     );
+
+    await user.click(screen.getByRole("button", { name: "Delete Remove me" }));
 
     expect(screen.queryByText("Remove me")).not.toBeInTheDocument();
 
@@ -412,9 +424,7 @@ describe("TaskSheet", () => {
 
       // Click generate in the dialog
       await waitFor(() => {
-        expect(
-          screen.getByText(/Generate \d+ Subtasks/),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/Generate \d+ Subtasks/)).toBeInTheDocument();
       });
 
       await user.click(screen.getByText(/Generate \d+ Subtasks/));
@@ -483,7 +493,11 @@ describe("TaskSheet", () => {
         columnId: "done",
       };
       render(
-        <TaskSheet {...defaultProps} task={completedTask} onUpdate={onUpdate} />,
+        <TaskSheet
+          {...defaultProps}
+          task={completedTask}
+          onUpdate={onUpdate}
+        />,
       );
 
       await user.click(screen.getByRole("button", { name: "Reopen" }));
@@ -500,5 +514,44 @@ describe("TaskSheet", () => {
     // Column dropdown sync logic (moving to/from last column sets/clears completedAt)
     // is tested via the pure helper in src/lib/column-completion.test.ts.
     // Radix UI Select cannot be interacted with in jsdom (see note at line 98).
+  });
+
+  describe("flush on close without blur", () => {
+    it("saves unsaved title when sheet unmounts without blur", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      const { unmount } = render(
+        <TaskSheet {...defaultProps} onUpdate={onUpdate} />,
+      );
+
+      const titleInput = screen.getByLabelText("Title");
+      await user.clear(titleInput);
+      await user.type(titleInput, "Updated without blur");
+
+      // Close sheet without blurring
+      unmount();
+
+      expect(onUpdate).toHaveBeenCalledWith("task-1", {
+        title: "Updated without blur",
+      });
+    });
+
+    it("saves unsaved description when sheet unmounts without blur", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      const { unmount } = render(
+        <TaskSheet {...defaultProps} onUpdate={onUpdate} />,
+      );
+
+      const descTextarea = screen.getByLabelText("Description");
+      await user.clear(descTextarea);
+      await user.type(descTextarea, "New unsaved description");
+
+      unmount();
+
+      expect(onUpdate).toHaveBeenCalledWith("task-1", {
+        description: "New unsaved description",
+      });
+    });
   });
 });

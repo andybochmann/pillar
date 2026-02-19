@@ -137,7 +137,10 @@ function TaskSheetForm({
     [columns],
   );
   const firstColumnId = sortedColumns.length > 0 ? sortedColumns[0].id : null;
-  const lastColumnId = sortedColumns.length > 0 ? sortedColumns[sortedColumns.length - 1].id : null;
+  const lastColumnId =
+    sortedColumns.length > 0
+      ? sortedColumns[sortedColumns.length - 1].id
+      : null;
 
   const [priority, setPriority] = useState<Priority>(task.priority);
   const [columnId, setColumnId] = useState(task.columnId);
@@ -165,10 +168,16 @@ function TaskSheetForm({
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const pendingSaveRef = useRef<(() => Promise<void>) | null>(null);
 
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      // Flush any pending debounced save on unmount
+      if (pendingSaveRef.current) {
+        pendingSaveRef.current();
+        pendingSaveRef.current = null;
+      }
     };
   }, []);
 
@@ -194,13 +203,17 @@ function TaskSheetForm({
   const saveField = useCallback(
     (data: Partial<Task>) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(async () => {
+      const doSave = async () => {
         try {
           await onUpdate(task._id, data);
         } catch (err) {
           toast.error(err instanceof Error ? err.message : "Failed to save");
+        } finally {
+          pendingSaveRef.current = null;
         }
-      }, 500);
+      };
+      pendingSaveRef.current = doSave;
+      debounceRef.current = setTimeout(doSave, 500);
     },
     [task._id, onUpdate],
   );
@@ -220,7 +233,11 @@ function TaskSheetForm({
   function handleColumnChange(value: string) {
     const prevColumnId = columnId;
     setColumnId(value);
-    const completedAt = getCompletionForColumnChange(prevColumnId, value, columns);
+    const completedAt = getCompletionForColumnChange(
+      prevColumnId,
+      value,
+      columns,
+    );
     if (completedAt !== undefined) {
       saveField({ columnId: value, completedAt });
     } else {
