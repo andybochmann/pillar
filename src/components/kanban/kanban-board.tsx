@@ -69,11 +69,11 @@ export function KanbanBoard({
     onTasksChange?.(tasks);
   }, [tasks, onTasksChange]);
 
-  const { startTracking, stopTracking, deleteSession: deleteTimeSession } = useTimeTracking(
-    tasks,
-    setTasks,
-    currentUserId ?? "",
-  );
+  const {
+    startTracking,
+    stopTracking,
+    deleteSession: deleteTimeSession,
+  } = useTimeTracking(tasks, setTasks, currentUserId ?? "");
 
   const sortedColumns = useMemo(
     () => [...columns].sort((a, b) => a.order - b.order),
@@ -110,12 +110,23 @@ export function KanbanBoard({
   );
 
   const filteredTasks = useMemo(() => {
-    const hasFilters = filters.priorities.length > 0 || filters.labels.length > 0 || filters.dueDateRange !== null;
+    const hasFilters =
+      filters.priorities.length > 0 ||
+      filters.labels.length > 0 ||
+      filters.dueDateRange !== null;
     if (!hasFilters) return tasks;
 
     return tasks.filter((t) => {
-      if (filters.priorities.length > 0 && !filters.priorities.includes(t.priority)) return false;
-      if (filters.labels.length > 0 && !filters.labels.some((l) => t.labels.includes(l))) return false;
+      if (
+        filters.priorities.length > 0 &&
+        !filters.priorities.includes(t.priority)
+      )
+        return false;
+      if (
+        filters.labels.length > 0 &&
+        !filters.labels.some((l) => t.labels.includes(l))
+      )
+        return false;
 
       if (filters.dueDateRange) {
         if (!t.dueDate) return false;
@@ -128,7 +139,8 @@ export function KanbanBoard({
         } else if (filters.dueDateRange === "today") {
           if (!isToday(due)) return false;
         } else if (filters.dueDateRange === "week") {
-          if (isBefore(due, startOfDay(now)) || !isBefore(due, endOfWeek(now))) return false;
+          if (isBefore(due, startOfDay(now)) || !isBefore(due, endOfWeek(now)))
+            return false;
         }
       }
 
@@ -182,7 +194,11 @@ export function KanbanBoard({
     if (!activeTaskItem) return;
 
     const overTask = tasks.find((t) => t._id === overId);
-    const targetColumnId = overTask ? overTask.columnId : sortedColumns.find((c) => c.id === overId) ? overId : null;
+    const targetColumnId = overTask
+      ? overTask.columnId
+      : sortedColumns.find((c) => c.id === overId)
+        ? overId
+        : null;
 
     if (!targetColumnId) return;
 
@@ -213,6 +229,9 @@ export function KanbanBoard({
     const task = tasks.find((t) => t._id === activeId);
     if (!task) return;
 
+    const isCrossColumnMove =
+      startColumn !== null && startColumn !== task.columnId;
+
     // Compute new order for the column the task is now in
     const columnTasks = tasks
       .filter((t) => t.columnId === task.columnId)
@@ -221,8 +240,11 @@ export function KanbanBoard({
     const oldIndex = columnTasks.findIndex((t) => t._id === activeId);
     const newIndex = columnTasks.findIndex((t) => t._id === overId);
 
-    if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-      // Reorder within column
+    const needsReorder =
+      oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex;
+
+    if (needsReorder) {
+      // Reorder within the destination column
       const reordered = arrayMove(columnTasks, oldIndex, newIndex);
       const updates = reordered.map((t, i) => ({ ...t, order: i }));
 
@@ -231,7 +253,7 @@ export function KanbanBoard({
         return [...otherTasks, ...updates];
       });
 
-      // Persist to API
+      // Persist reorder
       try {
         const res = await fetch("/api/tasks/reorder", {
           method: "PATCH",
@@ -242,22 +264,34 @@ export function KanbanBoard({
         });
         if (!res.ok) throw new Error("Failed to reorder");
       } catch {
-        // Revert on failure
         const res = await fetch(`/api/tasks?projectId=${projectId}`);
         if (res.ok) setTasks(await res.json());
       }
-    } else {
-      // Cross-column move — persist columnId and sync completedAt
+    }
+
+    if (isCrossColumnMove) {
+      // Persist the columnId change (and completedAt if applicable)
       const updateData: Partial<Task> = {
         columnId: task.columnId,
-        order: task.order,
       };
 
-      if (startColumn) {
-        const completedAt = getCompletionForColumnChange(startColumn, task.columnId, columns);
-        if (completedAt !== undefined) {
-          updateData.completedAt = completedAt;
-        }
+      // If we didn't reorder above, also compute correct order for the new column
+      if (!needsReorder) {
+        const destinationTasks = columnTasks.filter((t) => t._id !== activeId);
+        updateData.order = destinationTasks.length;
+      } else {
+        const reordered = arrayMove(columnTasks, oldIndex, newIndex);
+        const newOrder = reordered.findIndex((t) => t._id === activeId);
+        updateData.order = newOrder !== -1 ? newOrder : task.order;
+      }
+
+      const completedAt = getCompletionForColumnChange(
+        startColumn,
+        task.columnId,
+        columns,
+      );
+      if (completedAt !== undefined) {
+        updateData.completedAt = completedAt;
       }
 
       try {
@@ -266,6 +300,9 @@ export function KanbanBoard({
         const res = await fetch(`/api/tasks?projectId=${projectId}`);
         if (res.ok) setTasks(await res.json());
       }
+    } else if (!needsReorder) {
+      // Same column, same position — no-op (dropped in place)
+      setDndAnnouncement("Task dropped");
     }
   }
 
@@ -324,7 +361,9 @@ export function KanbanBoard({
       setSheetOpen(false);
       setSelectedTask(null);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to duplicate task");
+      toast.error(
+        err instanceof Error ? err.message : "Failed to duplicate task",
+      );
     }
   }
 
@@ -464,7 +503,14 @@ export function KanbanBoard({
 
         <DragOverlay>
           {activeTask ? (
-            <TaskCard task={activeTask} isOverlay labelColors={labelColors} labelNames={labelNames} memberNames={memberNames} currentUserId={currentUserId} />
+            <TaskCard
+              task={activeTask}
+              isOverlay
+              labelColors={labelColors}
+              labelNames={labelNames}
+              memberNames={memberNames}
+              currentUserId={currentUserId}
+            />
           ) : null}
         </DragOverlay>
       </DndContext>
