@@ -437,7 +437,7 @@ export function NotificationSettingsCard() {
         </div>
 
         {/* Test Notification Buttons */}
-        <div className="border-muted-foreground/20 space-y-2 border-t pt-4">
+        <div className="border-muted-foreground/20 flex flex-wrap gap-3 border-t pt-4">
           <Button
             variant="outline"
             onClick={() => {
