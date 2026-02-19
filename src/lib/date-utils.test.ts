@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { parseLocalDate, toLocalDate, getNextDueDate } from "./date-utils";
+import {
+  parseLocalDate,
+  toLocalDate,
+  getNextDueDate,
+  getCurrentDateInTimezone,
+  startOfDayUTC,
+  endOfDayUTC,
+} from "./date-utils";
 
 describe("parseLocalDate", () => {
   it("parses a date string as local midnight", () => {
@@ -332,5 +339,121 @@ describe("getNextDueDate", () => {
       expect(nextDate.getSeconds()).toBe(0);
       expect(nextDate.getMilliseconds()).toBe(0);
     });
+  });
+});
+
+describe("getCurrentDateInTimezone", () => {
+  it("returns YYYY-MM-DD format", () => {
+    const result = getCurrentDateInTimezone(
+      "UTC",
+      new Date("2026-02-18T15:00:00Z"),
+    );
+    expect(result).toBe("2026-02-18");
+  });
+
+  it("returns the correct date for a negative-UTC timezone in late evening", () => {
+    // 4 AM UTC on Feb 19 = 11 PM EST on Feb 18
+    const result = getCurrentDateInTimezone(
+      "America/New_York",
+      new Date("2026-02-19T04:00:00Z"),
+    );
+    expect(result).toBe("2026-02-18");
+  });
+
+  it("returns the correct date for a positive-UTC timezone past midnight", () => {
+    // 11 PM UTC on Feb 18 = 8 AM JST on Feb 19
+    const result = getCurrentDateInTimezone(
+      "Asia/Tokyo",
+      new Date("2026-02-18T23:00:00Z"),
+    );
+    expect(result).toBe("2026-02-19");
+  });
+
+  it("returns UTC date when timezone is UTC", () => {
+    const result = getCurrentDateInTimezone(
+      "UTC",
+      new Date("2026-02-19T00:30:00Z"),
+    );
+    expect(result).toBe("2026-02-19");
+  });
+
+  it("handles day boundary exactly at midnight", () => {
+    const result = getCurrentDateInTimezone(
+      "UTC",
+      new Date("2026-02-19T00:00:00.000Z"),
+    );
+    expect(result).toBe("2026-02-19");
+  });
+});
+
+describe("startOfDayUTC", () => {
+  it("returns midnight UTC for the given date string", () => {
+    const result = startOfDayUTC("2026-02-18");
+    expect(result.toISOString()).toBe("2026-02-18T00:00:00.000Z");
+  });
+
+  it("works for year boundary", () => {
+    const result = startOfDayUTC("2026-01-01");
+    expect(result.toISOString()).toBe("2026-01-01T00:00:00.000Z");
+  });
+});
+
+describe("endOfDayUTC", () => {
+  it("returns end-of-day UTC for the given date string", () => {
+    const result = endOfDayUTC("2026-02-18");
+    expect(result.toISOString()).toBe("2026-02-18T23:59:59.999Z");
+  });
+
+  it("works for year boundary", () => {
+    const result = endOfDayUTC("2025-12-31");
+    expect(result.toISOString()).toBe("2025-12-31T23:59:59.999Z");
+  });
+});
+
+describe("dashboard due-date scenario", () => {
+  it("task due tomorrow is NOT due today for EST user at 11 PM", () => {
+    // Scenario: Feb 18 at 11 PM EST = Feb 19 at 4 AM UTC
+    // Task due Feb 19 stored as 2026-02-19T00:00:00Z
+    const now = new Date("2026-02-19T04:00:00Z");
+    const taskDueDate = new Date("2026-02-19T00:00:00.000Z");
+
+    const todayStr = getCurrentDateInTimezone("America/New_York", now);
+    expect(todayStr).toBe("2026-02-18");
+
+    const todayStart = startOfDayUTC(todayStr);
+    const todayEnd = endOfDayUTC(todayStr);
+
+    // Task due Feb 19 should NOT be within "today" (Feb 18) range
+    const isDueToday = taskDueDate >= todayStart && taskDueDate <= todayEnd;
+    expect(isDueToday).toBe(false);
+  });
+
+  it("task due today IS due today for EST user at 11 PM", () => {
+    // Same scenario but task due Feb 18
+    const now = new Date("2026-02-19T04:00:00Z");
+    const taskDueDate = new Date("2026-02-18T00:00:00.000Z");
+
+    const todayStr = getCurrentDateInTimezone("America/New_York", now);
+    const todayStart = startOfDayUTC(todayStr);
+    const todayEnd = endOfDayUTC(todayStr);
+
+    const isDueToday = taskDueDate >= todayStart && taskDueDate <= todayEnd;
+    expect(isDueToday).toBe(true);
+  });
+
+  it("task due today IS due today for JST user past local midnight", () => {
+    // Feb 18 at 11 PM UTC = Feb 19 at 8 AM JST
+    // Task due Feb 19 (stored as 2026-02-19T00:00:00Z)
+    const now = new Date("2026-02-18T23:00:00Z");
+    const taskDueDate = new Date("2026-02-19T00:00:00.000Z");
+
+    const todayStr = getCurrentDateInTimezone("Asia/Tokyo", now);
+    expect(todayStr).toBe("2026-02-19");
+
+    const todayStart = startOfDayUTC(todayStr);
+    const todayEnd = endOfDayUTC(todayStr);
+
+    const isDueToday = taskDueDate >= todayStart && taskDueDate <= todayEnd;
+    expect(isDueToday).toBe(true);
   });
 });

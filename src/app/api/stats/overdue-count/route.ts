@@ -26,8 +26,9 @@ export async function GET() {
     const projectIds = projects.map((p) => p._id);
 
     // Count tasks that are overdue: past due date and not completed
+    // Use UTC midnight since due dates are stored as midnight UTC
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
+    now.setUTCHours(0, 0, 0, 0);
 
     const count = await Task.countDocuments({
       projectId: { $in: projectIds },

@@ -5,6 +5,35 @@ export function parseLocalDate(dateStr: string): Date {
   return parse(dateStr, "yyyy-MM-dd", new Date(2000, 0, 1));
 }
 
+/**
+ * Get the current calendar date string (YYYY-MM-DD) in the given IANA timezone.
+ * Uses Intl to correctly determine what date it is for the user.
+ */
+export function getCurrentDateInTimezone(
+  timezone: string,
+  now: Date = new Date(),
+): string {
+  return now.toLocaleDateString("en-CA", { timeZone: timezone });
+}
+
+/**
+ * Get UTC midnight for a calendar date string (YYYY-MM-DD).
+ * Since due dates are stored as midnight UTC, this gives the correct
+ * start boundary for querying tasks on a specific calendar date.
+ */
+export function startOfDayUTC(dateStr: string): Date {
+  return new Date(dateStr + "T00:00:00.000Z");
+}
+
+/**
+ * Get UTC end-of-day (23:59:59.999) for a calendar date string (YYYY-MM-DD).
+ * Since due dates are stored as midnight UTC, this gives the correct
+ * end boundary for querying tasks on a specific calendar date.
+ */
+export function endOfDayUTC(dateStr: string): Date {
+  return new Date(dateStr + "T23:59:59.999Z");
+}
+
 /** Convert an ISO datetime string to a local-midnight Date (strips time/timezone). */
 export function toLocalDate(isoString: string): Date {
   return parseLocalDate(isoString.slice(0, 10));

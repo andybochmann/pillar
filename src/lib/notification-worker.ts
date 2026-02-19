@@ -113,7 +113,10 @@ function emitNotification(
       tag,
       url: projectId ? `/projects/${projectId}` : "/",
     }).catch((err) => {
-      console.error(`[notification-worker] Push failed for user ${userId}:`, err);
+      console.error(
+        `[notification-worker] Push failed for user ${userId}:`,
+        err,
+      );
     });
   }
 }
@@ -273,7 +276,10 @@ async function processReminders(
     // Clear reminderAt (one-shot) then schedule next timing
     await Task.updateOne({ _id: task._id }, { $unset: { reminderAt: 1 } });
     scheduleNextReminder(taskId).catch((err) => {
-      console.error(`[notification-worker] Failed to schedule next reminder for task ${taskId}:`, err);
+      console.error(
+        `[notification-worker] Failed to schedule next reminder for task ${taskId}:`,
+        err,
+      );
     });
   }
 
@@ -378,9 +384,6 @@ export async function processDailySummary(
 
   const prefs = await NotificationPreference.find(prefFilter);
 
-  const todayStart = getDayBoundaryUTC(now, "start");
-  const todayEnd = getDayBoundaryUTC(now, "end");
-
   // Batch-load existing daily summaries from last 36 hours for dedup
   const recentCutoff = new Date(now.getTime() - 36 * 60 * 60 * 1000);
   const prefUserIds = prefs.map((p) => p.userId);
@@ -428,6 +431,12 @@ export async function processDailySummary(
     // Check if we already sent a daily summary for today (in user's timezone)
     const todayStr = getDateStringInTimezone(now, timezone);
     if (summaryDates.get(userId)?.has(todayStr)) continue;
+
+    // Compute "today" boundaries in UTC based on the user's local calendar date.
+    // Due dates are stored as midnight UTC, so we match on the UTC date
+    // that corresponds to "today" in the user's timezone.
+    const todayStart = new Date(todayStr + "T00:00:00.000Z");
+    const todayEnd = new Date(todayStr + "T23:59:59.999Z");
 
     // Find tasks where user is owner OR assignee, due today
     const dueTodayTasks = await Task.find({
@@ -513,10 +522,11 @@ export async function processNotifications(scopeUserId?: string): Promise<{
 
   const total = reminders + overdue + dailySummaries;
   if (total > 0) {
-    console.log(
-      `[notification-worker] Created ${total} notifications`,
-      { reminders, overdue, dailySummaries },
-    );
+    console.log(`[notification-worker] Created ${total} notifications`, {
+      reminders,
+      overdue,
+      dailySummaries,
+    });
   }
 
   return { reminders, overdue, dailySummaries };

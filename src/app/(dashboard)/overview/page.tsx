@@ -7,10 +7,13 @@ import { Project } from "@/models/project";
 import { Label } from "@/models/label";
 import { TaskFilters } from "@/components/overview/task-filters";
 import { TaskList } from "@/components/overview/task-list";
-import { startOfDay, endOfDay } from "date-fns";
-import { parseLocalDate } from "@/lib/date-utils";
+import { startOfDayUTC, endOfDayUTC } from "@/lib/date-utils";
 import type { SortOrder } from "mongoose";
-import type { Task as TaskType, Project as ProjectType, Label as LabelType } from "@/types";
+import type {
+  Task as TaskType,
+  Project as ProjectType,
+  Label as LabelType,
+} from "@/types";
 
 interface OverviewPageProps {
   searchParams: Promise<Record<string, string | undefined>>;
@@ -37,20 +40,23 @@ export default async function OverviewPage({
 
   if (params.dueDateFrom || params.dueDateTo) {
     const dateFilter: Record<string, Date> = {};
-    if (params.dueDateFrom) dateFilter.$gte = startOfDay(parseLocalDate(params.dueDateFrom));
-    if (params.dueDateTo) dateFilter.$lte = endOfDay(parseLocalDate(params.dueDateTo));
+    if (params.dueDateFrom) dateFilter.$gte = startOfDayUTC(params.dueDateFrom);
+    if (params.dueDateTo) dateFilter.$lte = endOfDayUTC(params.dueDateTo);
     filter.dueDate = dateFilter;
   }
 
   let sort: Record<string, SortOrder> = { order: 1 };
   const sortOrder: SortOrder = params.sortOrder === "desc" ? -1 : 1;
   if (params.sortBy === "dueDate") sort = { dueDate: sortOrder, order: 1 };
-  else if (params.sortBy === "priority") sort = { priority: sortOrder, order: 1 };
+  else if (params.sortBy === "priority")
+    sort = { priority: sortOrder, order: 1 };
   else if (params.sortBy === "createdAt") sort = { createdAt: sortOrder };
 
   const [tasksRaw, projectsRaw, labelsRaw] = await Promise.all([
     Task.find(filter).sort(sort).lean(),
-    Project.find({ userId: session.user.id, archived: false }).sort({ createdAt: -1 }).lean(),
+    Project.find({ userId: session.user.id, archived: false })
+      .sort({ createdAt: -1 })
+      .lean(),
     Label.find({ userId: session.user.id }).lean(),
   ]);
 

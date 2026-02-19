@@ -18,7 +18,12 @@ import {
 } from "@/components/ui/card";
 import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
-import { startOfDay, endOfDay, addDays, subDays, format } from "date-fns";
+import { NotificationPreference } from "@/models/notification-preference";
+import {
+  getCurrentDateInTimezone,
+  startOfDayUTC,
+  endOfDayUTC,
+} from "@/lib/date-utils";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -29,17 +34,26 @@ export default async function DashboardPage() {
 
   await connectDB();
 
-  const now = new Date();
-  const todayStart = startOfDay(now);
-  const todayEnd = endOfDay(now);
-  const weekEnd = endOfDay(addDays(now, 7));
-
   const userId = session.user.id;
   const baseFilter = { userId, completedAt: null };
 
-  const yesterday = format(subDays(now, 1), "yyyy-MM-dd");
-  const todayStr = format(now, "yyyy-MM-dd");
-  const weekEndStr = format(addDays(now, 7), "yyyy-MM-dd");
+  // Use the user's timezone to determine "today" correctly.
+  // Due dates are stored as midnight UTC, so we need UTC boundaries
+  // for the calendar date that is "today" in the user's timezone.
+  const prefs = await NotificationPreference.findOne({ userId }).lean();
+  const timezone = prefs?.timezone || "UTC";
+  const now = new Date();
+  const todayStr = getCurrentDateInTimezone(timezone, now);
+  const todayStart = startOfDayUTC(todayStr);
+  const todayEnd = endOfDayUTC(todayStr);
+
+  // Compute relative dates using UTC arithmetic (avoids server-local tz issues)
+  const todayUTC = startOfDayUTC(todayStr);
+  const yesterdayUTC = new Date(todayUTC.getTime() - 86_400_000);
+  const weekEndUTC = new Date(todayUTC.getTime() + 7 * 86_400_000);
+  const yesterday = yesterdayUTC.toISOString().slice(0, 10);
+  const weekEndStr = weekEndUTC.toISOString().slice(0, 10);
+  const weekEnd = endOfDayUTC(weekEndStr);
 
   const overdueHref = `/overview?dueDateTo=${yesterday}&sortBy=dueDate&sortOrder=asc`;
   const dueTodayHref = `/overview?dueDateFrom=${todayStr}&dueDateTo=${todayStr}&sortBy=dueDate&sortOrder=asc`;

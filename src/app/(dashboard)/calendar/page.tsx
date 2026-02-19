@@ -4,13 +4,6 @@ import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { CalendarPageClient } from "@/components/calendar/calendar-page-client";
-import {
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  parse,
-} from "date-fns";
 import type {
   Task as TaskType,
   Project as ProjectType,
@@ -39,22 +32,36 @@ export default async function CalendarPage({
       ? (viewParam as CalendarViewType)
       : "month";
 
-  // Parse month from URL or use current month
-  // Supports both yyyy-MM (month view) and yyyy-MM-dd (week/day views)
-  let currentMonth: Date;
+  // Parse month from URL or use current month.
+  // All calculations use UTC because due dates are stored as midnight UTC.
+  let year: number, month: number, day: number;
   if (params.month && /^\d{4}-\d{2}-\d{2}$/.test(params.month)) {
-    currentMonth = parse(params.month, "yyyy-MM-dd", new Date());
+    [year, month, day] = params.month.split("-").map(Number);
+    month -= 1; // 0-indexed
   } else if (params.month && /^\d{4}-\d{2}$/.test(params.month)) {
-    currentMonth = parse(params.month, "yyyy-MM", new Date());
+    [year, month] = params.month.split("-").map(Number);
+    month -= 1;
+    day = 1;
   } else {
-    currentMonth = new Date();
+    const now = new Date();
+    year = now.getUTCFullYear();
+    month = now.getUTCMonth();
+    day = now.getUTCDate();
   }
 
-  // Calculate the visible date range (including overflow days from prev/next month)
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const gridStart = startOfWeek(monthStart);
-  const gridEnd = endOfWeek(monthEnd);
+  const currentMonth = new Date(Date.UTC(year, month, day));
+
+  // Calculate the visible date range in UTC (including overflow days from prev/next month)
+  const monthStart = new Date(Date.UTC(year, month, 1));
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const monthEnd = new Date(Date.UTC(year, month, lastDay));
+
+  const startDow = monthStart.getUTCDay(); // 0 = Sunday
+  const gridStart = new Date(Date.UTC(year, month, 1 - startDow));
+
+  const endDow = monthEnd.getUTCDay(); // 6 = Saturday
+  const gridEnd = new Date(Date.UTC(year, month, lastDay + (6 - endDow)));
+  gridEnd.setUTCHours(23, 59, 59, 999);
 
   const [tasksRaw, projectsRaw] = await Promise.all([
     Task.find({

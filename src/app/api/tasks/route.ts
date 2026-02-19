@@ -7,8 +7,7 @@ import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { ProjectMember } from "@/models/project-member";
-import { startOfDay, endOfDay } from "date-fns";
-import { parseLocalDate } from "@/lib/date-utils";
+import { startOfDayUTC, endOfDayUTC } from "@/lib/date-utils";
 import {
   getAccessibleProjectIds,
   getProjectRole,
@@ -96,8 +95,8 @@ export async function GET(request: Request) {
 
   if (dueDateFrom || dueDateTo) {
     const dateFilter: Record<string, Date> = {};
-    if (dueDateFrom) dateFilter.$gte = startOfDay(parseLocalDate(dueDateFrom));
-    if (dueDateTo) dateFilter.$lte = endOfDay(parseLocalDate(dueDateTo));
+    if (dueDateFrom) dateFilter.$gte = startOfDayUTC(dueDateFrom);
+    if (dueDateTo) dateFilter.$lte = endOfDayUTC(dueDateTo);
     filter.dueDate = dateFilter;
   }
 

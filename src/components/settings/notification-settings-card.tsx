@@ -423,7 +423,7 @@ export function NotificationSettingsCard() {
           <div className="space-y-0.5">
             <Label htmlFor="overdue-summary">Overdue Task Summary</Label>
             <p className="text-muted-foreground text-sm">
-              Daily summary of overdue tasks
+              Get notified when tasks become overdue
             </p>
           </div>
           <Switch
