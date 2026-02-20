@@ -30,6 +30,19 @@ interface NoteListProps {
   onTogglePin: (id: string, currentPinned: boolean) => void;
 }
 
+function stripMarkdown(text: string): string {
+  return text
+    .replace(/#{1,6}\s+/g, "")
+    .replace(/\*\*(.+?)\*\*/g, "$1")
+    .replace(/\*(.+?)\*/g, "$1")
+    .replace(/`(.+?)`/g, "$1")
+    .replace(/\[(.+?)\]\(.+?\)/g, "$1")
+    .replace(/\[.?\]\s*/g, "")
+    .replace(/^[-*+]\s+/gm, "")
+    .replace(/\n+/g, " ")
+    .trim();
+}
+
 export function NoteList({ notes, onEdit, onDelete, onTogglePin }: NoteListProps) {
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
@@ -45,10 +58,14 @@ export function NoteList({ notes, onEdit, onDelete, onTogglePin }: NoteListProps
     <>
       <div className="space-y-2">
         {notes.map((note) => (
-          <button
+          <div
             key={note._id}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => onEdit(note)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") onEdit(note);
+            }}
             className={cn(
               "group flex w-full cursor-pointer flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors hover:bg-accent/50",
               note.pinned && "border-primary/30 bg-primary/5",
@@ -96,10 +113,10 @@ export function NoteList({ notes, onEdit, onDelete, onTogglePin }: NoteListProps
             </div>
             {note.content && (
               <p className="line-clamp-2 text-xs text-muted-foreground">
-                {note.content.slice(0, 200)}
+                {stripMarkdown(note.content).slice(0, 200)}
               </p>
             )}
-          </button>
+          </div>
         ))}
       </div>
 

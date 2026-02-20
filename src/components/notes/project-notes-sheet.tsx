@@ -85,7 +85,7 @@ export function ProjectNotesSheet({
             </SheetDescription>
           </SheetHeader>
 
-          <div className="mt-4 space-y-4">
+          <div className="mt-4 space-y-4 px-4 pb-4">
             <Button size="sm" onClick={handleNew} className="w-full gap-1">
               <Plus className="h-4 w-4" />
               New Note

@@ -68,7 +68,7 @@ export function NotesListView({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between border-b pb-4">
         <h2 className="text-lg font-semibold">
           Notes
           {notes.length > 0 && (
