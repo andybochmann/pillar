@@ -8,3 +8,4 @@ export {
   type Priority,
   type RecurrenceFrequency,
 } from "./task";
+export { Note, type INote, type NoteParentType } from "./note";

@@ -9,8 +9,9 @@ import { ListView } from "@/components/list/list-view";
 import { ProjectSettings } from "@/components/projects/project-settings";
 import { GenerateTasksDialog } from "@/components/tasks/generate-tasks-dialog";
 import { useLabels } from "@/hooks/use-labels";
+import { ProjectNotesSheet } from "@/components/notes/project-notes-sheet";
 import { toast } from "sonner";
-import { Users, Sparkles } from "lucide-react";
+import { Users, Sparkles, StickyNote } from "lucide-react";
 import type { Project, Task, ProjectMember as ProjectMemberType, Column } from "@/types";
 
 function getListTaskCounts(columns: Column[], taskCounts: Record<string, number>): string {
@@ -45,6 +46,7 @@ export function ProjectView({
   const [liveTasks, setLiveTasks] = useState<Task[]>(initialTasks);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
   const { labels: allLabels } = useLabels();
 
@@ -156,6 +158,15 @@ export function ProjectView({
               allLabels={allLabels}
             />
           )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setNotesOpen(true)}
+            className="gap-1"
+          >
+            <StickyNote className="h-4 w-4" />
+            Notes
+          </Button>
           {aiEnabled && !readOnly && (
             <Button
               variant="outline"
@@ -208,6 +219,12 @@ export function ProjectView({
         onOpenChange={setSettingsOpen}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
+      />
+
+      <ProjectNotesSheet
+        projectId={currentProject._id}
+        open={notesOpen}
+        onOpenChange={setNotesOpen}
       />
 
       {aiEnabled && !readOnly && (

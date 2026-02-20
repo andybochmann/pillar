@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
+import { Note } from "@/models/note";
 import { ProjectMember } from "@/models/project-member";
 import { getProjectRole, requireProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 
@@ -167,8 +168,9 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Cascade: delete all tasks and members
+    // Cascade: delete all tasks, notes, and members
     await Task.deleteMany({ projectId: id });
+    await Note.deleteMany({ projectId: id });
     await ProjectMember.deleteMany({ projectId: id });
 
     const sessionId = request.headers.get("X-Session-Id") ?? "";

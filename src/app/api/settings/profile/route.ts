@@ -7,6 +7,7 @@ import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { Category } from "@/models/category";
 import { Label } from "@/models/label";
+import { Note } from "@/models/note";
 import { ProjectMember } from "@/models/project-member";
 import { AccessToken } from "@/models/access-token";
 import { PushSubscription } from "@/models/push-subscription";
@@ -101,6 +102,7 @@ export async function DELETE() {
       Project.deleteMany({ userId: session.user.id }),
       Category.deleteMany({ userId: session.user.id }),
       Label.deleteMany({ userId: session.user.id }),
+      Note.deleteMany({ userId: session.user.id }),
       ProjectMember.deleteMany({ userId: session.user.id }),
       AccessToken.deleteMany({ userId: session.user.id }),
       PushSubscription.deleteMany({ userId: session.user.id }),

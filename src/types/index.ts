@@ -179,6 +179,23 @@ export interface Notification {
   updatedAt: string;
 }
 
+export type NoteParentType = "category" | "project" | "task";
+
+export interface Note {
+  _id: string;
+  title: string;
+  content: string;
+  parentType: NoteParentType;
+  categoryId?: string;
+  projectId?: string;
+  taskId?: string;
+  userId: string;
+  pinned: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PushSubscriptionRecord {
   _id: string;
   userId: string;

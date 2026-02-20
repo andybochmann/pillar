@@ -11,4 +11,5 @@ export {
   createTestAccessToken,
   createTestPushSubscription,
   createTestAccount,
+  createTestNote,
 } from "./factories";

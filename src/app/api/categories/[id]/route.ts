@@ -6,6 +6,7 @@ import { emitSyncEvent } from "@/lib/event-bus";
 import { Category } from "@/models/category";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
+import { Note } from "@/models/note";
 
 const UpdateCategorySchema = z.object({
   name: z.string().min(1).max(50).optional(),
@@ -123,6 +124,12 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     await Task.deleteMany({
       projectId: { $in: projectIds },
       userId: session.user.id,
+    });
+    await Note.deleteMany({
+      $or: [
+        { categoryId: id },
+        { projectId: { $in: projectIds } },
+      ],
     });
     await Project.deleteMany({ categoryId: id, userId: session.user.id });
 

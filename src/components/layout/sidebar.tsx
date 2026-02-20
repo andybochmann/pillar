@@ -16,6 +16,7 @@ import {
   Plus,
   LogOut,
   FolderKanban,
+  StickyNote,
 } from "lucide-react";
 import { CategoryActions } from "@/components/categories/category-actions";
 import { Badge } from "@/components/ui/badge";
@@ -269,6 +270,21 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                         }}
                       />
                     </div>
+                    {!isCatCollapsed && (
+                      <Link
+                        href={`/categories/${cat._id}/notes`}
+                        onClick={onNavigate}
+                        className={cn(
+                          "flex items-center gap-1.5 rounded-md px-3 py-1.5 pl-9 text-sm transition-colors",
+                          pathname === `/categories/${cat._id}/notes`
+                            ? "bg-primary/10 text-primary font-medium"
+                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                        )}
+                      >
+                        <StickyNote className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                        Notes
+                      </Link>
+                    )}
                     {!isCatCollapsed &&
                       cat.projects.map((project) => {
                         const ViewIcon = getViewIcon(project.viewType ?? "board");
