@@ -47,7 +47,7 @@ export function ProjectView({
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
-  const { labels: allLabels } = useLabels();
+  const { labels: allLabels, createLabel } = useLabels();
 
   useEffect(() => {
     let cancelled = false;
@@ -205,6 +205,8 @@ export function ProjectView({
           currentUserId={currentUserId}
           onTasksChange={setLiveTasks}
           filters={filters}
+          allLabels={allLabels}
+          onCreateLabel={createLabel}
         />
       )}
 

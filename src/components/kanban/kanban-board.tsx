@@ -28,12 +28,11 @@ import { getCompletionForColumnChange } from "@/lib/column-completion";
 import type { BoardFilters } from "./board-filter-bar";
 import { BulkActionsBar } from "./bulk-actions-bar";
 import { useTasks } from "@/hooks/use-tasks";
-import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
 import { isToday, isBefore, startOfDay, endOfWeek } from "date-fns";
 import { toLocalDate } from "@/lib/date-utils";
 import { useTimeTracking } from "@/hooks/use-time-tracking";
-import type { Task, Column, Priority, ProjectMember } from "@/types";
+import type { Task, Column, Priority, ProjectMember, Label } from "@/types";
 
 interface KanbanBoardProps {
   projectId: string;
@@ -44,6 +43,8 @@ interface KanbanBoardProps {
   currentUserId?: string;
   onTasksChange?: (tasks: Task[]) => void;
   filters: BoardFilters;
+  allLabels: Label[];
+  onCreateLabel: (data: { name: string; color: string }) => Promise<Label>;
 }
 
 export function KanbanBoard({
@@ -55,10 +56,11 @@ export function KanbanBoard({
   currentUserId,
   onTasksChange,
   filters,
+  allLabels,
+  onCreateLabel,
 }: KanbanBoardProps) {
   const { tasks, setTasks, createTask, updateTask, deleteTask, duplicateTask } =
     useTasks(initialTasks, projectId);
-  const { labels: allLabels, createLabel } = useLabels();
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -550,7 +552,7 @@ export function KanbanBoard({
         onDuplicate={readOnly ? undefined : handleTaskDuplicate}
         allLabels={allLabels}
         onCreateLabel={async (data) => {
-          await createLabel(data);
+          await onCreateLabel(data);
         }}
         members={members}
         currentUserId={currentUserId}

@@ -37,13 +37,6 @@ vi.mock("@/hooks/use-tasks", () => ({
   }),
 }));
 
-vi.mock("@/hooks/use-labels", () => ({
-  useLabels: () => ({
-    labels: [],
-    createLabel: vi.fn(),
-  }),
-}));
-
 // Mock @dnd-kit
 vi.mock("@dnd-kit/core", () => ({
   DndContext: ({ children }: { children: React.ReactNode }) => (
@@ -166,6 +159,8 @@ describe("KanbanBoard — auto-move on timer start", () => {
         columns={defaultColumns}
         initialTasks={[task]}
         filters={defaultFilters}
+        allLabels={[]}
+        onCreateLabel={vi.fn()}
         currentUserId="user-1"
       />,
     );
@@ -199,6 +194,8 @@ describe("KanbanBoard — auto-move on timer start", () => {
         columns={defaultColumns}
         initialTasks={[task]}
         filters={defaultFilters}
+        allLabels={[]}
+        onCreateLabel={vi.fn()}
         currentUserId="user-1"
       />,
     );
@@ -232,6 +229,8 @@ describe("KanbanBoard — auto-move on timer start", () => {
         columns={customColumns}
         initialTasks={[task]}
         filters={defaultFilters}
+        allLabels={[]}
+        onCreateLabel={vi.fn()}
         currentUserId="user-1"
       />,
     );
