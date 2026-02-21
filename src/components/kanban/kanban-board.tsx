@@ -371,6 +371,28 @@ export function KanbanBoard({
     try {
       const updated = await startTracking(taskId);
       if (selectedTask?._id === taskId) setSelectedTask(updated);
+
+      // Auto-move from first column to second when timer starts
+      const firstColumn = sortedColumns[0];
+      const secondColumn = sortedColumns[1];
+      if (
+        firstColumn &&
+        secondColumn &&
+        updated.columnId === firstColumn.id
+      ) {
+        const completedAt = getCompletionForColumnChange(
+          firstColumn.id,
+          secondColumn.id,
+          columns,
+        );
+        const moveData: Partial<Task> = { columnId: secondColumn.id };
+        if (completedAt !== undefined) {
+          moveData.completedAt = completedAt;
+        }
+        const moved = await updateTask(taskId, moveData);
+        if (selectedTask?._id === taskId) setSelectedTask(moved);
+        toast.success(`Moved to ${secondColumn.name}`);
+      }
     } catch (err) {
       toast.error((err as Error).message);
     }
