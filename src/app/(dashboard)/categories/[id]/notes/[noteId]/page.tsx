@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { Category } from "@/models/category";
 import { Note } from "@/models/note";
-import { NotesSplitView } from "@/components/notes/notes-split-view";
+import { NoteFullEditor } from "@/components/notes/note-full-editor";
+import type { Note as NoteType } from "@/types";
 
 interface CategoryNotePageProps {
   params: Promise<{ id: string; noteId: string }>;
@@ -24,19 +25,15 @@ export default async function CategoryNotePage({
   });
   if (!category) redirect("/home");
 
-  // Verify the note exists and belongs to this category/user before rendering
   const note = await Note.findOne({
     _id: noteId,
     categoryId: id,
     userId: session.user.id,
-  });
+  }).lean();
   if (!note) redirect(`/categories/${id}/notes`);
 
-  return (
-    <NotesSplitView
-      parentType="category"
-      categoryId={id}
-      initialNoteId={noteId}
-    />
-  );
+  // Serialize Mongoose doc to plain type
+  const serialized: NoteType = JSON.parse(JSON.stringify(note)) as NoteType;
+
+  return <NoteFullEditor initialNote={serialized} categoryId={id} />;
 }

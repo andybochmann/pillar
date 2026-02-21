@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { Category } from "@/models/category";
-import { NotesSplitView } from "@/components/notes/notes-split-view";
+import { StickyNote } from "lucide-react";
 
 interface CategoryNotesPageProps {
   params: Promise<{ id: string }>;
@@ -23,5 +23,10 @@ export default async function CategoryNotesPage({
   });
   if (!category) redirect("/home");
 
-  return <NotesSplitView parentType="category" categoryId={id} />;
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-3 text-muted-foreground">
+      <StickyNote className="h-12 w-12 opacity-20" />
+      <p className="text-sm">Select a note from the sidebar to start editing</p>
+    </div>
+  );
 }
