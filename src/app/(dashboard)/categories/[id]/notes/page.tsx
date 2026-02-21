@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { Category } from "@/models/category";
-import { NotesListView } from "@/components/notes/notes-list-view";
+import { NotesSplitView } from "@/components/notes/notes-split-view";
 
 interface CategoryNotesPageProps {
   params: Promise<{ id: string }>;
@@ -21,23 +21,7 @@ export default async function CategoryNotesPage({
     _id: id,
     userId: session.user.id,
   });
-
   if (!category) redirect("/home");
 
-  return (
-    <div className="mx-auto max-w-3xl p-6">
-      <div className="mb-6">
-        <div className="flex items-center gap-2">
-          <div
-            className="h-3 w-3 rounded-full"
-            style={{ backgroundColor: category.color }}
-          />
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {category.name}
-          </p>
-        </div>
-      </div>
-      <NotesListView parentType="category" categoryId={id} />
-    </div>
-  );
+  return <NotesSplitView parentType="category" categoryId={id} />;
 }

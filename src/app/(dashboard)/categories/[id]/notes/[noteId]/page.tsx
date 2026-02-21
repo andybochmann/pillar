@@ -3,8 +3,7 @@ import { redirect } from "next/navigation";
 import { connectDB } from "@/lib/db";
 import { Category } from "@/models/category";
 import { Note } from "@/models/note";
-import { NotePageEditor } from "@/components/notes/note-page-editor";
-import type { Note as NoteType } from "@/types";
+import { NotesSplitView } from "@/components/notes/notes-split-view";
 
 interface CategoryNotePageProps {
   params: Promise<{ id: string; noteId: string }>;
@@ -25,6 +24,7 @@ export default async function CategoryNotePage({
   });
   if (!category) redirect("/home");
 
+  // Verify the note exists and belongs to this category/user before rendering
   const note = await Note.findOne({
     _id: noteId,
     categoryId: id,
@@ -32,13 +32,11 @@ export default async function CategoryNotePage({
   });
   if (!note) redirect(`/categories/${id}/notes`);
 
-  const serializedNote = JSON.parse(JSON.stringify(note.toJSON())) as NoteType;
-
   return (
-    <NotePageEditor
-      initialNote={serializedNote}
+    <NotesSplitView
+      parentType="category"
       categoryId={id}
-      categoryName={category.name}
+      initialNoteId={noteId}
     />
   );
 }
