@@ -463,6 +463,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             </Tooltip>
           </TooltipProvider>
         )}
+        {!collapsed && process.env.NEXT_PUBLIC_APP_VERSION && (
+          <p className="mt-1 text-center text-[10px] text-muted-foreground/50">
+            {process.env.NEXT_PUBLIC_APP_VERSION}
+          </p>
+        )}
       </div>
 
       <CreateCategoryDialog
