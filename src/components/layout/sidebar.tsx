@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   LayoutDashboard,
@@ -16,6 +16,7 @@ import {
   Plus,
   LogOut,
   FolderKanban,
+  StickyNote,
 } from "lucide-react";
 import { CategoryActions } from "@/components/categories/category-actions";
 import { Badge } from "@/components/ui/badge";
@@ -32,10 +33,14 @@ import {
 import { cn, getViewIcon } from "@/lib/utils";
 import { CreateCategoryDialog } from "@/components/categories/create-dialog";
 import { CreateProjectDialog } from "@/components/projects/create-dialog";
+import { NoteEditorDialog } from "@/components/notes/note-editor-dialog";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import { useCategories } from "@/hooks/use-categories";
 import { useProjects } from "@/hooks/use-projects";
 import { useTaskCounts } from "@/hooks/use-task-counts";
+import { useAllCategoryNotes } from "@/hooks/use-all-category-notes";
+import { offlineFetch } from "@/lib/offline-fetch";
+import type { Note } from "@/types";
 
 interface SidebarProps {
   onNavigate?: () => void;
@@ -50,6 +55,7 @@ const navItems = [
 
 export function Sidebar({ onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const {
     categories,
     loading: categoriesLoading,
@@ -60,9 +66,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   } = useCategories();
   const { projects, createProject, refresh: refreshProjects } = useProjects();
   const { counts, refresh: refreshCounts } = useTaskCounts();
+  const { notesByCategoryId, fetchAll: fetchAllNotes } = useAllCategoryNotes();
   const [collapsed, setCollapsed] = useState(false);
   const [showCategoryDialog, setShowCategoryDialog] = useState(false);
   const [showProjectDialog, setShowProjectDialog] = useState(false);
+  const [addNoteCategoryId, setAddNoteCategoryId] = useState<string | null>(null);
   const [projectDialogCategoryId, setProjectDialogCategoryId] = useState<
     string | undefined
   >();
@@ -87,7 +95,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     refreshCategories();
     refreshProjects(showArchived);
     refreshCounts();
-  }, [pathname, refreshCategories, refreshProjects, refreshCounts, showArchived]);
+    fetchAllNotes();
+  }, [pathname, refreshCategories, refreshProjects, refreshCounts, showArchived, fetchAllNotes]);
 
   const ownedProjects = projects.filter(
     (p) => !p.currentUserRole || p.currentUserRole === "owner",
@@ -262,6 +271,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                       <CategoryActions
                         category={cat}
                         onAddProject={handleOpenProjectDialog}
+                        onAddNote={(id) => setAddNoteCategoryId(id)}
                         onUpdate={updateCategory}
                         onDelete={async (id) => {
                           await deleteCategory(id);
@@ -269,6 +279,23 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                         }}
                       />
                     </div>
+                    {!isCatCollapsed &&
+                      (notesByCategoryId[cat._id] ?? []).map((note) => (
+                        <Link
+                          key={note._id}
+                          href={`/categories/${cat._id}/notes/${note._id}`}
+                          onClick={onNavigate}
+                          className={cn(
+                            "flex items-center gap-1.5 rounded-md px-3 py-1.5 pl-9 text-sm transition-colors",
+                            pathname === `/categories/${cat._id}/notes/${note._id}`
+                              ? "bg-primary/10 text-primary font-medium"
+                              : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+                          )}
+                        >
+                          <StickyNote className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{note.title}</span>
+                        </Link>
+                      ))}
                     {!isCatCollapsed &&
                       cat.projects.map((project) => {
                         const ViewIcon = getViewIcon(project.viewType ?? "board");
@@ -442,6 +469,34 @@ export function Sidebar({ onNavigate }: SidebarProps) {
         open={showCategoryDialog}
         onOpenChange={setShowCategoryDialog}
         onCreate={createCategory}
+      />
+
+      <NoteEditorDialog
+        open={addNoteCategoryId !== null}
+        onOpenChange={(open) => {
+          if (!open) setAddNoteCategoryId(null);
+        }}
+        onCreate={async (data) => {
+          const res = await offlineFetch("/api/notes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...data,
+              parentType: "category",
+              categoryId: addNoteCategoryId,
+            }),
+          });
+          if (!res.ok) {
+            const body = await res.json();
+            throw new Error(body.error || "Failed to create note");
+          }
+          return (await res.json()) as Note;
+        }}
+        onCreated={(note) => {
+          const catId = addNoteCategoryId;
+          setAddNoteCategoryId(null);
+          if (catId) router.push(`/categories/${catId}/notes/${note._id}`);
+        }}
       />
 
       <CreateProjectDialog

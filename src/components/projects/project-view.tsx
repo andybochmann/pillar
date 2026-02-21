@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { KanbanBoard, BoardFilterBar, EMPTY_FILTERS, type BoardFilters } from "@/components/kanban";
@@ -10,7 +11,7 @@ import { ProjectSettings } from "@/components/projects/project-settings";
 import { GenerateTasksDialog } from "@/components/tasks/generate-tasks-dialog";
 import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
-import { Users, Sparkles } from "lucide-react";
+import { Users, Sparkles, StickyNote } from "lucide-react";
 import type { Project, Task, ProjectMember as ProjectMemberType, Column } from "@/types";
 
 function getListTaskCounts(columns: Column[], taskCounts: Record<string, number>): string {
@@ -156,6 +157,12 @@ export function ProjectView({
               allLabels={allLabels}
             />
           )}
+          <Button variant="outline" size="sm" asChild className="gap-1">
+            <Link href={`/projects/${currentProject._id}/notes`}>
+              <StickyNote className="h-4 w-4" />
+              Notes
+            </Link>
+          </Button>
           {aiEnabled && !readOnly && (
             <Button
               variant="outline"

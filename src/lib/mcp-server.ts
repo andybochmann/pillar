@@ -6,6 +6,7 @@ import { registerProjectTools } from "./mcp-tools/projects";
 import { registerTaskTools } from "./mcp-tools/tasks";
 import { registerSubtaskTools } from "./mcp-tools/subtasks";
 import { registerLabelTools } from "./mcp-tools/labels";
+import { registerNoteTools } from "./mcp-tools/notes";
 
 interface McpAuthStore {
   userId: string;
@@ -30,6 +31,7 @@ export function createMcpServer(): McpServer {
   registerTaskTools(server);
   registerSubtaskTools(server);
   registerLabelTools(server);
+  registerNoteTools(server);
 
   return server;
 }

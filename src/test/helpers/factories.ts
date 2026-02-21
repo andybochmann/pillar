@@ -18,6 +18,7 @@ import {
   type IPushSubscription,
 } from "@/models/push-subscription";
 import { Account, type IAccount } from "@/models/account";
+import { Note, type INote, type NoteParentType } from "@/models/note";
 import { hash } from "bcryptjs";
 import { generateToken, hashToken } from "@/lib/mcp-auth";
 
@@ -226,5 +227,33 @@ export async function createTestPushSubscription(
       auth: "tBHItJI5svbpC7htQ-VNRQ==",
     },
     userAgent: overrides.userAgent,
+  });
+}
+
+interface CreateNoteInput {
+  title?: string;
+  content?: string;
+  parentType: NoteParentType;
+  categoryId?: mongoose.Types.ObjectId;
+  projectId?: mongoose.Types.ObjectId;
+  taskId?: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+  pinned?: boolean;
+  order?: number;
+}
+
+export async function createTestNote(
+  overrides: CreateNoteInput,
+): Promise<INote> {
+  return Note.create({
+    title: overrides.title ?? "Test Note",
+    content: overrides.content ?? "Test content",
+    parentType: overrides.parentType,
+    categoryId: overrides.categoryId,
+    projectId: overrides.projectId,
+    taskId: overrides.taskId,
+    userId: overrides.userId,
+    pinned: overrides.pinned ?? false,
+    order: overrides.order ?? 0,
   });
 }

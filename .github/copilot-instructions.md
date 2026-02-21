@@ -4,7 +4,7 @@
 
 ## Project Summary
 
-Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, real-time sync via SSE, and offline PWA mode. Deployed via Docker Compose.
+Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, rich Markdown notes (category/project/task level), real-time sync via SSE, and offline PWA mode. Deployed via Docker Compose.
 
 ## Architecture
 

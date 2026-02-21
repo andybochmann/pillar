@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MoreHorizontal, Plus, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Plus, Pencil, Trash2, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -18,6 +18,7 @@ import type { Category } from "@/types";
 interface CategoryActionsProps {
   category: Category;
   onAddProject: (categoryId: string) => void;
+  onAddNote?: (categoryId: string) => void;
   onUpdate: (
     id: string,
     data: { name?: string; color?: string },
@@ -28,6 +29,7 @@ interface CategoryActionsProps {
 export function CategoryActions({
   category,
   onAddProject,
+  onAddNote,
   onUpdate,
   onDelete,
 }: CategoryActionsProps) {
@@ -59,6 +61,12 @@ export function CategoryActions({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
+          {onAddNote && (
+            <DropdownMenuItem onClick={() => onAddNote(category._id)}>
+              <StickyNote className="h-4 w-4" />
+              Add Note
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem onClick={() => onAddProject(category._id)}>
             <Plus className="h-4 w-4" />
             Add Project

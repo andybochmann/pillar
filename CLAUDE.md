@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, real-time sync via SSE, and offline PWA mode. Deployed via Docker Compose.
+Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, rich Markdown notes (category/project/task level), real-time sync via SSE, and offline PWA mode. Deployed via Docker Compose.
 
 ## Tech Stack
 
@@ -48,6 +48,7 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 - **PWA/Offline**: vanilla service worker (`public/sw.js`), IndexedDB queue, `offlineFetch()` wrapper — see [docs/offline-pwa.md](docs/offline-pwa.md)
 - **Time tracking**: per-task stopwatch with history — see [docs/time-tracking.md](docs/time-tracking.md)
 - **AI features**: Claude-powered subtask generation — see [docs/ai-features.md](docs/ai-features.md)
+- **Notes**: Rich Markdown notes at category/project/task level with pinning — `Note` model, `@uiw/react-md-editor`
 - **State**: no SWR/React Query — custom hooks in `src/hooks/` with `useState` + `useCallback` + `fetch`/`offlineFetch`
 - **Types duality**: Mongoose models use `ObjectId`/`Date` (`I<Model>` in `src/models/`), components use `string` IDs/dates (`src/types/index.ts`). Conversion happens at JSON serialization boundary.
 
@@ -88,6 +89,7 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 - **Task.recurrence**: `{ frequency: "daily"|"weekly"|"monthly"|"yearly"|"none", interval, endDate? }`
 - **User.passwordHash** is optional — OAuth-only users have no password
 - **Account** links OAuth/credentials identities to users (compound unique indexes on `{provider, providerAccountId}` and `{userId, provider}`)
+- **Note**: polymorphic parent (`parentType: "category"|"project"|"task"`), Markdown content (50KB max), pinning, ordering
 - Model re-registration guard: `mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema)`
 
 ## Testing
@@ -164,6 +166,18 @@ import { GET, POST } from "./route";
 | Sync engine               | `src/lib/sync.ts`                           |
 | Project access control    | `src/lib/project-access.ts`                 |
 | ProjectMember model       | `src/models/project-member.ts`              |
+| Note model                | `src/models/note.ts`                        |
+| Notes API (list/create)   | `src/app/api/notes/route.ts`                |
+| Notes API (get/update/del)| `src/app/api/notes/[id]/route.ts`           |
+| Notes hook                | `src/hooks/use-notes.ts`                    |
+| Markdown editor           | `src/components/notes/markdown-editor.tsx`  |
+| Note editor dialog        | `src/components/notes/note-editor-dialog.tsx`|
+| Note list component       | `src/components/notes/note-list.tsx`        |
+| Notes list view (page)    | `src/components/notes/notes-list-view.tsx`  |
+| Project notes sheet       | `src/components/notes/project-notes-sheet.tsx`|
+| Task notes section        | `src/components/tasks/sections/task-notes-section.tsx`|
+| Category notes page       | `src/app/(dashboard)/categories/[id]/notes/page.tsx`|
+| MCP note tools            | `src/lib/mcp-tools/notes.ts`                |
 | Test helpers              | `src/test/helpers/`                         |
 | Service worker            | `public/sw.js`                              |
 

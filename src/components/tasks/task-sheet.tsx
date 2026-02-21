@@ -19,6 +19,7 @@ import { TaskLabelsSection } from "@/components/tasks/sections/task-labels-secti
 import { TaskDueRecurrenceSection } from "@/components/tasks/sections/task-due-recurrence-section";
 import { TaskReminderSection } from "@/components/tasks/sections/task-reminder-section";
 import { TaskSubtasksSection } from "@/components/tasks/sections/task-subtasks-section";
+import { TaskNotesSection } from "@/components/tasks/sections/task-notes-section";
 import { TaskTimeTrackingSection } from "@/components/tasks/sections/task-time-tracking-section";
 import { TaskStatusHistorySection } from "@/components/tasks/sections/task-status-history-section";
 import { TaskActionsSection } from "@/components/tasks/sections/task-actions-section";
@@ -401,6 +402,11 @@ function TaskSheetForm({
             aiEnabled={aiEnabled}
             onGenerateClick={() => setGenerateDialogOpen(true)}
             maxSubtasks={50}
+          />
+
+          <TaskNotesSection
+            taskId={task._id}
+            projectId={task.projectId}
           />
 
           <TaskTimeTrackingSection

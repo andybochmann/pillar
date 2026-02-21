@@ -5,6 +5,7 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
+import { Note } from "@/models/note";
 import { Project } from "@/models/project";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 import { getNextDueDate } from "@/lib/date-utils";
@@ -303,6 +304,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   }
 
   await Task.deleteOne({ _id: id });
+  await Note.deleteMany({ taskId: id });
 
   const targetUserIds = await getProjectMemberUserIds(task.projectId.toString());
   emitSyncEvent({
