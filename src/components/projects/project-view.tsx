@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { KanbanBoard, BoardFilterBar, EMPTY_FILTERS, type BoardFilters } from "@/components/kanban";
@@ -9,7 +10,6 @@ import { ListView } from "@/components/list/list-view";
 import { ProjectSettings } from "@/components/projects/project-settings";
 import { GenerateTasksDialog } from "@/components/tasks/generate-tasks-dialog";
 import { useLabels } from "@/hooks/use-labels";
-import { ProjectNotesSheet } from "@/components/notes/project-notes-sheet";
 import { toast } from "sonner";
 import { Users, Sparkles, StickyNote } from "lucide-react";
 import type { Project, Task, ProjectMember as ProjectMemberType, Column } from "@/types";
@@ -46,7 +46,6 @@ export function ProjectView({
   const [liveTasks, setLiveTasks] = useState<Task[]>(initialTasks);
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
   const { labels: allLabels } = useLabels();
 
@@ -158,14 +157,11 @@ export function ProjectView({
               allLabels={allLabels}
             />
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setNotesOpen(true)}
-            className="gap-1"
-          >
-            <StickyNote className="h-4 w-4" />
-            Notes
+          <Button variant="outline" size="sm" asChild className="gap-1">
+            <Link href={`/projects/${currentProject._id}/notes`}>
+              <StickyNote className="h-4 w-4" />
+              Notes
+            </Link>
           </Button>
           {aiEnabled && !readOnly && (
             <Button
@@ -219,12 +215,6 @@ export function ProjectView({
         onOpenChange={setSettingsOpen}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
-      />
-
-      <ProjectNotesSheet
-        projectId={currentProject._id}
-        open={notesOpen}
-        onOpenChange={setNotesOpen}
       />
 
       {aiEnabled && !readOnly && (

@@ -72,6 +72,10 @@ export async function GET(request: Request) {
     filter.categoryId = categoryId;
     filter.userId = session.user.id;
     filter.parentType = "category";
+  } else if (parentType === "category") {
+    // All category notes for the user (sidebar fetch)
+    filter.userId = session.user.id;
+    filter.parentType = "category";
   } else {
     return NextResponse.json(
       { error: "Must specify categoryId, projectId, or taskId" },

@@ -105,6 +105,7 @@ export function NotesListView({
         note={editingNote}
         onCreate={createNote}
         onUpdate={updateNote}
+        onCreated={(created) => setEditingNote(created)}
       />
     </div>
   );

@@ -22,6 +22,8 @@ interface NoteEditorDialogProps {
   note?: Note | null;
   onCreate?: (data: { title: string; content?: string; pinned?: boolean }) => Promise<Note>;
   onUpdate?: (id: string, data: Partial<Pick<Note, "title" | "content" | "pinned">>) => Promise<Note>;
+  /** Called with the new note after creation instead of closing the dialog. */
+  onCreated?: (note: Note) => void;
 }
 
 export function NoteEditorDialog({
@@ -30,6 +32,7 @@ export function NoteEditorDialog({
   note,
   onCreate,
   onUpdate,
+  onCreated,
 }: NoteEditorDialogProps) {
   const isEdit = !!note;
   const [title, setTitle] = useState(note?.title ?? "");
@@ -39,12 +42,12 @@ export function NoteEditorDialog({
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const pendingRef = useRef<Partial<Pick<Note, "title" | "content" | "pinned">>>({});
 
-  // Reset form when note changes
+  // Reset form when dialog opens or note changes
   useEffect(() => {
     setTitle(note?.title ?? "");
     setContent(note?.content ?? "");
     setPinned(note?.pinned ?? false);
-  }, [note]);
+  }, [open, note]);
 
   const flushPending = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -106,9 +109,13 @@ export function NoteEditorDialog({
 
     setSaving(true);
     try {
-      await onCreate({ title: title.trim(), content, pinned });
-      onOpenChange(false);
+      const created = await onCreate({ title: title.trim(), content, pinned });
       toast.success("Note created");
+      if (onCreated) {
+        onCreated(created);
+      } else {
+        onOpenChange(false);
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create note");
     } finally {
