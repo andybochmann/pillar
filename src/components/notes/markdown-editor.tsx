@@ -38,6 +38,7 @@ export function MarkdownEditor({
   placeholder = "Write something…",
 }: MarkdownEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder }),
