@@ -116,7 +116,7 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
       <Input
         type="text"
         placeholder="Filter by label..."
-        className="w-full sm:w-40"
+        className="col-span-2 w-full sm:col-span-1 sm:w-40"
         defaultValue={searchParams.get("labels") ?? ""}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
@@ -127,7 +127,12 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
       />
 
       {activeCount > 0 && (
-        <Button variant="ghost" size="sm" onClick={clearFilters}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="col-span-2 sm:col-span-1"
+          onClick={clearFilters}
+        >
           Clear filters ({activeCount})
         </Button>
       )}
