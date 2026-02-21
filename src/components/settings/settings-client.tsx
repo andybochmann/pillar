@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InstallPromptCard } from "./install-prompt-card";
 import { ApiTokensCard } from "./api-tokens-card";
+import { DataBackupCard } from "./data-backup-card";
 import { NotificationSettingsCard } from "./notification-settings-card";
 import { ConnectedAccountsCard } from "./connected-accounts-card";
 
@@ -279,6 +280,9 @@ export function SettingsClient({ profile }: SettingsClientProps) {
 
       {/* API Tokens */}
       <ApiTokensCard />
+
+      {/* Data Backup */}
+      <DataBackupCard />
 
       {/* Danger zone */}
       <Card className="border-destructive">
