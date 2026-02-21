@@ -85,7 +85,7 @@ export function ProjectSettings({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent className="overflow-y-auto">
+        <SheetContent className="overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SheetHeader>
             <SheetTitle>Project Settings</SheetTitle>
             <SheetDescription className="sr-only">Configure project name, columns, and settings</SheetDescription>
