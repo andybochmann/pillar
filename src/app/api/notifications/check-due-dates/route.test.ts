@@ -159,9 +159,12 @@ describe("/api/notifications/check-due-dates", () => {
       const body = await res.json();
       expect(body.overdue).toBe(1);
 
-      const notifications = await Notification.find({ userId: user._id });
-      expect(notifications).toHaveLength(1);
-      expect(notifications[0].type).toBe("overdue");
+      // Also creates an overdue-digest notification
+      const overdueNotifications = await Notification.find({
+        userId: user._id,
+        type: "overdue",
+      });
+      expect(overdueNotifications).toHaveLength(1);
     });
 
     it("does not create duplicate overdue notifications", async () => {
@@ -200,8 +203,12 @@ describe("/api/notifications/check-due-dates", () => {
       const body = await res.json();
       expect(body.overdue).toBe(0);
 
-      const notifications = await Notification.find({ userId: user._id });
-      expect(notifications).toHaveLength(1);
+      // Should not create a duplicate overdue notification (still just the original one)
+      const overdueNotifications = await Notification.find({
+        userId: user._id,
+        type: "overdue",
+      });
+      expect(overdueNotifications).toHaveLength(1);
     });
 
     it("skips completed tasks", async () => {

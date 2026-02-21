@@ -111,8 +111,12 @@ describe("notification-worker push URL", () => {
 
     await processNotifications(user._id.toString());
 
-    expect(pushPayloads).toHaveLength(1);
-    expect(pushPayloads[0].payload.url).toBe(`/projects/${projectId}`);
+    // Overdue creates both a per-task overdue notification and an overdue-digest
+    const overduePayload = pushPayloads.find(
+      (p) => p.payload.title === "Task is overdue",
+    );
+    expect(overduePayload).toBeDefined();
+    expect(overduePayload!.payload.url).toBe(`/projects/${projectId}`);
   });
 
   it("uses '/' as URL for daily summary notifications (no single project)", async () => {
