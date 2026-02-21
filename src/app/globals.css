@@ -157,3 +157,83 @@
     background: transparent;
   }
 }
+
+/* ── Tiptap / ProseMirror editor styles ─────────────────────────────────────── */
+
+.note-editor {
+  min-height: 100%;
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--foreground);
+}
+
+.note-editor > * + * {
+  margin-top: 0.75em;
+}
+
+.note-editor h1,
+.note-editor h2,
+.note-editor h3 {
+  font-weight: 600;
+  line-height: 1.3;
+}
+.note-editor h1 { font-size: 1.5rem; margin-top: 1.25em; }
+.note-editor h2 { font-size: 1.25rem; margin-top: 1em; }
+.note-editor h3 { font-size: 1.1rem; margin-top: 0.875em; }
+
+.note-editor ul,
+.note-editor ol {
+  padding-left: 1.5rem;
+}
+.note-editor ul { list-style-type: disc; }
+.note-editor ol { list-style-type: decimal; }
+.note-editor li + li { margin-top: 0.25em; }
+
+.note-editor blockquote {
+  border-left: 3px solid var(--border);
+  padding-left: 1rem;
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.note-editor code {
+  background: var(--muted);
+  border-radius: 0.25rem;
+  padding: 0.15em 0.35em;
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+.note-editor pre {
+  background: var(--muted);
+  border-radius: var(--radius);
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+}
+
+.note-editor pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.875em;
+}
+
+.note-editor hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.25em 0;
+}
+
+.note-editor a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Placeholder */
+.note-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  height: 0;
+}

@@ -151,6 +151,7 @@ export function NoteEditorDialog({
           <div className="space-y-2">
             <Label>Content</Label>
             <MarkdownEditor
+              key={note?._id ?? "new"}
               value={content}
               onChange={handleContentChange}
               height={300}
