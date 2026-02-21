@@ -127,6 +127,21 @@ describe("TaskCard", () => {
     expect(card.className).toContain("rotate-2");
   });
 
+  it("renders bell indicator when reminderAt is set", () => {
+    render(
+      <TaskCard
+        task={{ ...baseTask, reminderAt: "2026-03-15T10:00:00.000Z" }}
+      />,
+    );
+    const bell = screen.getByTitle(/^Reminder: Mar 15,/);
+    expect(bell).toBeInTheDocument();
+  });
+
+  it("does not render bell indicator when no reminder", () => {
+    render(<TaskCard task={baseTask} />);
+    expect(screen.queryByTitle(/^Reminder:/)).not.toBeInTheDocument();
+  });
+
   describe("Progress Bar", () => {
     it("renders progress bar when subtasks exist", () => {
       const { container } = render(

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Check, ListChecks } from "lucide-react";
+import { Bell, Check, ListChecks } from "lucide-react";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
 import { toLocalDate } from "@/lib/date-utils";
 import { TimeTrackingButton } from "@/components/tasks/time-tracking-button";
@@ -201,6 +201,14 @@ export function TaskCard({
               )}
             >
               {dueDateStyle.label}
+            </span>
+          )}
+          {task.reminderAt && (
+            <span
+              className="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium text-violet-600 bg-violet-50"
+              title={`Reminder: ${format(new Date(task.reminderAt), "MMM d, h:mm a")}`}
+            >
+              <Bell className="h-3 w-3" />
             </span>
           )}
           {task.subtasks?.length > 0 && (() => {
