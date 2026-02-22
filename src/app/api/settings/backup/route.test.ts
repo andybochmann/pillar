@@ -883,5 +883,262 @@ describe("/api/settings/backup", () => {
       expect(projects[0].viewType).toBe("board");
     });
 
+    it("imports projects with missing viewType as 'board'", async () => {
+      const user = await seedUser();
+      const oldCatId = new mongoose.Types.ObjectId().toString();
+      const backup = makeBackup({
+        categories: [
+          {
+            _id: oldCatId,
+            name: "Work",
+            color: "#6366f1",
+            order: 0,
+            collapsed: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        projects: [
+          {
+            _id: new mongoose.Types.ObjectId().toString(),
+            name: "No ViewType",
+            categoryId: oldCatId,
+            columns: [{ id: "todo", name: "To Do", order: 0 }],
+            // viewType intentionally omitted
+            archived: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const res = await POST(makeRequest(backup));
+      expect(res.status).toBe(200);
+
+      const projects = await Project.find({ userId: user._id });
+      expect(projects[0].viewType).toBe("board");
+    });
+
+    it("imports notification preferences with missing fields using defaults", async () => {
+      const user = await seedUser();
+      const backup = makeBackup({
+        notificationPreference: {
+          enableInAppNotifications: true,
+          enableBrowserPush: false,
+          quietHoursEnabled: false,
+          quietHoursStart: "22:00",
+          quietHoursEnd: "08:00",
+          // overdueSummaryTime and enableDailySummary intentionally omitted
+          timezone: "America/Chicago",
+        },
+      });
+
+      const res = await POST(makeRequest(backup));
+      expect(res.status).toBe(200);
+
+      const pref = await NotificationPreference.findOne({ userId: user._id });
+      expect(pref).not.toBeNull();
+      expect(pref!.timezone).toBe("America/Chicago");
+      expect(pref!.overdueSummaryTime).toBe("09:00");
+      expect(pref!.enableDailySummary).toBe(true);
+    });
+
+    it("tolerates extra unknown fields in notification preferences", async () => {
+      const user = await seedUser();
+      const backup = makeBackup({
+        notificationPreference: {
+          enableInAppNotifications: true,
+          enableBrowserPush: false,
+          quietHoursEnabled: false,
+          quietHoursStart: "22:00",
+          quietHoursEnd: "08:00",
+          enableOverdueSummary: true,
+          overdueSummaryTime: "09:00",
+          enableDailySummary: true,
+          dailySummaryTime: "09:00",
+          dueDateReminders: [],
+          timezone: "UTC",
+          // extra fields from older/newer schema versions
+          emailDigestFrequency: "weekly",
+          enableEmailDigest: true,
+          reminderTimings: [30, 60],
+        },
+      });
+
+      const res = await POST(makeRequest(backup));
+      expect(res.status).toBe(200);
+
+      const pref = await NotificationPreference.findOne({ userId: user._id });
+      expect(pref).not.toBeNull();
+      expect(pref!.timezone).toBe("UTC");
+    });
+
+    it("tolerates extra unknown fields on tasks", async () => {
+      const user = await seedUser();
+      const oldCatId = new mongoose.Types.ObjectId().toString();
+      const oldProjId = new mongoose.Types.ObjectId().toString();
+      const backup = makeBackup({
+        categories: [
+          {
+            _id: oldCatId,
+            name: "Work",
+            color: "#6366f1",
+            order: 0,
+            collapsed: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        projects: [
+          {
+            _id: oldProjId,
+            name: "Project A",
+            categoryId: oldCatId,
+            columns: [{ id: "todo", name: "To Do", order: 0 }],
+            viewType: "board",
+            archived: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        tasks: [
+          {
+            _id: new mongoose.Types.ObjectId().toString(),
+            title: "Task with extras",
+            projectId: oldProjId,
+            columnId: "todo",
+            priority: "medium",
+            order: 0,
+            labels: [],
+            subtasks: [],
+            recurrence: { frequency: "none", interval: 1 },
+            timeSessions: [],
+            statusHistory: [],
+            googleCalendarEventId: "some-calendar-id",
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const res = await POST(makeRequest(backup));
+      expect(res.status).toBe(200);
+
+      const tasks = await Task.find({ userId: user._id });
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].title).toBe("Task with extras");
+    });
+
+  });
+
+  describe("round-trip (export then import)", () => {
+    it("exports and re-imports all data with correct relationships", async () => {
+      const user = await seedUser();
+      const { label, category, project, task, note } = await seedFullData(
+        user._id,
+      );
+
+      // Export
+      const exportRes = await GET();
+      expect(exportRes.status).toBe(200);
+      const backup = await exportRes.json();
+
+      // Verify export has the right counts
+      expect(backup.categories).toHaveLength(1);
+      expect(backup.labels).toHaveLength(1);
+      expect(backup.projects).toHaveLength(1);
+      expect(backup.tasks).toHaveLength(1);
+      expect(backup.notes).toHaveLength(1);
+      expect(backup.notificationPreference).not.toBeNull();
+
+      // Import the same backup (this deletes existing data first)
+      const importReq = new NextRequest(
+        "http://localhost/api/settings/backup",
+        {
+          method: "POST",
+          body: JSON.stringify(backup),
+        },
+      );
+      const importRes = await POST(importReq);
+      expect(importRes.status).toBe(200);
+      const { summary } = await importRes.json();
+
+      expect(summary).toEqual({
+        categories: 1,
+        labels: 1,
+        projects: 1,
+        tasks: 1,
+        notes: 1,
+        notificationPreference: true,
+      });
+
+      // Verify data was restored with correct relationships
+      const newCats = await Category.find({ userId: user._id });
+      expect(newCats).toHaveLength(1);
+      expect(newCats[0].name).toBe(category.name);
+      expect(newCats[0]._id.toString()).not.toBe(category._id.toString());
+
+      const newLabels = await Label.find({ userId: user._id });
+      expect(newLabels).toHaveLength(1);
+      expect(newLabels[0].name).toBe(label.name);
+
+      const newProjects = await Project.find({ userId: user._id });
+      expect(newProjects).toHaveLength(1);
+      expect(newProjects[0].name).toBe(project.name);
+      expect(newProjects[0].categoryId.toString()).toBe(
+        newCats[0]._id.toString(),
+      );
+
+      const newTasks = await Task.find({ userId: user._id });
+      expect(newTasks).toHaveLength(1);
+      expect(newTasks[0].title).toBe(task.title);
+      expect(newTasks[0].projectId.toString()).toBe(
+        newProjects[0]._id.toString(),
+      );
+      expect(newTasks[0].labels[0].toString()).toBe(
+        newLabels[0]._id.toString(),
+      );
+
+      const newNotes = await Note.find({ userId: user._id });
+      expect(newNotes).toHaveLength(1);
+      expect(newNotes[0].title).toBe(note.title);
+
+      const newPref = await NotificationPreference.findOne({
+        userId: user._id,
+      });
+      expect(newPref).not.toBeNull();
+      expect(newPref!.timezone).toBe("America/New_York");
+    });
+
+    it("can re-import an export twice without errors", async () => {
+      const user = await seedUser();
+      await seedFullData(user._id);
+
+      const exportRes = await GET();
+      const backup = await exportRes.json();
+
+      // First import
+      const req1 = new NextRequest("http://localhost/api/settings/backup", {
+        method: "POST",
+        body: JSON.stringify(backup),
+      });
+      const res1 = await POST(req1);
+      expect(res1.status).toBe(200);
+
+      // Second import of the same backup
+      const req2 = new NextRequest("http://localhost/api/settings/backup", {
+        method: "POST",
+        body: JSON.stringify(backup),
+      });
+      const res2 = await POST(req2);
+      expect(res2.status).toBe(200);
+
+      // Should still have exactly the right counts
+      expect(await Category.countDocuments({ userId: user._id })).toBe(1);
+      expect(await Label.countDocuments({ userId: user._id })).toBe(1);
+      expect(await Project.countDocuments({ userId: user._id })).toBe(1);
+      expect(await Task.countDocuments({ userId: user._id })).toBe(1);
+      expect(await Note.countDocuments({ userId: user._id })).toBe(1);
+    });
   });
 });

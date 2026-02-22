@@ -105,19 +105,27 @@ const DueDateReminderSchema = z.object({
   time: z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/),
 });
 
-const NotificationPreferenceBackupSchema = z.object({
-  enableInAppNotifications: z.boolean(),
-  enableBrowserPush: z.boolean(),
-  quietHoursEnabled: z.boolean(),
-  quietHoursStart: z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/),
-  quietHoursEnd: z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/),
-  enableOverdueSummary: z.boolean(),
-  overdueSummaryTime: z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/),
-  enableDailySummary: z.boolean(),
-  dailySummaryTime: z.string().regex(/^([0-1]\d|2[0-3]):[0-5]\d$/),
-  dueDateReminders: z.array(DueDateReminderSchema),
-  timezone: z.string(),
-});
+const NotificationPreferenceBackupSchema = z
+  .object({
+    enableInAppNotifications: z.boolean().optional().default(true),
+    enableBrowserPush: z.boolean().optional().default(false),
+    quietHoursEnabled: z.boolean().optional().default(false),
+    quietHoursStart: z.string().optional().default("22:00"),
+    quietHoursEnd: z.string().optional().default("08:00"),
+    enableOverdueSummary: z.boolean().optional().default(true),
+    overdueSummaryTime: z.string().optional().default("09:00"),
+    enableDailySummary: z.boolean().optional().default(true),
+    dailySummaryTime: z.string().optional().default("09:00"),
+    dueDateReminders: z
+      .array(DueDateReminderSchema)
+      .optional()
+      .default([
+        { daysBefore: 1, time: "09:00" },
+        { daysBefore: 0, time: "08:00" },
+      ]),
+    timezone: z.string().optional().default("UTC"),
+  })
+  .passthrough();
 
 const NoteBackupSchema = z.object({
   _id: z.string(),
@@ -391,9 +399,20 @@ export async function POST(request: Request) {
   );
 
   if (data.notificationPreference) {
+    const np = data.notificationPreference;
     await NotificationPreference.create({
       userId,
-      ...data.notificationPreference,
+      enableInAppNotifications: np.enableInAppNotifications,
+      enableBrowserPush: np.enableBrowserPush,
+      quietHoursEnabled: np.quietHoursEnabled,
+      quietHoursStart: np.quietHoursStart,
+      quietHoursEnd: np.quietHoursEnd,
+      enableOverdueSummary: np.enableOverdueSummary,
+      overdueSummaryTime: np.overdueSummaryTime,
+      enableDailySummary: np.enableDailySummary,
+      dailySummaryTime: np.dailySummaryTime,
+      dueDateReminders: np.dueDateReminders,
+      timezone: np.timezone,
     });
   }
 
