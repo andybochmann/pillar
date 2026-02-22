@@ -60,6 +60,7 @@ describe("GET /api/notes", () => {
       categoryId: category._id,
       userId: user._id,
     });
+    await createTestProjectMember({ projectId: project._id, userId: user._id, role: "owner", invitedBy: user._id });
     const task = await createTestTask({
       projectId: project._id,
       userId: user._id,
@@ -205,6 +206,7 @@ describe("POST /api/notes", () => {
       categoryId: category._id,
       userId: user._id,
     });
+    await createTestProjectMember({ projectId: project._id, userId: user._id, role: "owner", invitedBy: user._id });
     const task = await createTestTask({
       projectId: project._id,
       userId: user._id,

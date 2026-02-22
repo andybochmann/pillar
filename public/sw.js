@@ -172,6 +172,10 @@ self.addEventListener("message", (event) => {
     const count = event.data.count || 0;
     count > 0 ? self.navigator.setAppBadge(count) : self.navigator.clearAppBadge();
   }
+
+  if (event.data?.type === "CLEAR_AUTH_CACHE") {
+    event.waitUntil(caches.delete(API_CACHE_NAME));
+  }
 });
 
 // Background Sync: replay offline mutation queue

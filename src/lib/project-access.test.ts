@@ -76,20 +76,20 @@ describe("project-access", () => {
       expect(ids).not.toContain(project._id.toString());
     });
 
-    it("falls back to Project.userId for non-migrated projects", async () => {
+    it("does not include projects without ProjectMember records", async () => {
       const owner = await createTestUser({ email: "fallback@test.com" });
       const category = await createTestCategory({ userId: owner._id });
-      const project = await createTestProject({
+      await createTestProject({
         categoryId: category._id,
         userId: owner._id,
       });
-      // No ProjectMember records
+      // No ProjectMember records — user should NOT have access
 
       const ids = await getAccessibleProjectIds(owner._id.toString());
-      expect(ids).toContain(project._id.toString());
+      expect(ids).toHaveLength(0);
     });
 
-    it("includes owned projects even when only other members have records", async () => {
+    it("does not include projects where user has no ProjectMember record", async () => {
       const owner = await createTestUser({ email: "owner-norec@test.com" });
       const editor = await createTestUser({ email: "editor-norec@test.com" });
       const category = await createTestCategory({ userId: owner._id });
@@ -106,7 +106,7 @@ describe("project-access", () => {
       });
 
       const ids = await getAccessibleProjectIds(owner._id.toString());
-      expect(ids).toContain(project._id.toString());
+      expect(ids).not.toContain(project._id.toString());
     });
 
     it("returns multiple accessible projects", async () => {
@@ -156,7 +156,7 @@ describe("project-access", () => {
       expect(role).toBeNull();
     });
 
-    it("falls back to 'owner' for non-migrated projects owned by user", async () => {
+    it("returns null when user has no ProjectMember record", async () => {
       const owner = await createTestUser({ email: "fb-owner@test.com" });
       const category = await createTestCategory({ userId: owner._id });
       const project = await createTestProject({
@@ -168,10 +168,10 @@ describe("project-access", () => {
         owner._id.toString(),
         project._id.toString(),
       );
-      expect(role).toBe("owner");
+      expect(role).toBeNull();
     });
 
-    it("returns 'owner' for project creator even when only other members have records", async () => {
+    it("returns null for project creator without ProjectMember record", async () => {
       const owner = await createTestUser({ email: "fb-owner-norec@test.com" });
       const editor = await createTestUser({ email: "fb-editor-norec@test.com" });
       const category = await createTestCategory({ userId: owner._id });
@@ -191,10 +191,10 @@ describe("project-access", () => {
         owner._id.toString(),
         project._id.toString(),
       );
-      expect(role).toBe("owner");
+      expect(role).toBeNull();
     });
 
-    it("returns null for non-owner on non-migrated projects", async () => {
+    it("returns null for users without ProjectMember records", async () => {
       const owner = await createTestUser({ email: "fb-owner2@test.com" });
       const other = await createTestUser({ email: "fb-other@test.com" });
       const category = await createTestCategory({ userId: owner._id });
@@ -350,7 +350,7 @@ describe("project-access", () => {
       expect(userIds.length).toBe(2);
     });
 
-    it("falls back to project owner for non-migrated projects", async () => {
+    it("returns empty array when no ProjectMember records exist", async () => {
       const owner = await createTestUser({ email: "fb-member@test.com" });
       const category = await createTestCategory({ userId: owner._id });
       const project = await createTestProject({
@@ -359,8 +359,7 @@ describe("project-access", () => {
       });
 
       const userIds = await getProjectMemberUserIds(project._id.toString());
-      expect(userIds).toContain(owner._id.toString());
-      expect(userIds.length).toBe(1);
+      expect(userIds).toHaveLength(0);
     });
   });
 });

@@ -16,6 +16,7 @@ import {
   createTestUser,
   createTestCategory,
   createTestProject,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { GET, POST } from "./route";
 
@@ -68,13 +69,15 @@ describe("Projects API", () => {
   describe("GET /api/projects", () => {
     it("returns non-archived projects by default", async () => {
       await setupFixtures();
-      await createTestProject({ name: "Active", userId, categoryId });
-      await createTestProject({
+      const p1 = await createTestProject({ name: "Active", userId, categoryId });
+      await createTestProjectMember({ projectId: p1._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
+      const p2 = await createTestProject({
         name: "Archived",
         userId,
         categoryId,
         archived: true,
       });
+      await createTestProjectMember({ projectId: p2._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
 
       const res = await GET(createRequest("/api/projects"));
       expect(res.status).toBe(200);
@@ -85,13 +88,15 @@ describe("Projects API", () => {
 
     it("returns all projects when includeArchived=true", async () => {
       await setupFixtures();
-      await createTestProject({ name: "Active", userId, categoryId });
-      await createTestProject({
+      const p1 = await createTestProject({ name: "Active", userId, categoryId });
+      await createTestProjectMember({ projectId: p1._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
+      const p2 = await createTestProject({
         name: "Archived",
         userId,
         categoryId,
         archived: true,
       });
+      await createTestProjectMember({ projectId: p2._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
 
       const res = await GET(
         createRequest("/api/projects?includeArchived=true"),
@@ -104,12 +109,14 @@ describe("Projects API", () => {
     it("filters by categoryId", async () => {
       await setupFixtures();
       const cat2 = await createTestCategory({ userId, name: "Personal" });
-      await createTestProject({ name: "P1", userId, categoryId });
-      await createTestProject({
+      const p1 = await createTestProject({ name: "P1", userId, categoryId });
+      await createTestProjectMember({ projectId: p1._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
+      const p2 = await createTestProject({
         name: "P2",
         userId,
         categoryId: cat2._id as mongoose.Types.ObjectId,
       });
+      await createTestProjectMember({ projectId: p2._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
 
       const res = await GET(
         createRequest(`/api/projects?categoryId=${categoryId}`),

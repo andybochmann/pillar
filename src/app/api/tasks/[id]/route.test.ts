@@ -70,6 +70,7 @@ describe("PATCH /api/tasks/[id]", () => {
       ],
     });
     projectId = project._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({ projectId, userId, role: "owner", invitedBy: userId });
   }
 
   function createRequest(id: string, body: Record<string, unknown>) {

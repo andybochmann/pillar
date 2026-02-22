@@ -38,19 +38,7 @@ export async function PATCH(request: Request) {
     // Verify all tasks exist and user has access
     const tasks = await Task.find({ _id: { $in: taskIds } }, { projectId: 1 });
     if (tasks.length === 0) {
-      // No valid tasks found — proceed silently (nothing to do)
-      if (action === "move" && !columnId) {
-        return NextResponse.json(
-          { error: "columnId required for move action" },
-          { status: 400 },
-        );
-      }
-      if (action === "priority" && !priority) {
-        return NextResponse.json(
-          { error: "priority required for priority action" },
-          { status: 400 },
-        );
-      }
+      // No valid tasks found — nothing to do
       return NextResponse.json({ success: true });
     }
 
@@ -104,6 +92,22 @@ export async function PATCH(request: Request) {
     } else if (action === "archive") {
       await Task.updateMany(filter, {
         $set: { archived: true, archivedAt: new Date() },
+      });
+    }
+
+    // Emit sync events for affected projects
+    const sessionId = request.headers.get("X-Session-Id") ?? "";
+    for (const pid of accessibleProjectIds) {
+      const targetUserIds = await getProjectMemberUserIds(pid);
+      emitSyncEvent({
+        entity: "task",
+        action: action === "delete" ? "deleted" : "updated",
+        userId: session.user.id,
+        sessionId,
+        entityId: pid,
+        projectId: pid,
+        targetUserIds,
+        timestamp: Date.now(),
       });
     }
 

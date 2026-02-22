@@ -6,6 +6,7 @@ import { emitSyncEvent } from "@/lib/event-bus";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { Category } from "@/models/category";
 import { ProjectMember } from "@/models/project-member";
 import { getProjectRole, requireProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 
@@ -88,6 +89,19 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         { error: status === 403 ? "Forbidden" : "Project not found" },
         { status },
       );
+    }
+
+    if (result.data.categoryId) {
+      const category = await Category.findOne({
+        _id: result.data.categoryId,
+        userId: session.user.id,
+      });
+      if (!category) {
+        return NextResponse.json(
+          { error: "Category not found" },
+          { status: 404 },
+        );
+      }
     }
 
     const project = await Project.findByIdAndUpdate(

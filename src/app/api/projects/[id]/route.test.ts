@@ -17,6 +17,7 @@ import {
   createTestCategory,
   createTestProject,
   createTestTask,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { GET, PATCH, DELETE } from "./route";
 
@@ -74,6 +75,12 @@ describe("Projects [id] API", () => {
         userId,
         categoryId,
       });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        role: "owner",
+        invitedBy: userId,
+      });
 
       const res = await GET(
         new NextRequest(`http://localhost:3000/api/projects/${proj._id}`),
@@ -103,6 +110,12 @@ describe("Projects [id] API", () => {
         userId,
         categoryId,
       });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        role: "owner",
+        invitedBy: userId,
+      });
 
       const res = await PATCH(
         new NextRequest(`http://localhost:3000/api/projects/${proj._id}`, {
@@ -124,6 +137,12 @@ describe("Projects [id] API", () => {
         userId,
         categoryId,
         columns: [{ id: "todo", name: "Todo", order: 0 }],
+      });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        role: "owner",
+        invitedBy: userId,
       });
 
       const newColumns = [
@@ -151,6 +170,12 @@ describe("Projects [id] API", () => {
         name: "To Archive",
         userId,
         categoryId,
+      });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        role: "owner",
+        invitedBy: userId,
       });
 
       const res = await PATCH(
@@ -187,6 +212,12 @@ describe("Projects [id] API", () => {
         userId,
         categoryId,
       });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        role: "owner",
+        invitedBy: userId,
+      });
 
       const res = await PATCH(
         new NextRequest(`http://localhost:3000/api/projects/${proj._id}`, {
@@ -212,6 +243,12 @@ describe("Projects [id] API", () => {
           { id: "in-progress", name: "In Progress", order: 1 },
           { id: "done", name: "Done", order: 2 },
         ],
+      });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        role: "owner",
+        invitedBy: userId,
       });
 
       // Create a task in the "in-progress" column
@@ -252,6 +289,12 @@ describe("Projects [id] API", () => {
         name: "To Delete",
         userId,
         categoryId,
+      });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        role: "owner",
+        invitedBy: userId,
       });
 
       const res = await DELETE(

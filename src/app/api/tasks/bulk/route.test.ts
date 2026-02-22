@@ -68,6 +68,12 @@ describe("PATCH /api/tasks/bulk", () => {
         { id: "done", name: "Done", order: 1 },
       ],
     });
+    await createTestProjectMember({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId,
+      role: "owner",
+      invitedBy: userId,
+    });
     const t1 = await createTestTask({
       projectId: project._id as mongoose.Types.ObjectId,
       userId,
@@ -279,7 +285,7 @@ describe("PATCH /api/tasks/bulk", () => {
     const res = await PATCH(req);
     expect(res.status).toBe(200);
 
-    // Own task deleted (user has access via project ownership fallback)
+    // Own task deleted (user has access via ProjectMember record)
     const ownCount = await Task.countDocuments({ _id: task1Id });
     expect(ownCount).toBe(0);
     // Other user's task still exists (not accessible)
@@ -344,6 +350,12 @@ describe("DELETE /api/tasks/bulk", () => {
     const project = await createTestProject({
       userId,
       categoryId: cat._id as mongoose.Types.ObjectId,
+    });
+    await createTestProjectMember({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId,
+      role: "owner",
+      invitedBy: userId,
     });
     projectId = (project._id as mongoose.Types.ObjectId).toString();
 
@@ -581,6 +593,12 @@ describe("DELETE /api/tasks/bulk", () => {
     const project = await createTestProject({
       userId,
       categoryId: cat._id as mongoose.Types.ObjectId,
+    });
+    await createTestProjectMember({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId,
+      role: "owner",
+      invitedBy: userId,
     });
 
     const req = new NextRequest("http://localhost/api/tasks/bulk", {

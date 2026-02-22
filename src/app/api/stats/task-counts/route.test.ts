@@ -17,6 +17,7 @@ import {
   createTestCategory,
   createTestProject,
   createTestTask,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { GET } from "./route";
 
@@ -92,6 +93,7 @@ describe("GET /api/stats/task-counts", () => {
       name: "Project A",
     });
     const projId = proj._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({ projectId: projId, userId, role: "owner", invitedBy: userId });
 
     await createTestTask({ userId, projectId: projId, columnId: "todo" });
     await createTestTask({ userId, projectId: projId, columnId: "todo" });
@@ -124,6 +126,7 @@ describe("GET /api/stats/task-counts", () => {
       name: "Proj 1",
     });
     const proj1Id = proj1._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({ projectId: proj1Id, userId, role: "owner", invitedBy: userId });
 
     const proj2 = await createTestProject({
       userId,
@@ -131,6 +134,7 @@ describe("GET /api/stats/task-counts", () => {
       name: "Proj 2",
     });
     const proj2Id = proj2._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({ projectId: proj2Id, userId, role: "owner", invitedBy: userId });
 
     await createTestTask({ userId, projectId: proj1Id, columnId: "todo" });
     await createTestTask({
@@ -165,12 +169,14 @@ describe("GET /api/stats/task-counts", () => {
       categoryId: catId,
       name: "Active",
     });
+    await createTestProjectMember({ projectId: activeProj._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
     const archivedProj = await createTestProject({
       userId,
       categoryId: catId,
       name: "Archived",
       archived: true,
     });
+    await createTestProjectMember({ projectId: archivedProj._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
 
     await createTestTask({
       userId,
@@ -215,11 +221,13 @@ describe("GET /api/stats/task-counts", () => {
       categoryId: catId,
       name: "My Proj",
     });
+    await createTestProjectMember({ projectId: myProj._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
     const otherProj = await createTestProject({
       userId: otherUserId,
       categoryId: otherCatId,
       name: "Other Proj",
     });
+    await createTestProjectMember({ projectId: otherProj._id as mongoose.Types.ObjectId, userId: otherUserId, role: "owner", invitedBy: otherUserId });
 
     await createTestTask({
       userId,

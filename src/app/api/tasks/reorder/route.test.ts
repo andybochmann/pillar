@@ -17,6 +17,7 @@ import {
   createTestCategory,
   createTestProject,
   createTestTask,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { PATCH } from "./route";
 
@@ -64,6 +65,7 @@ describe("PATCH /api/tasks/reorder", () => {
       userId,
     });
     projectId = project._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({ projectId, userId, role: "owner", invitedBy: userId });
   }
 
   function createRequest(body: unknown) {

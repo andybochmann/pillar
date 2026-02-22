@@ -17,6 +17,7 @@ import {
   createTestCategory,
   createTestProject,
   createTestTask,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { GET } from "./route";
 
@@ -68,6 +69,7 @@ describe("GET /api/stats/overdue-count", () => {
       name: "Test Project",
     });
     projectId = project._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({ projectId, userId, role: "owner", invitedBy: userId });
   }
 
   it("returns 401 when not authenticated", async () => {
@@ -186,6 +188,7 @@ describe("GET /api/stats/overdue-count", () => {
       name: "Archived Project",
       archived: true,
     });
+    await createTestProjectMember({ projectId: archivedProject._id as mongoose.Types.ObjectId, userId, role: "owner", invitedBy: userId });
     await createTestTask({
       userId,
       projectId: archivedProject._id as mongoose.Types.ObjectId,

@@ -39,6 +39,7 @@ import { useCategories } from "@/hooks/use-categories";
 import { useProjects } from "@/hooks/use-projects";
 import { useTaskCounts } from "@/hooks/use-task-counts";
 import { useAllCategoryNotes } from "@/hooks/use-all-category-notes";
+import { clearAuthCaches } from "@/lib/clear-auth-cache";
 import { offlineFetch } from "@/lib/offline-fetch";
 import type { Note } from "@/types";
 
@@ -113,6 +114,11 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   function handleOpenProjectDialog(categoryId?: string) {
     setProjectDialogCategoryId(categoryId);
     setShowProjectDialog(true);
+  }
+
+  async function handleSignOut() {
+    await clearAuthCaches();
+    signOut({ callbackUrl: "/login" });
   }
 
   async function toggleCategory(catId: string) {
@@ -439,7 +445,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             variant="ghost"
             size="sm"
             className="w-full cursor-pointer justify-start gap-3 text-muted-foreground hover:text-foreground"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={handleSignOut}
           >
             <LogOut className="h-4 w-4" />
             Sign out
@@ -452,7 +458,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                   variant="ghost"
                   size="icon"
                   className="mx-auto flex h-9 w-9 cursor-pointer text-muted-foreground hover:text-foreground"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  onClick={handleSignOut}
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>

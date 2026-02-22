@@ -253,13 +253,21 @@ export async function POST(request: Request) {
   const userId = new mongoose.Types.ObjectId(session.user.id);
   const data = result.data;
 
-  await Note.deleteMany({ userId });
-  await Task.deleteMany({ userId });
-  await Project.deleteMany({ userId });
-  await Category.deleteMany({ userId });
-  await Label.deleteMany({ userId });
-  await NotificationPreference.deleteMany({ userId });
+  // Collect existing document IDs before insertion (read-only — no data modified)
+  const [oldLabels, oldCategories, oldProjects, oldTasks, oldNotes] =
+    await Promise.all([
+      Label.find({ userId }, { _id: 1 }).lean(),
+      Category.find({ userId }, { _id: 1 }).lean(),
+      Project.find({ userId }, { _id: 1 }).lean(),
+      Task.find({ userId }, { _id: 1 }).lean(),
+      Note.find({ userId }, { _id: 1 }).lean(),
+    ]);
 
+  // Labels have a unique compound index on {userId, name} — must delete old
+  // labels before inserting new ones to avoid duplicate key conflicts.
+  await Label.deleteMany({ _id: { $in: oldLabels.map((d) => d._id) } });
+
+  // Insert new data with fresh ObjectIds (no conflicts with existing data)
   const labelMap = new Map<string, mongoose.Types.ObjectId>();
   await Label.insertMany(
     data.labels.map((l) => {
@@ -398,6 +406,9 @@ export async function POST(request: Request) {
     }),
   );
 
+  // All inserts succeeded — safe to clean up old data
+  // Handle NotificationPreference first (unique index on userId)
+  await NotificationPreference.deleteMany({ userId });
   if (data.notificationPreference) {
     const np = data.notificationPreference;
     await NotificationPreference.create({
@@ -415,6 +426,14 @@ export async function POST(request: Request) {
       timezone: np.timezone,
     });
   }
+
+  // Delete old documents by their collected IDs (labels already deleted above)
+  await Promise.all([
+    Category.deleteMany({ _id: { $in: oldCategories.map((d) => d._id) } }),
+    Project.deleteMany({ _id: { $in: oldProjects.map((d) => d._id) } }),
+    Task.deleteMany({ _id: { $in: oldTasks.map((d) => d._id) } }),
+    Note.deleteMany({ _id: { $in: oldNotes.map((d) => d._id) } }),
+  ]);
 
   return NextResponse.json({
     success: true,

@@ -69,6 +69,7 @@ describe("GET /api/tasks", () => {
       userId,
     });
     projectId = project._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({ projectId, userId, role: "owner", invitedBy: userId });
     return { user, category, project };
   }
 
@@ -350,6 +351,7 @@ describe("POST /api/tasks", () => {
       userId,
     });
     projectId = project._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({ projectId, userId, role: "owner", invitedBy: userId });
   }
 
   function createRequest(body: Record<string, unknown>) {

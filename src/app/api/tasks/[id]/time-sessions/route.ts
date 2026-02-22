@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
-import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
-import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
+import { getProjectRole } from "@/lib/project-access";
+import { emitTaskSync } from "./emit-task-sync";
 
 const TimeSessionActionSchema = z.object({
   action: z.enum(["start", "stop"]),
@@ -12,27 +12,6 @@ const TimeSessionActionSchema = z.object({
 
 interface RouteParams {
   params: Promise<{ id: string }>;
-}
-
-async function emitTaskSync(
-  task: typeof Task.prototype,
-  userId: string,
-  sessionId: string,
-) {
-  const targetUserIds = await getProjectMemberUserIds(
-    task.projectId.toString(),
-  );
-  emitSyncEvent({
-    entity: "task",
-    action: "updated",
-    userId,
-    sessionId,
-    entityId: task._id.toString(),
-    projectId: task.projectId.toString(),
-    targetUserIds,
-    data: task.toJSON(),
-    timestamp: Date.now(),
-  });
 }
 
 export async function POST(request: Request, { params }: RouteParams) {
@@ -85,7 +64,10 @@ export async function POST(request: Request, { params }: RouteParams) {
         { returnDocument: "after" },
       );
 
-      await emitTaskSync(updated!, userId, sessionId);
+      if (!updated) {
+        return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      }
+      await emitTaskSync(updated, userId, sessionId);
       return NextResponse.json(updated);
     }
 
@@ -110,7 +92,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       { returnDocument: "after" },
     );
 
-    await emitTaskSync(updated!, userId, sessionId);
+    if (!updated) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    await emitTaskSync(updated, userId, sessionId);
     return NextResponse.json(updated);
   } catch {
     return NextResponse.json(

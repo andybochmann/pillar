@@ -11,6 +11,8 @@ import { Note } from "@/models/note";
 import { ProjectMember } from "@/models/project-member";
 import { AccessToken } from "@/models/access-token";
 import { PushSubscription } from "@/models/push-subscription";
+import { Notification } from "@/models/notification";
+import { NotificationPreference } from "@/models/notification-preference";
 import { Account } from "@/models/account";
 
 const UpdateProfileSchema = z.object({
@@ -106,6 +108,8 @@ export async function DELETE() {
       ProjectMember.deleteMany({ userId: session.user.id }),
       AccessToken.deleteMany({ userId: session.user.id }),
       PushSubscription.deleteMany({ userId: session.user.id }),
+      Notification.deleteMany({ userId: session.user.id }),
+      NotificationPreference.deleteMany({ userId: session.user.id }),
       Account.deleteMany({ userId: session.user.id }),
     ]);
 

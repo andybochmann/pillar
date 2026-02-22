@@ -71,6 +71,7 @@ describe("POST /api/tasks/[id]/complete", () => {
       ],
     });
     projectId = project._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({ projectId, userId, role: "owner", invitedBy: userId });
   }
 
   function createRequest(id: string) {
@@ -276,6 +277,12 @@ describe("POST /api/tasks/[id]/complete", () => {
       categoryId: category._id as mongoose.Types.ObjectId,
       userId: uId,
       columns: [], // No columns
+    });
+    await createTestProjectMember({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId: uId,
+      role: "owner",
+      invitedBy: uId,
     });
 
     const task = await createTestTask({

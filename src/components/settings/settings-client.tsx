@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { clearAuthCaches } from "@/lib/clear-auth-cache";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { InstallPromptCard } from "./install-prompt-card";
@@ -124,6 +125,7 @@ export function SettingsClient({ profile }: SettingsClientProps) {
         const body = await res.json();
         throw new Error(body.error || "Failed to delete account");
       }
+      await clearAuthCaches();
       await signOut({ callbackUrl: "/login" });
     } catch (err) {
       toast.error(

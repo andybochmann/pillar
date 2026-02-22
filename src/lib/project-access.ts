@@ -1,9 +1,7 @@
 import { ProjectMember, type ProjectRole } from "@/models/project-member";
-import { Project } from "@/models/project";
 
 /**
  * Returns all project IDs where the user is a member (any role).
- * Falls back to Project.userId for projects not yet migrated to ProjectMember.
  */
 export async function getAccessibleProjectIds(
   userId: string,
@@ -12,24 +10,11 @@ export async function getAccessibleProjectIds(
     { userId },
     { projectId: 1 },
   ).lean();
-  const memberProjectIds = new Set(
-    memberDocs.map((m) => m.projectId.toString()),
-  );
-
-  // Always include projects created by this user (Project.userId).
-  // Covers both non-migrated projects and the case where the owner's
-  // own ProjectMember record is missing.
-  const ownedProjects = await Project.find({ userId }, { _id: 1 }).lean();
-  for (const p of ownedProjects) {
-    memberProjectIds.add(p._id.toString());
-  }
-
-  return [...memberProjectIds];
+  return memberDocs.map((m) => m.projectId.toString());
 }
 
 /**
  * Returns the user's role on a specific project, or null if no access.
- * Falls back to Project.userId for projects not yet migrated.
  */
 export async function getProjectRole(
   userId: string,
@@ -39,18 +24,7 @@ export async function getProjectRole(
     { userId, projectId },
     { role: 1 },
   ).lean();
-
-  if (member) return member.role;
-
-  // Fallback: project creator always has owner access, even if their
-  // ProjectMember record is missing (non-migrated or not yet created).
-  const project = await Project.findOne(
-    { _id: projectId, userId },
-    { _id: 1 },
-  ).lean();
-  if (project) return "owner";
-
-  return null;
+  return member ? member.role : null;
 }
 
 const ROLE_LEVEL: Record<ProjectRole, number> = {
@@ -95,12 +69,5 @@ export async function getProjectMemberUserIds(
     { projectId },
     { userId: 1 },
   ).lean();
-
-  if (members.length > 0) {
-    return members.map((m) => m.userId.toString());
-  }
-
-  // Fallback for non-migrated projects
-  const project = await Project.findById(projectId, { userId: 1 }).lean();
-  return project ? [project.userId.toString()] : [];
+  return members.map((m) => m.userId.toString());
 }

@@ -7,6 +7,7 @@ import { Category } from "@/models/category";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { ProjectMember } from "@/models/project-member";
 
 const UpdateCategorySchema = z.object({
   name: z.string().min(1).max(50).optional(),
@@ -121,10 +122,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       { _id: 1 },
     );
     const projectIds = projects.map((p) => p._id);
-    await Task.deleteMany({
-      projectId: { $in: projectIds },
-      userId: session.user.id,
-    });
+    await Task.deleteMany({ projectId: { $in: projectIds } });
+    await ProjectMember.deleteMany({ projectId: { $in: projectIds } });
     await Note.deleteMany({
       $or: [
         { categoryId: id },

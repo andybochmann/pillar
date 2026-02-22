@@ -17,6 +17,7 @@ import {
   createTestCategory,
   createTestProject,
   createTestNote,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { GET, PATCH, DELETE } from "./route";
 import { Note } from "@/models/note";
@@ -63,6 +64,7 @@ describe("/api/notes/[id]", () => {
     categoryId = category._id;
     const project = await createTestProject({ categoryId, userId });
     projectId = project._id;
+    await createTestProjectMember({ projectId, userId, role: "owner", invitedBy: userId });
     return { user, category, project };
   }
 
