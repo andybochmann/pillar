@@ -1,18 +1,40 @@
 # Pillar
 
-A Kanban-based task management app built with Next.js, TypeScript, and MongoDB. Supports multiple users, configurable boards, recurring tasks, calendar views, and offline mode.
+A Kanban-based task management app built with Next.js, TypeScript, and MongoDB. Supports team collaboration, real-time sync, rich notes, time tracking, push notifications, AI-powered subtasks, offline PWA mode, and more.
 
 ## Features
+
+### Core
 
 - **Kanban boards** with drag-and-drop (powered by @dnd-kit)
 - **Configurable columns** per project
 - **Recurring tasks** (daily, weekly, monthly, yearly)
-- **Calendar view** for deadline tracking
-- **Project categories** for organizing work
 - **Task labels and priorities** with filtering
+- **Task archiving** with bulk operations
+- **Project categories** for organizing work
+
+### Collaboration
+
+- **Project sharing** with role-based access (owner/editor)
+- **Real-time sync** across devices and team members via server-sent events
+
+### Productivity
+
+- **Calendar view** (day/week) for deadline tracking
+- **Time tracking** with built-in stopwatch and session history
+- **AI-powered subtask generation** (OpenAI / Google AI)
+- **Rich Markdown notes** at category, project, and task level with auto-save and pinning
+- **Push notifications** with action buttons (mark complete / snooze)
+- **Command palette** and keyboard shortcuts
+
+### Infrastructure
+
 - **Offline PWA** with background sync via IndexedDB
-- **Multi-user** with credentials-based authentication
+- **Data backup** export and import
+- **MCP API** with 27 tools for external integrations
+- **Google OAuth + credentials auth** via Auth.js v5
 - **Dark mode** support
+- **Docker Compose** deployment
 
 ## Tech Stack
 
@@ -76,15 +98,21 @@ src/
   app/
     (auth)/            # Login and registration pages
     (dashboard)/       # Main app pages (kanban, calendar, settings)
+    (marketing)/       # Landing page, privacy, terms
     api/               # REST API route handlers
   components/
     calendar/          # Calendar view components
     kanban/            # Kanban board, columns, task cards
+    marketing/         # Landing page sections
+    notes/             # Markdown notes editor and lists
+    settings/          # Settings panels (tokens, calendar, notifications)
     tasks/             # Task creation/editing sheets
     ui/                # shadcn/ui primitives
   hooks/               # Custom React hooks for data fetching
   lib/                 # Utilities, auth config, DB connection, offline support
-  models/              # Mongoose models (User, Project, Task, Category, Label)
+  models/              # Mongoose models (User, Project, Task, Category, Label,
+                       #   Note, ProjectMember, PushSubscription, Notification,
+                       #   NotificationPreference, AccessToken, Account)
   types/               # Shared TypeScript types
 public/
   sw.js                # Service worker for offline support

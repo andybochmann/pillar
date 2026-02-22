@@ -18,9 +18,9 @@ export function HeroSection() {
           <span className="text-primary">Pillar</span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground">
-          A simple, powerful Kanban task manager. Drag-and-drop boards, team
-          collaboration, offline support, and real-time sync &mdash; all in one
-          app.
+          A simple, powerful task manager. Kanban boards, team collaboration,
+          time tracking, notes, push notifications, and offline support &mdash;
+          all in one app.
         </p>
         <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
           <Button asChild size="lg" className="px-8">

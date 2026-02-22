@@ -1,4 +1,13 @@
-import { Columns3, Users, WifiOff, Radio } from "lucide-react";
+import {
+  Columns3,
+  Users,
+  FileText,
+  Timer,
+  Calendar,
+  Bell,
+  WifiOff,
+  Radio,
+} from "lucide-react";
 import {
   Card,
   CardDescription,
@@ -9,22 +18,50 @@ import {
 const features = [
   {
     title: "Kanban Boards",
-    description: "Drag-and-drop task management with customizable columns and priorities.",
+    description:
+      "Drag-and-drop task management with customizable columns, priorities, and filters.",
     icon: Columns3,
   },
   {
     title: "Team Collaboration",
-    description: "Share projects with your team, assign tasks, and track progress together.",
+    description:
+      "Share projects with role-based access, assign tasks, and track progress together.",
     icon: Users,
   },
   {
+    title: "Rich Notes",
+    description:
+      "Markdown notes at every level \u2014 categories, projects, and tasks \u2014 with auto-save and pinning.",
+    icon: FileText,
+  },
+  {
+    title: "Time Tracking",
+    description:
+      "Built-in stopwatch with session history to track how long tasks actually take.",
+    icon: Timer,
+  },
+  {
+    title: "Calendar View",
+    description:
+      "Day and week views to visualize deadlines and plan your schedule.",
+    icon: Calendar,
+  },
+  {
+    title: "Push Notifications",
+    description:
+      "Reminders with action buttons to mark complete or snooze right from the notification.",
+    icon: Bell,
+  },
+  {
     title: "Works Offline",
-    description: "Full PWA support with an offline queue that syncs when you reconnect.",
+    description:
+      "Full PWA support with an offline queue that syncs when you reconnect.",
     icon: WifiOff,
   },
   {
     title: "Real-time Sync",
-    description: "Live updates across all your devices via server-sent events.",
+    description:
+      "Live updates across all your devices and team members via server-sent events.",
     icon: Radio,
   },
 ];

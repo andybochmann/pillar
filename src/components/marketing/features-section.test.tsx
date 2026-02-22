@@ -11,11 +11,15 @@ describe("FeaturesSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders all four feature cards", () => {
+  it("renders all eight feature cards", () => {
     render(<FeaturesSection />);
 
     expect(screen.getByText("Kanban Boards")).toBeInTheDocument();
     expect(screen.getByText("Team Collaboration")).toBeInTheDocument();
+    expect(screen.getByText("Rich Notes")).toBeInTheDocument();
+    expect(screen.getByText("Time Tracking")).toBeInTheDocument();
+    expect(screen.getByText("Calendar View")).toBeInTheDocument();
+    expect(screen.getByText("Push Notifications")).toBeInTheDocument();
     expect(screen.getByText("Works Offline")).toBeInTheDocument();
     expect(screen.getByText("Real-time Sync")).toBeInTheDocument();
   });
@@ -24,7 +28,11 @@ describe("FeaturesSection", () => {
     render(<FeaturesSection />);
 
     expect(screen.getByText(/drag-and-drop task management/i)).toBeInTheDocument();
-    expect(screen.getByText(/share projects with your team/i)).toBeInTheDocument();
+    expect(screen.getByText(/share projects with role-based access/i)).toBeInTheDocument();
+    expect(screen.getByText(/markdown notes at every level/i)).toBeInTheDocument();
+    expect(screen.getByText(/built-in stopwatch/i)).toBeInTheDocument();
+    expect(screen.getByText(/day and week views/i)).toBeInTheDocument();
+    expect(screen.getByText(/reminders with action buttons/i)).toBeInTheDocument();
     expect(screen.getByText(/full pwa support/i)).toBeInTheDocument();
     expect(screen.getByText(/live updates across all your devices/i)).toBeInTheDocument();
   });
