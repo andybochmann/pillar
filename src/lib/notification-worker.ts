@@ -80,6 +80,12 @@ async function loadPreferencesMap(
   return map;
 }
 
+/** Push actions for single-task notifications (reminder/overdue). */
+const TASK_PUSH_ACTIONS = [
+  { action: "complete", title: "Mark Complete" },
+  { action: "snooze", title: "Snooze 1 Day" },
+];
+
 /**
  * Emit a notification SSE event and optionally send a web push notification.
  */
@@ -89,6 +95,7 @@ function emitNotification(
   taskId?: string,
   pushEnabled?: boolean,
   projectId?: string,
+  notificationType?: string,
 ): void {
   const notificationId = notification._id.toString();
   const tag = `pillar-${notificationId}`;
@@ -105,6 +112,10 @@ function emitNotification(
   });
 
   if (pushEnabled) {
+    // Include action buttons for single-task notifications (reminder/overdue)
+    const isSingleTask =
+      notificationType === "reminder" || notificationType === "overdue";
+
     sendPushToUser(userId, {
       title: notification.title,
       message: notification.message,
@@ -112,6 +123,10 @@ function emitNotification(
       taskId,
       tag,
       url: projectId ? `/projects/${projectId}` : "/",
+      ...(isSingleTask && {
+        actions: TASK_PUSH_ACTIONS,
+        notificationType,
+      }),
     }).catch((err) => {
       console.error(
         `[notification-worker] Push failed for user ${userId}:`,
@@ -269,6 +284,7 @@ async function processReminders(
         taskId,
         prefs?.enableBrowserPush,
         task.projectId.toString(),
+        "reminder",
       );
       created++;
     }
@@ -353,6 +369,7 @@ async function processOverdue(
         taskId,
         prefs?.enableBrowserPush,
         task.projectId.toString(),
+        "overdue",
       );
       created++;
     }

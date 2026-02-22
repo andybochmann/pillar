@@ -33,6 +33,11 @@ function ensureVapidInitialized(): void {
   vapidInitialized = true;
 }
 
+interface PushNotificationAction {
+  action: string;
+  title: string;
+}
+
 interface PushPayload {
   title: string;
   message: string;
@@ -40,6 +45,8 @@ interface PushPayload {
   taskId?: string;
   tag?: string;
   url?: string;
+  actions?: PushNotificationAction[];
+  notificationType?: string;
 }
 
 /**

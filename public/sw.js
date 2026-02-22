@@ -273,20 +273,76 @@ async function replayOneMutation(mutation, sessionId, maxRetries, baseDelay) {
   return false;
 }
 
-self.addEventListener("notificationclick", (event) => {
-  event.notification.close();
-
-  const urlToOpen = event.notification.data?.url || "/";
-
-  event.waitUntil(
-    clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+/**
+ * Navigate to a URL in an existing app window, or open a new one.
+ */
+function openApp(url) {
+  return clients
+    .matchAll({ type: "window", includeUncontrolled: true })
+    .then((clientList) => {
       for (const client of clientList) {
-        if (new URL(client.url).origin === self.location.origin && "focus" in client) {
-          client.navigate(urlToOpen);
+        if (
+          new URL(client.url).origin === self.location.origin &&
+          "focus" in client
+        ) {
+          client.navigate(url);
           return client.focus();
         }
       }
-      if (clients.openWindow) return clients.openWindow(urlToOpen);
-    }),
-  );
+      if (clients.openWindow) return clients.openWindow(url);
+    });
+}
+
+/**
+ * Show a brief confirmation notification (auto-dismisses).
+ */
+function showConfirmation(title, body) {
+  return self.registration.showNotification(title, {
+    body,
+    icon: "/icons/icon-192x192.png",
+    tag: "pillar-action-confirm",
+    requireInteraction: false,
+  });
+}
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const { taskId, notificationId, url } = event.notification.data || {};
+
+  // Handle "Mark Complete" action button
+  if (event.action === "complete" && taskId) {
+    event.waitUntil(
+      fetch(`/api/tasks/${taskId}/complete`, { method: "POST" })
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to complete task");
+          return showConfirmation("Task completed", "Task marked as done.");
+        })
+        .catch(() => openApp(url || "/")),
+    );
+    return;
+  }
+
+  // Handle "Snooze 1 Day" action button
+  if (event.action === "snooze" && taskId) {
+    event.waitUntil(
+      fetch(`/api/tasks/${taskId}/snooze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notificationId }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("Failed to snooze");
+          return showConfirmation(
+            "Snoozed",
+            "Reminder snoozed for 1 day.",
+          );
+        })
+        .catch(() => openApp(url || "/")),
+    );
+    return;
+  }
+
+  // Default: navigate to the URL (existing behavior)
+  event.waitUntil(openApp(url || "/"));
 });

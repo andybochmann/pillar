@@ -54,6 +54,146 @@ afterEach(async () => {
   pushPayloads.length = 0;
 });
 
+describe("notification-worker push actions", () => {
+  it("includes actions in push payload for reminder notifications", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    await createTestTask({
+      title: "Reminder with actions",
+      userId: user._id,
+      projectId: project._id,
+      reminderAt: new Date(Date.now() - 60_000),
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: true,
+      enableBrowserPush: true,
+      quietHoursEnabled: false,
+    });
+
+    await processNotifications(user._id.toString());
+
+    expect(pushPayloads).toHaveLength(1);
+    const payload = pushPayloads[0].payload;
+    expect(payload.actions).toBeDefined();
+    expect(payload.actions).toHaveLength(2);
+    expect(payload.actions).toEqual([
+      { action: "complete", title: "Mark Complete" },
+      { action: "snooze", title: "Snooze 1 Day" },
+    ]);
+    expect(payload.notificationType).toBe("reminder");
+  });
+
+  it("includes actions in push payload for overdue notifications", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    await createTestTask({
+      title: "Overdue with actions",
+      userId: user._id,
+      projectId: project._id,
+      dueDate: new Date(Date.now() - 24 * 60 * 60_000),
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: true,
+      enableBrowserPush: true,
+      enableOverdueSummary: true,
+      enableDailySummary: false,
+      quietHoursEnabled: false,
+    });
+
+    await processNotifications(user._id.toString());
+
+    const overduePayload = pushPayloads.find(
+      (p) => p.payload.title === "Task is overdue",
+    );
+    expect(overduePayload).toBeDefined();
+    expect(overduePayload!.payload.actions).toEqual([
+      { action: "complete", title: "Mark Complete" },
+      { action: "snooze", title: "Snooze 1 Day" },
+    ]);
+    expect(overduePayload!.payload.notificationType).toBe("overdue");
+  });
+
+  it("does NOT include actions for daily summary notifications", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    await createTestTask({
+      title: "Due today",
+      userId: user._id,
+      projectId: project._id,
+      dueDate: new Date(),
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: true,
+      enableBrowserPush: true,
+      enableDailySummary: true,
+      dailySummaryTime: "00:00",
+      timezone: "UTC",
+      quietHoursEnabled: false,
+    });
+
+    await processDailySummary(new Date(), user._id.toString());
+
+    expect(pushPayloads).toHaveLength(1);
+    expect(pushPayloads[0].payload.actions).toBeUndefined();
+    expect(pushPayloads[0].payload.notificationType).toBeUndefined();
+  });
+
+  it("does NOT include actions for overdue digest notifications", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    await createTestTask({
+      title: "Overdue task",
+      userId: user._id,
+      projectId: project._id,
+      dueDate: new Date(Date.now() - 24 * 60 * 60_000),
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: true,
+      enableBrowserPush: true,
+      enableOverdueSummary: true,
+      overdueSummaryTime: "00:00",
+      enableDailySummary: false,
+      timezone: "UTC",
+      quietHoursEnabled: false,
+    });
+
+    await processOverdueDigest(new Date(), user._id.toString());
+
+    expect(pushPayloads).toHaveLength(1);
+    expect(pushPayloads[0].payload.title).toBe("Overdue Tasks Summary");
+    expect(pushPayloads[0].payload.actions).toBeUndefined();
+    expect(pushPayloads[0].payload.notificationType).toBeUndefined();
+  });
+});
+
 describe("notification-worker push URL", () => {
   it("includes project URL in push payload for reminder notifications", async () => {
     const user = await createTestUser();
