@@ -300,9 +300,10 @@ describe("scheduleNextReminder", () => {
       categoryId: category._id,
     });
 
-    // Due today (or very soon), all reminders would be in the past
+    // Due yesterday — all reminders clearly in the past regardless of timezone
     const dueDate = new Date();
-    dueDate.setUTCHours(0, 0, 0, 0); // midnight today UTC — already past
+    dueDate.setUTCDate(dueDate.getUTCDate() - 1);
+    dueDate.setUTCHours(0, 0, 0, 0);
     const task = await createTestTask({
       title: "All past",
       userId: user._id,
@@ -596,6 +597,10 @@ describe("scheduleNextReminder — grace window", () => {
   });
 
   it("does NOT schedule a reminder whose computed time is beyond the 30-min grace window", async () => {
+    // Pin to noon UTC to avoid flakiness near midnight UTC boundaries
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-03-15T12:00:00Z"));
+
     const user = await createTestUser();
     const category = await createTestCategory({ userId: user._id });
     const project = await createTestProject({
@@ -631,6 +636,8 @@ describe("scheduleNextReminder — grace window", () => {
     const updated = await Task.findById(task._id);
     // Should NOT be scheduled because 45 min ago is outside the 30-min grace window
     expect(updated?.reminderAt).toBeUndefined();
+
+    vi.useRealTimers();
   });
 });
 
