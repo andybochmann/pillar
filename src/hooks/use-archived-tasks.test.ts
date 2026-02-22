@@ -142,12 +142,14 @@ describe("useArchivedTasks", () => {
       expect(result.current.archivedTasks).toHaveLength(2);
 
       // Now unarchive
+      const restoredTask = { ...mockArchivedTask, archived: false, archivedAt: null };
       const { offlineFetch } = await import("@/lib/offline-fetch");
       vi.mocked(offlineFetch).mockResolvedValueOnce({
         ok: true,
-        json: () =>
-          Promise.resolve({ ...mockArchivedTask, archived: false, archivedAt: null }),
+        json: () => Promise.resolve(restoredTask),
       } as Response);
+
+      const dispatchSpy = vi.spyOn(window, "dispatchEvent");
 
       await act(async () => {
         await result.current.unarchiveTask("task-1");
@@ -160,6 +162,19 @@ describe("useArchivedTasks", () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ archived: false }),
       });
+
+      // Should dispatch a local sync event so the board picks up the restored task
+      const syncEvent = dispatchSpy.mock.calls.find(
+        ([e]) => (e as CustomEvent).type === "pillar:sync",
+      );
+      expect(syncEvent).toBeDefined();
+      const detail = (syncEvent![0] as CustomEvent).detail;
+      expect(detail.entity).toBe("task");
+      expect(detail.action).toBe("updated");
+      expect(detail.entityId).toBe("task-1");
+      expect(detail.data).toEqual(restoredTask);
+
+      dispatchSpy.mockRestore();
     });
 
     it("throws on unarchive failure", async () => {

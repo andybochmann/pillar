@@ -54,7 +54,23 @@ export function useArchivedTasks(): UseArchivedTasksReturn {
       const body = await res.json();
       throw new Error(body.error || "Failed to unarchive task");
     }
+    const restored: Task = await res.json();
     setArchivedTasks((prev) => prev.filter((t) => t._id !== id));
+
+    // Dispatch local sync event so the board adds the task back instantly
+    // (SSE skips events from the same tab, so the board won't get it otherwise)
+    window.dispatchEvent(
+      new CustomEvent("pillar:sync", {
+        detail: {
+          entity: "task",
+          action: "updated",
+          entityId: id,
+          projectId: restored.projectId,
+          data: restored,
+          timestamp: Date.now(),
+        },
+      }),
+    );
   }, []);
 
   const permanentDeleteTask = useCallback(async (id: string) => {

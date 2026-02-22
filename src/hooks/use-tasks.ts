@@ -198,7 +198,15 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
           // Archived tasks should be removed from the active list
           setTasks((prev) => prev.filter((t) => t._id !== event.entityId));
         } else {
-          setTasks((prev) => prev.map((t) => (t._id === event.entityId ? data : t)));
+          setTasks((prev) => {
+            const exists = prev.some((t) => t._id === event.entityId);
+            if (exists) {
+              return prev.map((t) => (t._id === event.entityId ? data : t));
+            }
+            // Task was restored from archive — add it back to the board
+            if (projectId && event.projectId !== projectId) return prev;
+            return [...prev, data];
+          });
         }
         break;
       case "deleted":
