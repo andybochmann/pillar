@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Bell, Check, ListChecks } from "lucide-react";
+import { Archive, Bell, Check, ListChecks } from "lucide-react";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
 import { toLocalDate } from "@/lib/date-utils";
 import { TimeTrackingButton } from "@/components/tasks/time-tracking-button";
@@ -38,6 +38,8 @@ interface TaskCardProps {
   onStartTracking?: (taskId: string) => void;
   onStopTracking?: (taskId: string) => void;
   onSubtaskToggle?: (taskId: string, subtaskId: string) => void;
+  isLastColumn?: boolean;
+  onArchive?: (taskId: string) => void;
 }
 
 const priorities: Priority[] = ["urgent", "high", "medium", "low"];
@@ -93,6 +95,8 @@ export function TaskCard({
   onStartTracking,
   onStopTracking,
   onSubtaskToggle,
+  isLastColumn,
+  onArchive,
 }: TaskCardProps) {
   const {
     attributes,
@@ -314,6 +318,18 @@ export function TaskCard({
               </Badge>
             );
           })}
+          {isLastColumn && onArchive && (
+            <button
+              className="ml-auto inline-flex h-5 w-5 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/card:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                onArchive(task._id);
+              }}
+              aria-label={`Archive ${task.title}`}
+            >
+              <Archive className="h-3.5 w-3.5" />
+            </button>
+          )}
           {(task.assigneeId || onSelect) && (
             <span className="ml-auto inline-flex items-center gap-1.5">
               {task.assigneeId && memberNames && (() => {

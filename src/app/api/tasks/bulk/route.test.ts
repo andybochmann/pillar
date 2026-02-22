@@ -232,6 +232,25 @@ describe("PATCH /api/tasks/bulk", () => {
     expect(doneEntries).toHaveLength(1);
   });
 
+  it("archives tasks with archive action", async () => {
+    await seedTasks();
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [task1Id, task2Id],
+        action: "archive",
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+
+    const { Task } = await import("@/models/task");
+    const tasks = await Task.find({ _id: { $in: [task1Id, task2Id] } });
+    expect(tasks.every((t) => t.archived === true)).toBe(true);
+    expect(tasks.every((t) => t.archivedAt != null)).toBe(true);
+  });
+
   it("only affects tasks in accessible projects", async () => {
     await seedTasks();
     // Create a task owned by another user in a separate project

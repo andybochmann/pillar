@@ -295,6 +295,42 @@ describe("PATCH /api/tasks/[id]", () => {
     expect(res.status).toBe(400);
   });
 
+  it("archives a task", async () => {
+    await setupFixtures();
+    const task = await createTestTask({ projectId, userId });
+
+    const { request, params } = createRequest(task._id.toString(), {
+      archived: true,
+    });
+    const res = await PATCH(request, { params });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.archived).toBe(true);
+    expect(data.archivedAt).toBeDefined();
+    expect(data.archivedAt).not.toBeNull();
+  });
+
+  it("unarchives a task", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      archived: true,
+      archivedAt: new Date(),
+    });
+
+    const { request, params } = createRequest(task._id.toString(), {
+      archived: false,
+    });
+    const res = await PATCH(request, { params });
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.archived).toBe(false);
+    expect(data.archivedAt).toBeNull();
+  });
+
   it("returns 403 when viewer tries to update a task", async () => {
     await setupFixtures();
     const viewer = await createTestUser({ email: "viewer@example.com" });

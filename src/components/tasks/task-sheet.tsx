@@ -49,6 +49,7 @@ interface TaskSheetProps {
   onStartTracking?: (taskId: string) => void;
   onStopTracking?: (taskId: string) => void;
   onDeleteSession?: (taskId: string, sessionId: string) => void;
+  onArchive?: (taskId: string) => void;
 }
 
 export function TaskSheet({
@@ -66,6 +67,7 @@ export function TaskSheet({
   onStartTracking,
   onStopTracking,
   onDeleteSession,
+  onArchive,
 }: TaskSheetProps) {
   useBackButton("task-sheet", open, () => onOpenChange(false));
 
@@ -96,6 +98,7 @@ export function TaskSheet({
           onStartTracking={onStartTracking}
           onStopTracking={onStopTracking}
           onDeleteSession={onDeleteSession}
+          onArchive={onArchive}
         />
       </SheetContent>
     </Sheet>
@@ -116,6 +119,7 @@ interface TaskSheetFormProps {
   onStartTracking?: (taskId: string) => void;
   onStopTracking?: (taskId: string) => void;
   onDeleteSession?: (taskId: string, sessionId: string) => void;
+  onArchive?: (taskId: string) => void;
 }
 
 function TaskSheetForm({
@@ -132,6 +136,7 @@ function TaskSheetForm({
   onStartTracking,
   onStopTracking,
   onDeleteSession,
+  onArchive,
 }: TaskSheetFormProps) {
   const sortedColumns = useMemo(
     () => [...columns].sort((a, b) => a.order - b.order),
@@ -439,6 +444,7 @@ function TaskSheetForm({
           onUpdate={handleTaskUpdate}
           onDelete={handleTaskDelete}
           onDuplicate={onDuplicate ? () => onDuplicate(task) : undefined}
+          onArchive={onArchive ? () => { onArchive(task._id); onClose(); } : undefined}
           onClose={onClose}
         />
       </div>

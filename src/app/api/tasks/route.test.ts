@@ -282,6 +282,45 @@ describe("GET /api/tasks", () => {
     expect(data).toHaveLength(1);
     expect(data[0].title).toBe("Login BUG");
   });
+
+  it("excludes archived tasks by default", async () => {
+    await setupFixtures();
+    await createTestTask({ projectId, userId, title: "Active Task" });
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Archived Task",
+      archived: true,
+      archivedAt: new Date(),
+    });
+
+    const res = await GET(createRequest({ projectId: projectId.toString() }));
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveLength(1);
+    expect(data[0].title).toBe("Active Task");
+  });
+
+  it("returns only archived tasks when archived=true", async () => {
+    await setupFixtures();
+    await createTestTask({ projectId, userId, title: "Active Task" });
+    await createTestTask({
+      projectId,
+      userId,
+      title: "Archived Task",
+      archived: true,
+      archivedAt: new Date(),
+    });
+
+    const res = await GET(
+      createRequest({ projectId: projectId.toString(), archived: "true" }),
+    );
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveLength(1);
+    expect(data[0].title).toBe("Archived Task");
+    expect(data[0].archived).toBe(true);
+  });
 });
 
 describe("POST /api/tasks", () => {

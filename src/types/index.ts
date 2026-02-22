@@ -108,6 +108,8 @@ export interface Task {
   statusHistory: StatusHistoryEntry[];
   reminderAt?: string | null;
   completedAt?: string | null;
+  archived: boolean;
+  archivedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

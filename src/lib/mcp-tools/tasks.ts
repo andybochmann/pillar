@@ -34,6 +34,8 @@ function serializeTask(task: unknown) {
     subtasks: t.subtasks,
     statusHistory: t.statusHistory,
     completedAt: serializeDate(t.completedAt),
+    archived: t.archived ?? false,
+    archivedAt: serializeDate(t.archivedAt),
     createdAt: serializeDate(t.createdAt),
     updatedAt: serializeDate(t.updatedAt),
   };
@@ -49,8 +51,9 @@ export function registerTaskTools(server: McpServer) {
       priority: z.enum(["urgent", "high", "medium", "low"]).optional(),
       search: z.string().optional(),
       assigneeId: z.string().optional(),
+      archived: z.boolean().optional(),
     },
-    async ({ projectId, columnId, priority, search, assigneeId }) => {
+    async ({ projectId, columnId, priority, search, assigneeId, archived }) => {
       const userId = getMcpUserId();
       try {
         await requireProjectRole(userId, projectId, "viewer");
@@ -63,6 +66,7 @@ export function registerTaskTools(server: McpServer) {
       if (priority) filter.priority = priority;
       if (assigneeId) filter.assigneeId = assigneeId;
       if (search) filter.$text = { $search: search };
+      filter.archived = archived === true ? true : { $ne: true };
 
       const tasks = await Task.find(filter)
         .sort({ order: 1 })
@@ -169,6 +173,7 @@ export function registerTaskTools(server: McpServer) {
       reminderAt: z.string().nullable().optional(),
       assigneeId: z.string().nullable().optional(),
       completedAt: z.string().nullable().optional(),
+      archived: z.boolean().optional(),
     },
     async ({ taskId, ...updates }) => {
       const userId = getMcpUserId();
@@ -199,6 +204,10 @@ export function registerTaskTools(server: McpServer) {
       }
       if (updates.completedAt !== undefined) {
         update.completedAt = updates.completedAt ? new Date(updates.completedAt) : null;
+      }
+      if (updates.archived !== undefined) {
+        update.archived = updates.archived;
+        update.archivedAt = updates.archived ? new Date() : null;
       }
 
       if (updates.columnId !== undefined && updates.columnId !== existing.columnId) {

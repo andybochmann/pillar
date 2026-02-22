@@ -18,6 +18,7 @@ interface BulkActionsBarProps {
   onClearSelection: () => void;
   onBulkMove: (columnId: string) => Promise<void>;
   onBulkPriority: (priority: Priority) => Promise<void>;
+  onBulkArchive: () => Promise<void>;
   onBulkDelete: () => Promise<void>;
 }
 
@@ -27,6 +28,7 @@ export function BulkActionsBar({
   onClearSelection,
   onBulkMove,
   onBulkPriority,
+  onBulkArchive,
   onBulkDelete,
 }: BulkActionsBarProps) {
   const [loading, setLoading] = useState(false);
@@ -83,6 +85,15 @@ export function BulkActionsBar({
           <SelectItem value="low">Low</SelectItem>
         </SelectContent>
       </Select>
+
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={loading}
+        onClick={() => handleAction(onBulkArchive)}
+      >
+        Archive
+      </Button>
 
       <Button
         variant="destructive"

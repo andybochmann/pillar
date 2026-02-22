@@ -106,6 +106,14 @@ export async function GET(request: Request) {
     filter.completedAt = null;
   }
 
+  // Archive filtering
+  const archived = searchParams.get("archived");
+  if (archived === "true") {
+    filter.archived = true;
+  } else {
+    filter.archived = { $ne: true };
+  }
+
   if (sortBy === "priority") {
     const aggFilter: Record<string, unknown> = { ...filter };
     if (typeof filter.projectId === "string") {

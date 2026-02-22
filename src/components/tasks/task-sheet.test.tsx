@@ -48,6 +48,7 @@ const mockTask: Task = {
   labels: ["lbl-1", "lbl-2"],
   subtasks: [],
   statusHistory: [],
+  archived: false,
   createdAt: "",
   updatedAt: "",
 };

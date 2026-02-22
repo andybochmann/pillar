@@ -18,6 +18,7 @@ interface TaskActionsSectionProps {
   onUpdate: (data: { completedAt: string | null }) => Promise<unknown>;
   onDelete: (taskId: string) => Promise<void>;
   onDuplicate?: () => void;
+  onArchive?: () => void;
   onClose: () => void;
 }
 
@@ -31,6 +32,7 @@ export function TaskActionsSection({
   onUpdate,
   onDelete,
   onDuplicate,
+  onArchive,
   onClose,
 }: TaskActionsSectionProps) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -71,21 +73,16 @@ export function TaskActionsSection({
   return (
     <>
       <div className="mt-auto space-y-2 pt-6">
-        {completedAt ? (
+        <Button variant="outline" className="w-full" onClick={handleToggleComplete}>
+          {completedAt ? "Reopen" : "Mark Complete"}
+        </Button>
+        {completedAt && onArchive && (
           <Button
             variant="outline"
             className="w-full"
-            onClick={handleToggleComplete}
+            onClick={onArchive}
           >
-            Reopen
-          </Button>
-        ) : (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={handleToggleComplete}
-          >
-            Mark Complete
+            Archive
           </Button>
         )}
         {onDuplicate && (

@@ -59,7 +59,7 @@ export function KanbanBoard({
   allLabels,
   onCreateLabel,
 }: KanbanBoardProps) {
-  const { tasks, setTasks, createTask, updateTask, deleteTask, duplicateTask } =
+  const { tasks, setTasks, createTask, updateTask, deleteTask, duplicateTask, archiveTask } =
     useTasks(initialTasks, projectId);
   const [activeTask, setActiveTask] = useState<Task | null>(null);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -473,6 +473,52 @@ export function KanbanBoard({
     }
   }
 
+  async function handleArchiveTask(taskId: string) {
+    try {
+      await archiveTask(taskId);
+      toast.success("Task archived");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function bulkArchive(ids: string[]) {
+    const res = await fetch("/api/tasks/bulk", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskIds: ids, action: "archive" }),
+    });
+    if (!res.ok) throw new Error("Failed to archive tasks");
+    setTasks((prev) => prev.filter((t) => !ids.includes(t._id)));
+    toast.success(`Archived ${ids.length} tasks`);
+  }
+
+  async function handleArchiveAll(columnId: string) {
+    const ids = tasks.filter((t) => t.columnId === columnId).map((t) => t._id);
+    if (ids.length === 0) return;
+    try {
+      await bulkArchive(ids);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleBulkArchive() {
+    const ids = [...selectedIds];
+    try {
+      await bulkArchive(ids);
+      setSelectedIds(new Set());
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleArchiveFromSheet(taskId: string) {
+    await handleArchiveTask(taskId);
+    setSheetOpen(false);
+    setSelectedTask(null);
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {!readOnly && (
@@ -482,6 +528,7 @@ export function KanbanBoard({
           onClearSelection={() => setSelectedIds(new Set())}
           onBulkMove={handleBulkMove}
           onBulkPriority={handleBulkPriority}
+          onBulkArchive={handleBulkArchive}
           onBulkDelete={handleBulkDelete}
         />
       )}
@@ -520,6 +567,9 @@ export function KanbanBoard({
                 onStartTracking={readOnly ? undefined : handleStartTracking}
                 onStopTracking={readOnly ? undefined : handleStopTracking}
                 onSubtaskToggle={readOnly ? undefined : handleSubtaskToggle}
+                isLastColumn={!readOnly && column.id === sortedColumns[sortedColumns.length - 1]?.id}
+                onArchiveAll={readOnly ? undefined : () => handleArchiveAll(column.id)}
+                onArchive={readOnly ? undefined : handleArchiveTask}
               />
             </SortableContext>
           ))}
@@ -551,9 +601,7 @@ export function KanbanBoard({
         onDelete={handleTaskDelete}
         onDuplicate={readOnly ? undefined : handleTaskDuplicate}
         allLabels={allLabels}
-        onCreateLabel={async (data) => {
-          await onCreateLabel(data);
-        }}
+        onCreateLabel={onCreateLabel}
         members={members}
         currentUserId={currentUserId}
         onStartTracking={readOnly ? undefined : handleStartTracking}
@@ -570,6 +618,7 @@ export function KanbanBoard({
                 }
               }
         }
+        onArchive={readOnly ? undefined : handleArchiveFromSheet}
       />
 
       {/* Screen reader announcements for DnD */}

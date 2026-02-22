@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useDroppable } from "@dnd-kit/core";
-import { Plus, Inbox } from "lucide-react";
+import { Plus, Inbox, Archive } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TaskCard } from "./task-card";
 import { TaskForm } from "@/components/tasks/task-form";
@@ -27,6 +27,9 @@ interface KanbanColumnProps {
   onStartTracking?: (taskId: string) => void;
   onStopTracking?: (taskId: string) => void;
   onSubtaskToggle?: (taskId: string, subtaskId: string) => void;
+  isLastColumn?: boolean;
+  onArchiveAll?: () => void;
+  onArchive?: (taskId: string) => void;
 }
 
 export function KanbanColumn({
@@ -47,6 +50,9 @@ export function KanbanColumn({
   onStartTracking,
   onStopTracking,
   onSubtaskToggle,
+  isLastColumn,
+  onArchiveAll,
+  onArchive,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [localShowForm, setLocalShowForm] = useState(false);
@@ -75,17 +81,30 @@ export function KanbanColumn({
             {tasks.length}
           </span>
         </div>
-        {!readOnly && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 text-muted-foreground hover:text-foreground"
-            onClick={() => setShowForm(true)}
-            aria-label={`Add task to ${column.name}`}
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        )}
+        <div className="flex items-center gap-1">
+          {isLastColumn && onArchiveAll && tasks.length > 0 && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+              onClick={onArchiveAll}
+              aria-label="Archive all done tasks"
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+          )}
+          {!readOnly && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-muted-foreground hover:text-foreground"
+              onClick={() => setShowForm(true)}
+              aria-label={`Add task to ${column.name}`}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Task list */}
@@ -105,6 +124,8 @@ export function KanbanColumn({
             onStartTracking={onStartTracking}
             onStopTracking={onStopTracking}
             onSubtaskToggle={onSubtaskToggle}
+            isLastColumn={isLastColumn}
+            onArchive={onArchive}
           />
         ))}
         {tasks.length === 0 && !showForm && (

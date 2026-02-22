@@ -27,7 +27,7 @@ export default async function ProjectPage({ params }: PageProps) {
   if (!project) notFound();
 
   // Tasks in shared projects belong to all members
-  const tasks = await Task.find({ projectId: id })
+  const tasks = await Task.find({ projectId: id, archived: { $ne: true } })
     .sort({ order: 1 })
     .lean();
 
@@ -115,6 +115,8 @@ export default async function ProjectPage({ params }: PageProps) {
       timestamp: h.timestamp.toISOString(),
     })),
     completedAt: t.completedAt?.toISOString(),
+    archived: t.archived ?? false,
+    archivedAt: t.archivedAt?.toISOString() ?? null,
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
   }));

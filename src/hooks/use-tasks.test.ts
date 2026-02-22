@@ -16,6 +16,7 @@ const mockTasks = [
     subtasks: [],
     statusHistory: [],
     timeSessions: [],
+    archived: false,
     createdAt: "",
     updatedAt: "",
   },
@@ -31,6 +32,7 @@ const mockTasks = [
     subtasks: [],
     statusHistory: [],
     timeSessions: [],
+    archived: false,
     createdAt: "",
     updatedAt: "",
   },
@@ -212,6 +214,7 @@ describe("useTasks", () => {
       subtasks: [],
       statusHistory: [],
       timeSessions: [],
+      archived: false,
       createdAt: "",
       updatedAt: "",
     };
@@ -249,6 +252,7 @@ describe("useTasks", () => {
       subtasks: [{ _id: "s2", title: "Sub 1", completed: false }],
       statusHistory: [],
       timeSessions: [],
+      archived: false,
       createdAt: "",
       updatedAt: "",
     };
@@ -299,6 +303,7 @@ describe("useTasks", () => {
         ],
         statusHistory: [],
         timeSessions: [],
+        archived: false,
         createdAt: "",
         updatedAt: "",
       }),
@@ -413,6 +418,7 @@ describe("useTasks", () => {
         subtasks: [],
         statusHistory: [],
         timeSessions: [],
+        archived: false,
         createdAt: "",
         updatedAt: "",
       };

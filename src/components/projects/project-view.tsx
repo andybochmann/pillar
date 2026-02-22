@@ -11,7 +11,8 @@ import { ProjectSettings } from "@/components/projects/project-settings";
 import { GenerateTasksDialog } from "@/components/tasks/generate-tasks-dialog";
 import { useLabels } from "@/hooks/use-labels";
 import { toast } from "sonner";
-import { Users, Sparkles, StickyNote } from "lucide-react";
+import { Users, Sparkles, StickyNote, Archive } from "lucide-react";
+import { ArchivedTasksSheet } from "@/components/kanban/archived-tasks-sheet";
 import type { Project, Task, ProjectMember as ProjectMemberType, Column } from "@/types";
 
 function getListTaskCounts(columns: Column[], taskCounts: Record<string, number>): string {
@@ -47,6 +48,7 @@ export function ProjectView({
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
   const [filters, setFilters] = useState<BoardFilters>(EMPTY_FILTERS);
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const { labels: allLabels, createLabel } = useLabels();
 
   useEffect(() => {
@@ -163,6 +165,15 @@ export function ProjectView({
               Notes
             </Link>
           </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setArchivedOpen(true)}
+            className="gap-1"
+          >
+            <Archive className="h-4 w-4" />
+            Archived
+          </Button>
           {aiEnabled && !readOnly && (
             <Button
               variant="outline"
@@ -209,6 +220,12 @@ export function ProjectView({
           onCreateLabel={createLabel}
         />
       )}
+
+      <ArchivedTasksSheet
+        projectId={currentProject._id}
+        open={archivedOpen}
+        onOpenChange={setArchivedOpen}
+      />
 
       <ProjectSettings
         project={currentProject}

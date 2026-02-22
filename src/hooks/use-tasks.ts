@@ -21,6 +21,7 @@ type TaskUpdateFields = Pick<
   | "completedAt"
   | "assigneeId"
   | "reminderAt"
+  | "archived"
 >;
 
 interface UseTasksReturn {
@@ -43,6 +44,7 @@ interface UseTasksReturn {
   ) => Promise<Task>;
   deleteTask: (id: string) => Promise<void>;
   duplicateTask: (taskId: string) => Promise<Task>;
+  archiveTask: (id: string) => Promise<void>;
 }
 
 export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTasksReturn {
@@ -164,6 +166,19 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
     [tasks],
   );
 
+  const archiveTask = useCallback(async (id: string) => {
+    const res = await offlineFetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: true }),
+    });
+    if (!res.ok) {
+      const body = await res.json();
+      throw new Error(body.error || "Failed to archive task");
+    }
+    setTasks((prev) => prev.filter((t) => t._id !== id));
+  }, []);
+
   // Real-time sync subscription
   useSyncSubscription("task", useCallback((event: SyncEvent) => {
     const data = event.data as Task | undefined;
@@ -179,7 +194,12 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
         break;
       case "updated":
         if (!data) return;
-        setTasks((prev) => prev.map((t) => (t._id === event.entityId ? data : t)));
+        if (data.archived) {
+          // Archived tasks should be removed from the active list
+          setTasks((prev) => prev.filter((t) => t._id !== event.entityId));
+        } else {
+          setTasks((prev) => prev.map((t) => (t._id === event.entityId ? data : t)));
+        }
         break;
       case "deleted":
         setTasks((prev) => prev.filter((t) => t._id !== event.entityId));
@@ -222,5 +242,6 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
     updateTask,
     deleteTask,
     duplicateTask,
+    archiveTask,
   };
 }

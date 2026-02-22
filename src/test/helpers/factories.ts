@@ -111,6 +111,8 @@ interface CreateTaskInput {
   statusHistory?: { columnId: string; timestamp: Date }[];
   completedAt?: Date;
   reminderAt?: Date;
+  archived?: boolean;
+  archivedAt?: Date;
 }
 
 export async function createTestTask(
@@ -133,6 +135,8 @@ export async function createTestTask(
     timeSessions: overrides.timeSessions ?? [],
     statusHistory: overrides.statusHistory ?? [],
     completedAt: overrides.completedAt,
+    archived: overrides.archived ?? false,
+    archivedAt: overrides.archivedAt,
   });
 }
 

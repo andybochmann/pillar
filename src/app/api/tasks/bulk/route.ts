@@ -7,7 +7,7 @@ import { getProjectRole } from "@/lib/project-access";
 
 const BulkUpdateSchema = z.object({
   taskIds: z.array(z.string().min(1)).min(1, "At least one task ID required"),
-  action: z.enum(["move", "priority", "delete"]),
+  action: z.enum(["move", "priority", "delete", "archive"]),
   columnId: z.string().min(1).optional(),
   priority: z.enum(["urgent", "high", "medium", "low"]).optional(),
 });
@@ -98,6 +98,10 @@ export async function PATCH(request: Request) {
       await Task.updateMany(filter, { $set: { priority } });
     } else if (action === "delete") {
       await Task.deleteMany(filter);
+    } else if (action === "archive") {
+      await Task.updateMany(filter, {
+        $set: { archived: true, archivedAt: new Date() },
+      });
     }
 
     return NextResponse.json({ success: true });
