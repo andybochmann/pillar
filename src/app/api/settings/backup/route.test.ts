@@ -846,5 +846,42 @@ describe("/api/settings/backup", () => {
       );
     });
 
+    it("imports projects with null viewType as 'board'", async () => {
+      const user = await seedUser();
+      const oldCatId = new mongoose.Types.ObjectId().toString();
+      const backup = makeBackup({
+        categories: [
+          {
+            _id: oldCatId,
+            name: "Work",
+            color: "#6366f1",
+            order: 0,
+            collapsed: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        projects: [
+          {
+            _id: new mongoose.Types.ObjectId().toString(),
+            name: "Null ViewType Project",
+            categoryId: oldCatId,
+            columns: [{ id: "todo", name: "To Do", order: 0 }],
+            viewType: null,
+            archived: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const res = await POST(makeRequest(backup));
+      expect(res.status).toBe(200);
+
+      const projects = await Project.find({ userId: user._id });
+      expect(projects).toHaveLength(1);
+      expect(projects[0].viewType).toBe("board");
+    });
+
   });
 });
