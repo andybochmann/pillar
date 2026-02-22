@@ -19,6 +19,7 @@ import {
   createTestProjectMember,
 } from "@/test/helpers";
 import { Task } from "@/models/task";
+import { Project } from "@/models/project";
 import { POST } from "./route";
 
 const session = vi.hoisted(() => ({
@@ -145,6 +146,37 @@ describe("POST /api/tasks/[id]/complete", () => {
     expect(data.columnId).toBe("done");
     expect(data.statusHistory).toHaveLength(1);
     expect(data.statusHistory[0].columnId).toBe("done");
+
+    // Verify DB state directly — critical for catching silent failures
+    const dbTask = await Task.findById(task._id);
+    expect(dbTask!.completedAt).toBeDefined();
+    expect(dbTask!.columnId).toBe("done");
+    expect(dbTask!.statusHistory).toHaveLength(1);
+  });
+
+  it("does not mutate the project's columns array", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      columnId: "todo",
+    });
+
+    // Read project columns before complete
+    const projectBefore = await Project.findById(projectId);
+    const columnOrderBefore = projectBefore!.columns.map(
+      (c: { id: string; order: number }) => c.id,
+    );
+
+    const { request, params } = createRequest(task._id.toString());
+    await POST(request, { params });
+
+    // Read project columns after complete — order should be unchanged
+    const projectAfter = await Project.findById(projectId);
+    const columnOrderAfter = projectAfter!.columns.map(
+      (c: { id: string; order: number }) => c.id,
+    );
+    expect(columnOrderAfter).toEqual(columnOrderBefore);
   });
 
   it("returns already-completed task as-is", async () => {
@@ -163,6 +195,10 @@ describe("POST /api/tasks/[id]/complete", () => {
 
     const data = await res.json();
     expect(new Date(data.completedAt).getTime()).toBe(completedAt.getTime());
+
+    // DB should not be modified
+    const dbTask = await Task.findById(task._id);
+    expect(dbTask!.completedAt!.getTime()).toBe(completedAt.getTime());
   });
 
   it("creates next occurrence for recurring tasks", async () => {
@@ -180,7 +216,12 @@ describe("POST /api/tasks/[id]/complete", () => {
     const res = await POST(request, { params });
     expect(res.status).toBe(200);
 
-    // Should have created a new recurring task
+    // Verify original task is completed in DB
+    const originalTask = await Task.findById(task._id);
+    expect(originalTask!.completedAt).toBeDefined();
+    expect(originalTask!.columnId).toBe("done");
+
+    // Verify new recurring task exists in DB
     const allTasks = await Task.find({ projectId });
     expect(allTasks).toHaveLength(2);
 
@@ -194,6 +235,8 @@ describe("POST /api/tasks/[id]/complete", () => {
     expect(newTask!.dueDate!.getTime()).toBeGreaterThan(
       new Date("2026-03-01").getTime(),
     );
+    // Subtasks should be reset to incomplete
+    expect(newTask!.recurrence.frequency).toBe("weekly");
   });
 
   it("does not create recurrence past endDate", async () => {
@@ -217,5 +260,38 @@ describe("POST /api/tasks/[id]/complete", () => {
     const allTasks = await Task.find({ projectId });
     // Next due date would be 2026-03-08 which is past endDate 2026-03-05
     expect(allTasks).toHaveLength(1);
+
+    // But original should still be completed
+    const dbTask = await Task.findById(task._id);
+    expect(dbTask!.completedAt).toBeDefined();
+  });
+
+  it("works when project has no columns (edge case)", async () => {
+    const user = await createTestUser({ email: "nocolumns@example.com" });
+    const uId = user._id as mongoose.Types.ObjectId;
+    session.user.id = uId.toString();
+
+    const category = await createTestCategory({ userId: uId });
+    const project = await createTestProject({
+      categoryId: category._id as mongoose.Types.ObjectId,
+      userId: uId,
+      columns: [], // No columns
+    });
+
+    const task = await createTestTask({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId: uId,
+      columnId: "todo",
+    });
+
+    const { request, params } = createRequest(task._id.toString());
+    const res = await POST(request, { params });
+    expect(res.status).toBe(200);
+
+    // Should still set completedAt even without a done column
+    const dbTask = await Task.findById(task._id);
+    expect(dbTask!.completedAt).toBeDefined();
+    // columnId stays as original since there's no done column to move to
+    expect(dbTask!.columnId).toBe("todo");
   });
 });

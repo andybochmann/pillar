@@ -54,11 +54,12 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Find the project's last column (highest order) as the "done" column
     const project = await Project.findById(task.projectId);
-    const sortedColumns = project?.columns
-      ?.sort(
-        (a: { order: number }, b: { order: number }) => a.order - b.order,
-      );
-    const doneColumn = sortedColumns?.[sortedColumns.length - 1];
+    const sortedColumns = [...(project?.columns ?? [])].sort(
+      (a: { order: number }, b: { order: number }) => a.order - b.order,
+    );
+    const doneColumn = sortedColumns.length > 0
+      ? sortedColumns[sortedColumns.length - 1]
+      : undefined;
 
     const now = new Date();
     const updateOps: Record<string, unknown> = {

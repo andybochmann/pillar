@@ -315,6 +315,10 @@ self.addEventListener("notificationclick", (event) => {
     event.waitUntil(
       fetch(`/api/tasks/${taskId}/complete`, { method: "POST" })
         .then((res) => {
+          // Detect auth redirect (middleware returns 302 → browser follows to login page)
+          if (res.redirected || !res.url.includes("/api/tasks/")) {
+            throw new Error("Auth redirect — session may have expired");
+          }
           if (!res.ok) throw new Error("Failed to complete task");
           return showConfirmation("Task completed", "Task marked as done.");
         })
@@ -332,6 +336,10 @@ self.addEventListener("notificationclick", (event) => {
         body: JSON.stringify({ notificationId }),
       })
         .then((res) => {
+          // Detect auth redirect (middleware returns 302 → browser follows to login page)
+          if (res.redirected || !res.url.includes("/api/tasks/")) {
+            throw new Error("Auth redirect — session may have expired");
+          }
           if (!res.ok) throw new Error("Failed to snooze");
           return showConfirmation(
             "Snoozed",
