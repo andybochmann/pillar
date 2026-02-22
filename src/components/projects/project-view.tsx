@@ -217,7 +217,7 @@ export function ProjectView({
           onTasksChange={setLiveTasks}
           filters={filters}
           allLabels={allLabels}
-          onCreateLabel={createLabel}
+          onCreateLabel={async (data) => { await createLabel(data); }}
         />
       )}
 

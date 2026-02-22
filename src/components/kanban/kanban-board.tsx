@@ -44,7 +44,7 @@ interface KanbanBoardProps {
   onTasksChange?: (tasks: Task[]) => void;
   filters: BoardFilters;
   allLabels: Label[];
-  onCreateLabel: (data: { name: string; color: string }) => Promise<Label>;
+  onCreateLabel: (data: { name: string; color: string }) => Promise<void>;
 }
 
 export function KanbanBoard({
