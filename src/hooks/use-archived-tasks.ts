@@ -4,6 +4,12 @@ import { useState, useCallback } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import type { Task } from "@/types";
 
+interface BulkDeleteOptions {
+  projectId: string;
+  taskIds?: string[];
+  olderThanDays?: number;
+}
+
 interface UseArchivedTasksReturn {
   archivedTasks: Task[];
   loading: boolean;
@@ -11,6 +17,7 @@ interface UseArchivedTasksReturn {
   fetchArchived: (projectId: string) => Promise<void>;
   unarchiveTask: (id: string) => Promise<void>;
   permanentDeleteTask: (id: string) => Promise<void>;
+  bulkDeleteArchived: (options: BulkDeleteOptions) => Promise<number>;
 }
 
 export function useArchivedTasks(): UseArchivedTasksReturn {
@@ -59,6 +66,46 @@ export function useArchivedTasks(): UseArchivedTasksReturn {
     setArchivedTasks((prev) => prev.filter((t) => t._id !== id));
   }, []);
 
+  const bulkDeleteArchived = useCallback(
+    async ({ projectId, taskIds, olderThanDays }: BulkDeleteOptions) => {
+      const body: Record<string, unknown> = { projectId };
+      if (taskIds) body.taskIds = taskIds;
+      if (olderThanDays) body.olderThanDays = olderThanDays;
+
+      const res = await offlineFetch("/api/tasks/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete archived tasks");
+      }
+
+      const { deletedCount } = await res.json();
+
+      // Optimistic state update
+      if (taskIds) {
+        const idsSet = new Set(taskIds);
+        setArchivedTasks((prev) => prev.filter((t) => !idsSet.has(t._id)));
+      } else if (olderThanDays) {
+        const cutoff = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
+        setArchivedTasks((prev) =>
+          prev.filter(
+            (t) =>
+              !t.archivedAt || new Date(t.archivedAt).getTime() >= cutoff,
+          ),
+        );
+      } else {
+        setArchivedTasks([]);
+      }
+
+      return deletedCount as number;
+    },
+    [],
+  );
+
   return {
     archivedTasks,
     loading,
@@ -66,5 +113,6 @@ export function useArchivedTasks(): UseArchivedTasksReturn {
     fetchArchived,
     unarchiveTask,
     permanentDeleteTask,
+    bulkDeleteArchived,
   };
 }

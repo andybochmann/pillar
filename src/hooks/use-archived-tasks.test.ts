@@ -224,4 +224,129 @@ describe("useArchivedTasks", () => {
       ).rejects.toThrow("Failed to delete task");
     });
   });
+
+  describe("bulkDeleteArchived", () => {
+    it("deletes all archived tasks when no taskIds or olderThanDays", async () => {
+      // Populate state first
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([mockArchivedTask, mockArchivedTask2]),
+      } as Response);
+
+      const { result } = renderHook(() => useArchivedTasks());
+      await act(async () => {
+        await result.current.fetchArchived("proj-1");
+      });
+      expect(result.current.archivedTasks).toHaveLength(2);
+
+      const { offlineFetch } = await import("@/lib/offline-fetch");
+      vi.mocked(offlineFetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, deletedCount: 2 }),
+      } as Response);
+
+      let deletedCount: number | undefined;
+      await act(async () => {
+        deletedCount = await result.current.bulkDeleteArchived({
+          projectId: "proj-1",
+        });
+      });
+
+      expect(deletedCount).toBe(2);
+      expect(result.current.archivedTasks).toHaveLength(0);
+      expect(offlineFetch).toHaveBeenCalledWith("/api/tasks/bulk", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ projectId: "proj-1" }),
+      });
+    });
+
+    it("deletes selected tasks by taskIds", async () => {
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([mockArchivedTask, mockArchivedTask2]),
+      } as Response);
+
+      const { result } = renderHook(() => useArchivedTasks());
+      await act(async () => {
+        await result.current.fetchArchived("proj-1");
+      });
+
+      const { offlineFetch } = await import("@/lib/offline-fetch");
+      vi.mocked(offlineFetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, deletedCount: 1 }),
+      } as Response);
+
+      let deletedCount: number | undefined;
+      await act(async () => {
+        deletedCount = await result.current.bulkDeleteArchived({
+          projectId: "proj-1",
+          taskIds: ["task-1"],
+        });
+      });
+
+      expect(deletedCount).toBe(1);
+      expect(result.current.archivedTasks).toHaveLength(1);
+      expect(result.current.archivedTasks[0]._id).toBe("task-2");
+    });
+
+    it("deletes tasks older than specified days", async () => {
+      const oldTask: Task = {
+        ...mockArchivedTask,
+        _id: "old-task",
+        archivedAt: "2025-12-01T00:00:00.000Z", // very old
+      };
+      const recentTask: Task = {
+        ...mockArchivedTask2,
+        _id: "recent-task",
+        archivedAt: new Date().toISOString(), // just now
+      };
+
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve([oldTask, recentTask]),
+      } as Response);
+
+      const { result } = renderHook(() => useArchivedTasks());
+      await act(async () => {
+        await result.current.fetchArchived("proj-1");
+      });
+
+      const { offlineFetch } = await import("@/lib/offline-fetch");
+      vi.mocked(offlineFetch).mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ success: true, deletedCount: 1 }),
+      } as Response);
+
+      let deletedCount: number | undefined;
+      await act(async () => {
+        deletedCount = await result.current.bulkDeleteArchived({
+          projectId: "proj-1",
+          olderThanDays: 30,
+        });
+      });
+
+      expect(deletedCount).toBe(1);
+      // Optimistic: only tasks older than 30 days removed from state
+      expect(result.current.archivedTasks).toHaveLength(1);
+      expect(result.current.archivedTasks[0]._id).toBe("recent-task");
+    });
+
+    it("throws on bulk delete failure", async () => {
+      const { offlineFetch } = await import("@/lib/offline-fetch");
+      vi.mocked(offlineFetch).mockResolvedValueOnce({
+        ok: false,
+        json: () => Promise.resolve({ error: "Forbidden" }),
+      } as Response);
+
+      const { result } = renderHook(() => useArchivedTasks());
+
+      await expect(
+        act(() =>
+          result.current.bulkDeleteArchived({ projectId: "proj-1" }),
+        ),
+      ).rejects.toThrow("Forbidden");
+    });
+  });
 });

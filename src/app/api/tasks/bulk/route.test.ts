@@ -19,7 +19,7 @@ import {
   createTestTask,
   createTestProjectMember,
 } from "@/test/helpers";
-import { PATCH } from "./route";
+import { PATCH, DELETE } from "./route";
 
 const session = vi.hoisted(() => ({
   user: {
@@ -285,5 +285,313 @@ describe("PATCH /api/tasks/bulk", () => {
     // Other user's task still exists (not accessible)
     const otherCount = await Task.countDocuments({ _id: otherTask._id });
     expect(otherCount).toBe(1);
+  });
+
+  it("cascade-deletes notes when bulk-deleting tasks via PATCH", async () => {
+    await seedTasks();
+
+    const { Note } = await import("@/models/note");
+    await Note.create({
+      title: "Task 1 note",
+      content: "content",
+      parentType: "task",
+      taskId: task1Id,
+      projectId: (
+        await (await import("@/models/task")).Task.findById(task1Id)
+      )!.projectId,
+      userId: session.user.id,
+    });
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [task1Id],
+        action: "delete",
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+
+    const noteCount = await Note.countDocuments({ taskId: task1Id });
+    expect(noteCount).toBe(0);
+  });
+});
+
+describe("DELETE /api/tasks/bulk", () => {
+  let projectId: string;
+  let task1Id: string;
+  let task2Id: string;
+  let task3Id: string;
+
+  beforeAll(async () => {
+    await setupTestDB();
+  });
+
+  afterAll(async () => {
+    await teardownTestDB();
+  });
+
+  afterEach(async () => {
+    await clearTestDB();
+  });
+
+  async function seedArchivedTasks() {
+    const user = await createTestUser({ email: "test@test.com" });
+    const userId = user._id as mongoose.Types.ObjectId;
+    session.user.id = userId.toString();
+
+    const cat = await createTestCategory({ userId });
+    const project = await createTestProject({
+      userId,
+      categoryId: cat._id as mongoose.Types.ObjectId,
+    });
+    projectId = (project._id as mongoose.Types.ObjectId).toString();
+
+    const now = new Date();
+    const t1 = await createTestTask({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId,
+      columnId: "todo",
+      title: "Old archived",
+      archived: true,
+      archivedAt: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000), // 60 days ago
+    });
+    const t2 = await createTestTask({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId,
+      columnId: "todo",
+      title: "Recent archived",
+      archived: true,
+      archivedAt: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000), // 5 days ago
+    });
+    const t3 = await createTestTask({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId,
+      columnId: "todo",
+      title: "Not archived",
+    });
+
+    task1Id = t1._id.toString();
+    task2Id = t2._id.toString();
+    task3Id = t3._id.toString();
+  }
+
+  it("returns 401 when not authenticated", async () => {
+    const { auth } = await import("@/lib/auth");
+    vi.mocked(auth).mockResolvedValueOnce(null);
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ projectId: "proj-1" }),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(401);
+  });
+
+  it("returns 400 when projectId is missing", async () => {
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({}),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 403 when user has no access to project", async () => {
+    // Create project owned by another user
+    const otherUser = await createTestUser({ email: "other@test.com" });
+    const otherUserId = otherUser._id as mongoose.Types.ObjectId;
+    const cat = await createTestCategory({ userId: otherUserId });
+    const project = await createTestProject({
+      userId: otherUserId,
+      categoryId: cat._id as mongoose.Types.ObjectId,
+    });
+
+    // Current session user is different
+    const user = await createTestUser({ email: "me@test.com" });
+    session.user.id = (user._id as mongoose.Types.ObjectId).toString();
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({
+        projectId: (project._id as mongoose.Types.ObjectId).toString(),
+      }),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(403);
+  });
+
+  it("returns 403 when user is a viewer", async () => {
+    const owner = await createTestUser({ email: "owner@test.com" });
+    const viewer = await createTestUser({ email: "viewer@test.com" });
+    const ownerUserId = owner._id as mongoose.Types.ObjectId;
+    const viewerUserId = viewer._id as mongoose.Types.ObjectId;
+    session.user.id = viewerUserId.toString();
+
+    const cat = await createTestCategory({ userId: ownerUserId });
+    const project = await createTestProject({
+      userId: ownerUserId,
+      categoryId: cat._id as mongoose.Types.ObjectId,
+    });
+
+    await createTestProjectMember({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId: ownerUserId,
+      role: "owner",
+      invitedBy: ownerUserId,
+    });
+    await createTestProjectMember({
+      projectId: project._id as mongoose.Types.ObjectId,
+      userId: viewerUserId,
+      role: "viewer",
+      invitedBy: ownerUserId,
+    });
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({
+        projectId: (project._id as mongoose.Types.ObjectId).toString(),
+      }),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(403);
+  });
+
+  it("deletes all archived tasks when no taskIds or olderThanDays", async () => {
+    await seedArchivedTasks();
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ projectId }),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.success).toBe(true);
+    expect(body.deletedCount).toBe(2);
+
+    // Non-archived task should still exist
+    const { Task } = await import("@/models/task");
+    const remaining = await Task.find({ projectId });
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0]._id.toString()).toBe(task3Id);
+  });
+
+  it("deletes only selected archived tasks by taskIds", async () => {
+    await seedArchivedTasks();
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ projectId, taskIds: [task1Id] }),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.deletedCount).toBe(1);
+
+    // task2 (archived) and task3 (not archived) should remain
+    const { Task } = await import("@/models/task");
+    const remaining = await Task.find({ projectId });
+    expect(remaining).toHaveLength(2);
+    const remainingIds = remaining.map((t) => t._id.toString());
+    expect(remainingIds).toContain(task2Id);
+    expect(remainingIds).toContain(task3Id);
+  });
+
+  it("ignores non-archived tasks in taskIds", async () => {
+    await seedArchivedTasks();
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ projectId, taskIds: [task3Id] }),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.deletedCount).toBe(0);
+
+    // task3 is not archived, should not be deleted
+    const { Task } = await import("@/models/task");
+    const count = await Task.countDocuments({ _id: task3Id });
+    expect(count).toBe(1);
+  });
+
+  it("deletes archived tasks older than specified days", async () => {
+    await seedArchivedTasks();
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ projectId, olderThanDays: 30 }),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.deletedCount).toBe(1); // only task1 (60 days old)
+
+    const { Task } = await import("@/models/task");
+    const remaining = await Task.find({ projectId });
+    expect(remaining).toHaveLength(2);
+    const remainingIds = remaining.map((t) => t._id.toString());
+    expect(remainingIds).toContain(task2Id);
+    expect(remainingIds).toContain(task3Id);
+  });
+
+  it("cascade-deletes notes for deleted tasks", async () => {
+    await seedArchivedTasks();
+
+    const { Note } = await import("@/models/note");
+    await Note.create({
+      title: "Note for archived task",
+      content: "content",
+      parentType: "task",
+      taskId: task1Id,
+      projectId,
+      userId: session.user.id,
+    });
+    await Note.create({
+      title: "Note for non-archived task",
+      content: "content",
+      parentType: "task",
+      taskId: task3Id,
+      projectId,
+      userId: session.user.id,
+    });
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({ projectId }),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(200);
+
+    // Note for archived task should be deleted
+    const archivedNotes = await Note.countDocuments({ taskId: task1Id });
+    expect(archivedNotes).toBe(0);
+    // Note for non-archived task should remain
+    const otherNotes = await Note.countDocuments({ taskId: task3Id });
+    expect(otherNotes).toBe(1);
+  });
+
+  it("returns deletedCount 0 when no archived tasks exist", async () => {
+    const user = await createTestUser({ email: "test@test.com" });
+    const userId = user._id as mongoose.Types.ObjectId;
+    session.user.id = userId.toString();
+
+    const cat = await createTestCategory({ userId });
+    const project = await createTestProject({
+      userId,
+      categoryId: cat._id as mongoose.Types.ObjectId,
+    });
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "DELETE",
+      body: JSON.stringify({
+        projectId: (project._id as mongoose.Types.ObjectId).toString(),
+      }),
+    });
+    const res = await DELETE(req);
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.deletedCount).toBe(0);
   });
 });
