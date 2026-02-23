@@ -114,6 +114,7 @@ export default async function ProjectPage({ params }: PageProps) {
       columnId: h.columnId,
       timestamp: h.timestamp.toISOString(),
     })),
+    reminderAt: t.reminderAt?.toISOString() ?? null,
     completedAt: t.completedAt?.toISOString(),
     archived: t.archived ?? false,
     archivedAt: t.archivedAt?.toISOString() ?? null,

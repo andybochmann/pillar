@@ -1014,7 +1014,7 @@ describe("/api/settings/backup", () => {
             recurrence: { frequency: "none", interval: 1 },
             timeSessions: [],
             statusHistory: [],
-            googleCalendarEventId: "some-calendar-id",
+            someUnknownField: "should-be-ignored",
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
           },
