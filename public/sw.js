@@ -309,6 +309,14 @@ function showConfirmation(title, body) {
   });
 }
 
+/**
+ * Handle action failure: log details and open the app.
+ */
+function handleActionError(action, taskId, error, url) {
+  console.error(`[SW] ${action} action failed for task ${taskId}:`, error?.message || error);
+  return openApp(url || "/");
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
@@ -317,16 +325,22 @@ self.addEventListener("notificationclick", (event) => {
   // Handle "Mark Complete" action button
   if (event.action === "complete" && taskId) {
     event.waitUntil(
-      fetch(`/api/tasks/${taskId}/complete`, { method: "POST" })
-        .then((res) => {
+      fetch(`/api/tasks/${taskId}/complete`, {
+        method: "POST",
+        credentials: "same-origin",
+      })
+        .then(async (res) => {
           // Detect auth redirect (middleware returns 302 → browser follows to login page)
           if (res.redirected || !res.url.includes("/api/tasks/")) {
             throw new Error("Auth redirect — session may have expired");
           }
-          if (!res.ok) throw new Error("Failed to complete task");
+          if (!res.ok) {
+            const body = await res.text().catch(() => "");
+            throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
+          }
           return showConfirmation("Task completed", "Task marked as done.");
         })
-        .catch(() => openApp(url || "/")),
+        .catch((err) => handleActionError("complete", taskId, err, url)),
     );
     return;
   }
@@ -336,21 +350,25 @@ self.addEventListener("notificationclick", (event) => {
     event.waitUntil(
       fetch(`/api/tasks/${taskId}/snooze`, {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notificationId }),
       })
-        .then((res) => {
+        .then(async (res) => {
           // Detect auth redirect (middleware returns 302 → browser follows to login page)
           if (res.redirected || !res.url.includes("/api/tasks/")) {
             throw new Error("Auth redirect — session may have expired");
           }
-          if (!res.ok) throw new Error("Failed to snooze");
+          if (!res.ok) {
+            const body = await res.text().catch(() => "");
+            throw new Error(`HTTP ${res.status}: ${body.slice(0, 200)}`);
+          }
           return showConfirmation(
             "Snoozed",
             "Reminder snoozed for 1 day.",
           );
         })
-        .catch(() => openApp(url || "/")),
+        .catch((err) => handleActionError("snooze", taskId, err, url)),
     );
     return;
   }
