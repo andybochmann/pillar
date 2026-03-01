@@ -72,7 +72,7 @@ describe("TaskActionsSection", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("calls onUpdate with completedAt when Mark Complete is clicked", async () => {
+  it("calls onUpdate, shows undo toast, and closes sheet when Mark Complete is clicked", async () => {
     const user = userEvent.setup();
     const mockDate = new Date("2024-02-15T12:00:00Z");
     vi.setSystemTime(mockDate);
@@ -97,10 +97,15 @@ describe("TaskActionsSection", () => {
       });
     });
 
+    expect(toast.success).toHaveBeenCalledWith("Task completed", {
+      action: { label: "Undo", onClick: expect.any(Function) },
+    });
+    expect(onClose).toHaveBeenCalled();
+
     vi.useRealTimers();
   });
 
-  it("calls onUpdate with null completedAt when Reopen is clicked", async () => {
+  it("calls onUpdate with null completedAt when Reopen is clicked without closing", async () => {
     const user = userEvent.setup();
 
     render(
@@ -120,6 +125,33 @@ describe("TaskActionsSection", () => {
     await waitFor(() => {
       expect(onUpdate).toHaveBeenCalledWith({ completedAt: null });
     });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
+  });
+
+  it("does not close sheet when Mark Complete fails", async () => {
+    const user = userEvent.setup();
+    onUpdate.mockRejectedValue(new Error("Update failed"));
+
+    render(
+      <TaskActionsSection
+        taskId="task-1"
+        taskTitle="Test Task"
+        taskPriority="medium"
+        completedAt={null}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        onClose={onClose}
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: /mark complete/i }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Update failed");
+    });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(toast.success).not.toHaveBeenCalled();
   });
 
   it("shows error toast when onUpdate fails", async () => {

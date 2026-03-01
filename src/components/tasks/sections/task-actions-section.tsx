@@ -54,8 +54,16 @@ export function TaskActionsSection({
 
   async function handleToggleComplete() {
     try {
-      const newCompletedAt = completedAt ? null : new Date().toISOString();
-      await onUpdate({ completedAt: newCompletedAt });
+      if (completedAt) {
+        await onUpdate({ completedAt: null });
+      } else {
+        const newCompletedAt = new Date().toISOString();
+        await onUpdate({ completedAt: newCompletedAt });
+        toast.success("Task completed", {
+          action: { label: "Undo", onClick: () => onUpdate({ completedAt: null }) },
+        });
+        onClose();
+      }
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to update task");
     }
