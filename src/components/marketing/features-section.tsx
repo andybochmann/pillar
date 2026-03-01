@@ -7,6 +7,8 @@ import {
   Bell,
   WifiOff,
   Radio,
+  Search,
+  Sparkles,
 } from "lucide-react";
 import {
   Card,
@@ -53,6 +55,18 @@ const features = [
     icon: Bell,
   },
   {
+    title: "Command Palette",
+    description:
+      "Instantly search tasks, projects, and categories — plus keyboard shortcuts for everything.",
+    icon: Search,
+  },
+  {
+    title: "AI Subtasks",
+    description:
+      "Generate subtask breakdowns with AI to plan work faster and more thoroughly.",
+    icon: Sparkles,
+  },
+  {
     title: "Works Offline",
     description:
       "Full PWA support with an offline queue that syncs when you reconnect.",
@@ -77,7 +91,7 @@ export function FeaturesSection() {
           Built for individuals and teams who want a fast, focused way to manage
           work.
         </p>
-        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
           {features.map((feature) => {
             const Icon = feature.icon;
             return (

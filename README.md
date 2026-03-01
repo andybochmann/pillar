@@ -9,8 +9,9 @@ A Kanban-based task management app built with Next.js, TypeScript, and MongoDB. 
 - **Kanban boards** with drag-and-drop (powered by @dnd-kit)
 - **Configurable columns** per project
 - **Recurring tasks** (daily, weekly, monthly, yearly)
-- **Task labels and priorities** with filtering
+- **Task labels and priorities** with filtering and saved filter presets
 - **Task archiving** with bulk operations
+- **Inline task editing** directly on Kanban cards
 - **Project categories** for organizing work
 
 ### Collaboration
@@ -25,7 +26,8 @@ A Kanban-based task management app built with Next.js, TypeScript, and MongoDB. 
 - **AI-powered subtask generation** (OpenAI / Google AI)
 - **Rich Markdown notes** at category, project, and task level with auto-save and pinning
 - **Push notifications** with action buttons (mark complete / snooze)
-- **Command palette** and keyboard shortcuts
+- **Global search** across tasks, projects, and categories
+- **Command palette** and keyboard shortcuts (including Kanban keyboard navigation)
 
 ### Infrastructure
 
@@ -111,8 +113,8 @@ src/
   hooks/               # Custom React hooks for data fetching
   lib/                 # Utilities, auth config, DB connection, offline support
   models/              # Mongoose models (User, Project, Task, Category, Label,
-                       #   Note, ProjectMember, PushSubscription, Notification,
-                       #   NotificationPreference, AccessToken, Account)
+                       #   Note, FilterPreset, ProjectMember, PushSubscription,
+                       #   Notification, NotificationPreference, AccessToken, Account)
   types/               # Shared TypeScript types
 public/
   sw.js                # Service worker for offline support

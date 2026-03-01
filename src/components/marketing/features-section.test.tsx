@@ -11,7 +11,7 @@ describe("FeaturesSection", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders all eight feature cards", () => {
+  it("renders all ten feature cards", () => {
     render(<FeaturesSection />);
 
     expect(screen.getByText("Kanban Boards")).toBeInTheDocument();
@@ -20,6 +20,8 @@ describe("FeaturesSection", () => {
     expect(screen.getByText("Time Tracking")).toBeInTheDocument();
     expect(screen.getByText("Calendar View")).toBeInTheDocument();
     expect(screen.getByText("Push Notifications")).toBeInTheDocument();
+    expect(screen.getByText("Command Palette")).toBeInTheDocument();
+    expect(screen.getByText("AI Subtasks")).toBeInTheDocument();
     expect(screen.getByText("Works Offline")).toBeInTheDocument();
     expect(screen.getByText("Real-time Sync")).toBeInTheDocument();
   });
@@ -33,6 +35,8 @@ describe("FeaturesSection", () => {
     expect(screen.getByText(/built-in stopwatch/i)).toBeInTheDocument();
     expect(screen.getByText(/day and week views/i)).toBeInTheDocument();
     expect(screen.getByText(/reminders with action buttons/i)).toBeInTheDocument();
+    expect(screen.getByText(/instantly search tasks/i)).toBeInTheDocument();
+    expect(screen.getByText(/generate subtask breakdowns/i)).toBeInTheDocument();
     expect(screen.getByText(/full pwa support/i)).toBeInTheDocument();
     expect(screen.getByText(/live updates across all your devices/i)).toBeInTheDocument();
   });

@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, rich Markdown notes (category/project/task level), real-time sync via SSE, and offline PWA mode. Deployed via Docker Compose.
+Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, rich Markdown notes (category/project/task level), real-time sync via SSE, offline PWA mode, global search with command palette, saved filter presets, inline task editing, and Kanban keyboard navigation. Deployed via Docker Compose.
 
 ## Tech Stack
 
@@ -25,7 +25,7 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 ```bash
 pnpm dev              # Dev server (Turbopack) at localhost:3000
 pnpm build            # Production build (output: standalone)
-pnpm test             # Vitest unit/integration tests (79 files, 603 tests)
+pnpm test             # Vitest unit/integration tests (184 files, 2013 tests)
 pnpm test:watch       # Tests in watch mode
 pnpm test:coverage    # Tests with coverage report
 pnpm test:e2e         # Playwright E2E tests (requires running dev server)
@@ -47,7 +47,7 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 - **Kanban DnD** via @dnd-kit with optimistic updates — see [docs/kanban-dnd.md](docs/kanban-dnd.md)
 - **PWA/Offline**: vanilla service worker (`public/sw.js`), IndexedDB queue, `offlineFetch()` wrapper — see [docs/offline-pwa.md](docs/offline-pwa.md)
 - **Time tracking**: per-task stopwatch with history — see [docs/time-tracking.md](docs/time-tracking.md)
-- **AI features**: Claude-powered subtask generation — see [docs/ai-features.md](docs/ai-features.md)
+- **AI features**: AI-powered subtask generation (OpenAI / Google) — see [docs/ai-features.md](docs/ai-features.md)
 - **Notes**: Rich Markdown notes at category/project/task level with pinning — `Note` model, `@uiw/react-md-editor`
 - **State**: no SWR/React Query — custom hooks in `src/hooks/` with `useState` + `useCallback` + `fetch`/`offlineFetch`
 - **Types duality**: Mongoose models use `ObjectId`/`Date` (`I<Model>` in `src/models/`), components use `string` IDs/dates (`src/types/index.ts`). Conversion happens at JSON serialization boundary.
@@ -90,6 +90,7 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 - **User.passwordHash** is optional — OAuth-only users have no password
 - **Account** links OAuth/credentials identities to users (compound unique indexes on `{provider, providerAccountId}` and `{userId, provider}`)
 - **Note**: polymorphic parent (`parentType: "category"|"project"|"task"`), Markdown content (50KB max), pinning, ordering
+- **FilterPreset**: saved filter configurations per project (columns, priorities, labels, assignees, search query)
 - Model re-registration guard: `mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema)`
 
 ## Testing
@@ -178,6 +179,16 @@ import { GET, POST } from "./route";
 | Task notes section        | `src/components/tasks/sections/task-notes-section.tsx`|
 | Category notes page       | `src/app/(dashboard)/categories/[id]/notes/page.tsx`|
 | MCP note tools            | `src/lib/mcp-tools/notes.ts`                |
+| FilterPreset model        | `src/models/filter-preset.ts`               |
+| Filter presets API        | `src/app/api/filter-presets/route.ts`        |
+| Filter presets hook       | `src/hooks/use-filter-presets.ts`            |
+| Filter preset selector    | `src/components/filters/filter-preset-selector.tsx` |
+| Global search API         | `src/app/api/search/route.ts`               |
+| Command palette           | `src/components/search/command-palette.tsx`  |
+| Recent searches           | `src/lib/recent-searches.ts`                |
+| Kanban keyboard nav       | `src/hooks/use-kanban-keyboard-nav.ts`      |
+| Date picker               | `src/components/ui/date-picker.tsx`         |
+| Date-time picker          | `src/components/ui/date-time-picker.tsx`    |
 | Test helpers              | `src/test/helpers/`                         |
 | Service worker            | `public/sw.js`                              |
 

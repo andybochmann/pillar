@@ -4,7 +4,7 @@
 
 ## Project Summary
 
-Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, rich Markdown notes (category/project/task level), real-time sync via SSE, and offline PWA mode. Deployed via Docker Compose.
+Pillar is a Kanban-based task management app built with Next.js 16 (App Router), TypeScript, MongoDB/Mongoose, Auth.js v5 (next-auth@beta), shadcn/ui + Tailwind CSS v4, and @dnd-kit. Supports multiple users, project sharing (by email), project categories, configurable Kanban columns, recurring tasks, time tracking, calendar views, AI-powered subtask generation, rich Markdown notes (category/project/task level), real-time sync via SSE, offline PWA mode, global search with command palette, saved filter presets, inline task editing, and Kanban keyboard navigation. Deployed via Docker Compose.
 
 ## Architecture
 
@@ -24,7 +24,7 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 ```bash
 pnpm dev              # Dev server (Turbopack) at localhost:3000
 pnpm build            # Production build (output: standalone)
-pnpm test             # Vitest unit/integration tests (79 files, 603 tests)
+pnpm test             # Vitest unit/integration tests (184 files, 2013 tests)
 pnpm test:watch       # Tests in watch mode
 pnpm test:coverage    # Tests with coverage report
 pnpm test:e2e         # Playwright E2E tests (requires running dev server)
@@ -67,6 +67,7 @@ docker compose up -d  # Full stack in Docker (app + MongoDB)
 - **Project** has default columns: `["todo", "in-progress", "review", "done"]`
 - **Task.priority**: `"urgent" | "high" | "medium" | "low"` (default: `"medium"`)
 - **Task.recurrence**: `{ frequency: "daily"|"weekly"|"monthly"|"yearly"|"none", interval, endDate? }`
+- **FilterPreset**: saved filter configurations per project (columns, priorities, labels, assignees, search query)
 - Model re-registration guard: `mongoose.models.Task || mongoose.model<ITask>("Task", TaskSchema)`
 
 ## Testing
@@ -136,6 +137,14 @@ import { GET, POST } from "./route";
 | Offline fetch wrapper     | `src/lib/offline-fetch.ts`                  |
 | Offline queue (IndexedDB) | `src/lib/offline-queue.ts`                  |
 | Sync engine               | `src/lib/sync.ts`                           |
+| FilterPreset model        | `src/models/filter-preset.ts`               |
+| Filter presets API        | `src/app/api/filter-presets/route.ts`        |
+| Filter presets hook       | `src/hooks/use-filter-presets.ts`            |
+| Global search API         | `src/app/api/search/route.ts`               |
+| Command palette           | `src/components/search/command-palette.tsx`  |
+| Kanban keyboard nav       | `src/hooks/use-kanban-keyboard-nav.ts`      |
+| Date picker               | `src/components/ui/date-picker.tsx`         |
+| Date-time picker          | `src/components/ui/date-time-picker.tsx`    |
 | Test helpers              | `src/test/helpers/`                         |
 | Service worker            | `public/sw.js`                              |
 
