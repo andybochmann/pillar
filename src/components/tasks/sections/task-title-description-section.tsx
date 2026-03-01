@@ -14,6 +14,7 @@ interface TaskTitleDescriptionSectionProps {
     title?: string;
     description?: string;
   }) => Promise<unknown>;
+  onSaveStatusChange?: (status: "saving" | "saved") => void;
 }
 
 export function TaskTitleDescriptionSection({
@@ -21,6 +22,7 @@ export function TaskTitleDescriptionSection({
   initialTitle,
   initialDescription,
   onUpdate,
+  onSaveStatusChange,
 }: TaskTitleDescriptionSectionProps) {
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
@@ -69,11 +71,14 @@ export function TaskTitleDescriptionSection({
 
   function saveField(data: { title?: string; description?: string }) {
     if (debounceRef.current) clearTimeout(debounceRef.current);
+    onSaveStatusChange?.("saving");
     debounceRef.current = setTimeout(async () => {
       try {
         await onUpdate(data);
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to save");
+      } finally {
+        onSaveStatusChange?.("saved");
       }
     }, 500);
   }

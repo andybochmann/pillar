@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { GenerateSubtasksDialog } from "@/components/tasks/generate-subtasks-dialog";
+import { Check } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { useBackButton } from "@/hooks/use-back-button";
 import { TaskTitleDescriptionSection } from "@/components/tasks/sections/task-title-description-section";
 import { TaskPriorityColumnSection } from "@/components/tasks/sections/task-priority-column-section";
@@ -173,12 +175,17 @@ function TaskSheetForm({
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
 
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
   const pendingSaveRef = useRef<(() => Promise<void>) | null>(null);
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
       // Flush any pending debounced save on unmount
       if (pendingSaveRef.current) {
         pendingSaveRef.current();
@@ -206,9 +213,17 @@ function TaskSheetForm({
     };
   }, []);
 
+  const markSaved = useCallback(() => {
+    setSaveStatus("saved");
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    savedTimerRef.current = setTimeout(() => setSaveStatus("idle"), 2000);
+  }, []);
+
   const saveField = useCallback(
     (data: Partial<Task>) => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      setSaveStatus("saving");
       const doSave = async () => {
         try {
           await onUpdate(task._id, data);
@@ -216,13 +231,23 @@ function TaskSheetForm({
           toast.error(err instanceof Error ? err.message : "Failed to save");
         } finally {
           pendingSaveRef.current = null;
+          markSaved();
         }
       };
       pendingSaveRef.current = doSave;
       debounceRef.current = setTimeout(doSave, 500);
     },
-    [task._id, onUpdate],
+    [task._id, onUpdate, markSaved],
   );
+
+  function handleTitleDescriptionSaveStatus(status: "saving" | "saved") {
+    if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+    if (status === "saving") {
+      setSaveStatus("saving");
+    } else {
+      markSaved();
+    }
+  }
 
   async function handleTitleDescriptionUpdate(data: {
     title?: string;
@@ -350,11 +375,33 @@ function TaskSheetForm({
     <>
       <div className="flex flex-1 flex-col px-6 pt-8 pb-6">
         <div className="space-y-5">
+          {saveStatus !== "idle" && (
+            <span
+              role="status"
+              className={cn(
+                "flex items-center gap-1 self-end text-xs",
+                saveStatus === "saving"
+                  ? "text-orange-500"
+                  : "text-muted-foreground",
+              )}
+            >
+              {saveStatus === "saving" ? (
+                "Saving\u2026"
+              ) : (
+                <>
+                  <Check className="h-3 w-3" />
+                  Saved
+                </>
+              )}
+            </span>
+          )}
+
           <TaskTitleDescriptionSection
             taskId={task._id}
             initialTitle={task.title}
             initialDescription={task.description ?? ""}
             onUpdate={handleTitleDescriptionUpdate}
+            onSaveStatusChange={handleTitleDescriptionSaveStatus}
           />
 
           <Separator />

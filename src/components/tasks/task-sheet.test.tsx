@@ -517,6 +517,99 @@ describe("TaskSheet", () => {
     // Radix UI Select cannot be interacted with in jsdom (see note at line 98).
   });
 
+  describe("save status indicator", () => {
+    it("does not show indicator on initial render", () => {
+      render(<TaskSheet {...defaultProps} />);
+      expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    });
+
+    it("shows Saving when a field changes and Saved after save completes", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      let resolveUpdate: () => void;
+      const onUpdate = vi.fn().mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveUpdate = resolve;
+          }),
+      );
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      // Toggle a subtask triggers saveField
+      const taskWithSub: Task = {
+        ...mockTask,
+        subtasks: [{ _id: "s1", title: "Do thing", completed: false }],
+      };
+      const { unmount } = render(
+        <TaskSheet {...defaultProps} task={taskWithSub} onUpdate={onUpdate} />,
+      );
+
+      await user.click(screen.getAllByRole("checkbox", { name: "Toggle Do thing" })[0]);
+
+      // Should show "Saving…" immediately
+      expect(screen.getAllByRole("status")[0]).toHaveTextContent("Saving\u2026");
+
+      // Advance past debounce
+      vi.advanceTimersByTime(500);
+
+      // Resolve the onUpdate promise
+      resolveUpdate!();
+      await waitFor(() => {
+        expect(screen.getAllByRole("status")[0]).toHaveTextContent("Saved");
+      });
+
+      unmount();
+    });
+
+    it("auto-hides Saved after 2 seconds", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      const taskWithSub: Task = {
+        ...mockTask,
+        subtasks: [{ _id: "s1", title: "Do thing", completed: false }],
+      };
+      render(
+        <TaskSheet {...defaultProps} task={taskWithSub} onUpdate={onUpdate} />,
+      );
+
+      await user.click(screen.getByRole("checkbox", { name: "Toggle Do thing" }));
+
+      // Advance past debounce + let save resolve
+      await vi.advanceTimersByTimeAsync(600);
+
+      await waitFor(() => {
+        expect(screen.getByRole("status")).toHaveTextContent("Saved");
+      });
+
+      // Advance 2 more seconds — should auto-hide
+      vi.advanceTimersByTime(2000);
+
+      await waitFor(() => {
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+      });
+    });
+
+    it("shows Saving for title changes via onSaveStatusChange", async () => {
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+      const onUpdate = vi.fn().mockResolvedValue({});
+      render(<TaskSheet {...defaultProps} onUpdate={onUpdate} />);
+
+      const titleInput = screen.getByLabelText("Title");
+      await user.clear(titleInput);
+      await user.type(titleInput, "New title");
+      await user.tab(); // blur triggers saveField in the child
+
+      // Child's saveField calls onSaveStatusChange("saving") immediately
+      expect(screen.getByRole("status")).toHaveTextContent("Saving\u2026");
+
+      // Advance past debounce to let save complete
+      await vi.advanceTimersByTimeAsync(600);
+
+      await waitFor(() => {
+        expect(screen.getByRole("status")).toHaveTextContent("Saved");
+      });
+    });
+  });
+
   describe("flush on close without blur", () => {
     it("saves unsaved title when sheet unmounts without blur", async () => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
