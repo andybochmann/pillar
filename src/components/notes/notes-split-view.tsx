@@ -234,7 +234,7 @@ export function NotesSplitView({
         className={cn(
           "flex w-64 shrink-0 flex-col border-r",
           // On mobile: hide list when a note is open, show otherwise
-          selectedNoteId ? "hidden md:flex" : "flex",
+          selectedNoteId ? "max-md:hidden md:flex" : "flex",
         )}
       >
         {backHref && backLabel && (
@@ -318,7 +318,7 @@ export function NotesSplitView({
       <div
         className={cn(
           "flex flex-1 flex-col overflow-hidden",
-          !selectedNoteId && "hidden md:flex",
+          !selectedNoteId && "max-md:hidden md:flex",
         )}
       >
         {selectedNote ? (

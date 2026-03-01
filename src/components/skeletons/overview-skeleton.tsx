@@ -35,7 +35,7 @@ export function OverviewSkeleton() {
       </div>
 
       {/* Desktop: grid skeletons */}
-      <div className="hidden md:block">
+      <div className="max-md:hidden md:block">
         <div className="rounded-md border">
           <div className="grid grid-cols-[1fr_160px_80px_100px_160px] gap-4 border-b px-4 py-2">
             {Array.from({ length: 5 }).map((_, i) => (

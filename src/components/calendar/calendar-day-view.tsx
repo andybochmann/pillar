@@ -198,7 +198,7 @@ export function CalendarDayView({
           <span className="sm:hidden">
             {format(currentDay, "EEE, MMM d, yyyy")}
           </span>
-          <span className="hidden sm:inline">
+          <span className="max-sm:hidden sm:inline">
             {format(currentDay, "EEEE, MMMM d, yyyy")}
           </span>
         </h2>

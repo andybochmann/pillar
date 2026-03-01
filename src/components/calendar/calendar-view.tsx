@@ -209,7 +209,7 @@ export function CalendarView({
                 key={day}
                 className="py-1 text-center text-xs font-medium text-muted-foreground sm:py-2 sm:text-sm"
               >
-                <span className="hidden sm:inline">{day}</span>
+                <span className="max-sm:hidden sm:inline">{day}</span>
                 <span className="sm:hidden">{WEEKDAYS_SHORT[i]}</span>
               </div>
             ))}

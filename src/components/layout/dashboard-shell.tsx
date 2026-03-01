@@ -40,7 +40,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Desktop sidebar */}
-      <div className="hidden h-full md:block">
+      <div className="max-md:hidden h-full md:block">
         <Sidebar />
       </div>
 

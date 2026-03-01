@@ -61,7 +61,7 @@ export function TaskList({ tasks, projects, labels = [] }: TaskListProps) {
       </p>
 
       {/* Desktop: grid header */}
-      <div className="hidden rounded-t-md border-x border-t md:grid md:grid-cols-[1fr_160px_80px_100px_160px] md:gap-4 md:px-4 md:py-2 md:text-xs md:font-medium md:text-muted-foreground">
+      <div className="max-md:hidden rounded-t-md border-x border-t md:grid md:grid-cols-[1fr_160px_80px_100px_160px] md:gap-4 md:px-4 md:py-2 md:text-xs md:font-medium md:text-muted-foreground">
         <span>Task</span>
         <span>Project</span>
         <span>Priority</span>
@@ -119,7 +119,7 @@ export function TaskList({ tasks, projects, labels = [] }: TaskListProps) {
               </div>
 
               {/* Desktop layout */}
-              <div className="hidden md:grid md:grid-cols-[1fr_160px_80px_100px_160px] md:items-center md:gap-4 md:px-4 md:py-3">
+              <div className="max-md:hidden md:grid md:grid-cols-[1fr_160px_80px_100px_160px] md:items-center md:gap-4 md:px-4 md:py-3">
                 <div className="flex min-w-0 flex-col gap-0.5">
                   <span
                     className={cn(
