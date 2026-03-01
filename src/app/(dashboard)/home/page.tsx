@@ -85,7 +85,7 @@ export default async function DashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <Link href={overdueHref}>
-          <Card className="relative overflow-hidden border-red-200 hover:shadow-md transition-shadow cursor-pointer dark:border-red-900/50">
+          <Card className="relative overflow-hidden border-red-200 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer dark:border-red-900/50">
             <div className="absolute inset-y-0 left-0 w-1 bg-red-500" />
             <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 dark:bg-red-950">
@@ -107,7 +107,7 @@ export default async function DashboardPage() {
         </Link>
 
         <Link href={dueTodayHref}>
-          <Card className="relative overflow-hidden border-amber-200 hover:shadow-md transition-shadow cursor-pointer dark:border-amber-900/50">
+          <Card className="relative overflow-hidden border-amber-200 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer dark:border-amber-900/50">
             <div className="absolute inset-y-0 left-0 w-1 bg-amber-500" />
             <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-100 dark:bg-amber-950">
@@ -127,7 +127,7 @@ export default async function DashboardPage() {
         </Link>
 
         <Link href={dueThisWeekHref}>
-          <Card className="relative overflow-hidden border-blue-200 hover:shadow-md transition-shadow cursor-pointer dark:border-blue-900/50">
+          <Card className="relative overflow-hidden border-blue-200 hover:shadow-md hover:scale-[1.02] transition-all cursor-pointer dark:border-blue-900/50">
             <div className="absolute inset-y-0 left-0 w-1 bg-blue-500" />
             <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-2">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-950">
