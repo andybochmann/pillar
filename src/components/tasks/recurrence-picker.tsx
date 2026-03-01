@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   Select,
   SelectContent,
@@ -100,11 +101,12 @@ export function RecurrencePicker({ value, onChange }: RecurrencePickerProps) {
         )}
       </div>
       {value.frequency !== "none" && (
-        <Input
-          type="date"
+        <DatePicker
           value={value.endDate ? value.endDate.slice(0, 10) : ""}
-          onChange={(e) => handleEndDateChange(e.target.value)}
-          aria-label="Recurrence end date"
+          onChange={handleEndDateChange}
+          ariaLabel="Recurrence end date"
+          placeholder="End date (optional)"
+          clearable
         />
       )}
       {preview && (

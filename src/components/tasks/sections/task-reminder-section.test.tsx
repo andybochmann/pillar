@@ -10,7 +10,7 @@ describe("TaskReminderSection", () => {
     onReminderChange = vi.fn();
   });
 
-  it("renders reminder label and datetime input", () => {
+  it("renders reminder label and date-time picker", () => {
     render(
       <TaskReminderSection
         reminderAt=""
@@ -19,11 +19,10 @@ describe("TaskReminderSection", () => {
     );
 
     expect(screen.getByText("Reminder")).toBeInTheDocument();
-    const input = screen.getByLabelText("Reminder");
-    expect(input).toHaveAttribute("type", "datetime-local");
+    expect(screen.getByText("Pick date & time")).toBeInTheDocument();
   });
 
-  it("renders with empty reminder", () => {
+  it("renders with empty reminder showing placeholder", () => {
     render(
       <TaskReminderSection
         reminderAt=""
@@ -31,8 +30,7 @@ describe("TaskReminderSection", () => {
       />,
     );
 
-    const input = screen.getByLabelText("Reminder") as HTMLInputElement;
-    expect(input.value).toBe("");
+    expect(screen.getByText("Pick date & time")).toBeInTheDocument();
   });
 
   it("renders with specified reminder datetime", () => {
@@ -43,8 +41,9 @@ describe("TaskReminderSection", () => {
       />,
     );
 
-    const input = screen.getByLabelText("Reminder") as HTMLInputElement;
-    expect(input.value).toBe("2026-03-15T10:30");
+    expect(
+      screen.getByText("Mar 15, 2026 at 10:30 AM"),
+    ).toBeInTheDocument();
   });
 
   it("shows clear button when reminder is set", () => {
@@ -55,7 +54,9 @@ describe("TaskReminderSection", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /clear reminder/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /clear date and time/i }),
+    ).toBeInTheDocument();
   });
 
   it("does not show clear button when reminder is empty", () => {
@@ -66,7 +67,9 @@ describe("TaskReminderSection", () => {
       />,
     );
 
-    expect(screen.queryByRole("button", { name: /clear reminder/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /clear date and time/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("calls onReminderChange with empty string when clear is clicked", async () => {
@@ -79,7 +82,9 @@ describe("TaskReminderSection", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: /clear reminder/i }));
+    await user.click(
+      screen.getByRole("button", { name: /clear date and time/i }),
+    );
     expect(onReminderChange).toHaveBeenCalledWith("");
   });
 });

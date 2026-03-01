@@ -1,7 +1,7 @@
 "use client";
 
 import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { RecurrencePicker } from "@/components/tasks/recurrence-picker";
 import type { Recurrence } from "@/types";
 
@@ -22,11 +22,10 @@ export function TaskDueRecurrenceSection({
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-1.5">
         <Label htmlFor="task-due-date">Due Date</Label>
-        <Input
+        <DatePicker
           id="task-due-date"
-          type="date"
           value={dueDate}
-          onChange={(e) => onDueDateChange(e.target.value)}
+          onChange={onDueDateChange}
         />
       </div>
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RecurrencePicker, getPreviewText } from "./recurrence-picker";
 import type { Recurrence } from "@/types";
@@ -27,11 +27,11 @@ describe("RecurrencePicker", () => {
       screen.queryByLabelText("Recurrence interval"),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByLabelText("Recurrence end date"),
+      screen.queryByRole("button", { name: /recurrence end date/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("shows interval and end date when frequency is not none", () => {
+  it("shows interval and end date picker when frequency is not none", () => {
     const onChange = vi.fn();
     render(
       <RecurrencePicker
@@ -40,7 +40,9 @@ describe("RecurrencePicker", () => {
       />,
     );
     expect(screen.getByLabelText("Recurrence interval")).toBeInTheDocument();
-    expect(screen.getByLabelText("Recurrence end date")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /recurrence end date/i }),
+    ).toBeInTheDocument();
   });
 
   it("shows preview text for weekly recurrence", () => {
@@ -95,7 +97,7 @@ describe("RecurrencePicker", () => {
     );
   });
 
-  it("calls onChange with end date", async () => {
+  it("calls onChange with end date when date selected in picker", async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(
@@ -105,14 +107,36 @@ describe("RecurrencePicker", () => {
       />,
     );
 
-    const endDateInput = screen.getByLabelText("Recurrence end date");
-    await user.type(endDateInput, "2026-06-01");
+    // Click on the end date picker trigger
+    const endDateButton = screen.getByRole("button", {
+      name: /recurrence end date/i,
+    });
+    await user.click(endDateButton);
+
+    // Calendar should appear — click the button inside the day 15 gridcell
+    const day15Cell = screen.getByRole("gridcell", { name: "15" });
+    await user.click(within(day15Cell).getByRole("button"));
 
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        endDate: expect.stringContaining("2026-06-01"),
+        endDate: expect.stringContaining("T00:00:00"),
       }),
     );
+  });
+
+  it("shows formatted end date when endDate is set", () => {
+    const onChange = vi.fn();
+    render(
+      <RecurrencePicker
+        value={{
+          frequency: "weekly",
+          interval: 1,
+          endDate: "2026-06-15T00:00:00.000Z",
+        }}
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getByText("Jun 15, 2026")).toBeInTheDocument();
   });
 });
 

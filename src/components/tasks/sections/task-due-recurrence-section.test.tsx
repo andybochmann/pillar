@@ -31,7 +31,7 @@ describe("TaskDueRecurrenceSection", () => {
     expect(screen.getByText("Recurrence")).toBeInTheDocument();
   });
 
-  it("renders due date input", () => {
+  it("renders due date picker with placeholder when empty", () => {
     render(
       <TaskDueRecurrenceSection
         dueDate=""
@@ -41,23 +41,7 @@ describe("TaskDueRecurrenceSection", () => {
       />,
     );
 
-    const dueDateInput = screen.getByLabelText("Due Date");
-    expect(dueDateInput).toBeInTheDocument();
-    expect(dueDateInput).toHaveAttribute("type", "date");
-  });
-
-  it("renders with empty due date", () => {
-    render(
-      <TaskDueRecurrenceSection
-        dueDate=""
-        recurrence={defaultRecurrence}
-        onDueDateChange={onDueDateChange}
-        onRecurrenceChange={onRecurrenceChange}
-      />,
-    );
-
-    const dueDateInput = screen.getByLabelText("Due Date") as HTMLInputElement;
-    expect(dueDateInput.value).toBe("");
+    expect(screen.getByText("Pick a date")).toBeInTheDocument();
   });
 
   it("renders with specified due date", () => {
@@ -70,8 +54,7 @@ describe("TaskDueRecurrenceSection", () => {
       />,
     );
 
-    const dueDateInput = screen.getByLabelText("Due Date") as HTMLInputElement;
-    expect(dueDateInput.value).toBe("2024-12-31");
+    expect(screen.getByText("Dec 31, 2024")).toBeInTheDocument();
   });
 
   it("renders RecurrencePicker with none frequency", () => {
@@ -196,8 +179,9 @@ describe("TaskDueRecurrenceSection", () => {
       />,
     );
 
-    // RecurrencePicker shows end date input for non-none frequencies
-    const endDateInput = screen.getByLabelText("Recurrence end date");
-    expect(endDateInput).toBeInTheDocument();
+    // RecurrencePicker shows end date picker for non-none frequencies
+    expect(
+      screen.getByRole("button", { name: /recurrence end date/i }),
+    ).toBeInTheDocument();
   });
 });

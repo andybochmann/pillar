@@ -140,7 +140,7 @@ describe("TaskSheet", () => {
 
   it("renders due date", () => {
     render(<TaskSheet {...defaultProps} />);
-    expect(screen.getByLabelText("Due Date")).toHaveValue("2026-03-15");
+    expect(screen.getByText("Mar 15, 2026")).toBeInTheDocument();
   });
 
   it("renders Mark Complete button", () => {
