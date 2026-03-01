@@ -156,41 +156,53 @@ describe("TaskSheet", () => {
     expect(screen.getByRole("button", { name: "Reopen" })).toBeInTheDocument();
   });
 
-  it("renders Delete button", () => {
+  it("renders overflow menu button", () => {
     render(<TaskSheet {...defaultProps} />);
-    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
   });
 
-  it("renders Duplicate button when onDuplicate is provided", () => {
-    const onDuplicate = vi.fn();
-    render(<TaskSheet {...defaultProps} onDuplicate={onDuplicate} />);
-    expect(
-      screen.getByRole("button", { name: "Duplicate" }),
-    ).toBeInTheDocument();
-  });
-
-  it("does not render Duplicate button when onDuplicate is not provided", () => {
+  it("shows Delete in overflow menu", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<TaskSheet {...defaultProps} />);
-    expect(
-      screen.queryByRole("button", { name: "Duplicate" }),
-    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    expect(screen.getByRole("menuitem", { name: /delete/i })).toBeInTheDocument();
   });
 
-  it("calls onDuplicate when Duplicate button is clicked", async () => {
+  it("shows Duplicate in overflow menu when onDuplicate is provided", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     const onDuplicate = vi.fn();
     render(<TaskSheet {...defaultProps} onDuplicate={onDuplicate} />);
 
-    await user.click(screen.getByRole("button", { name: "Duplicate" }));
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    expect(screen.getByRole("menuitem", { name: /duplicate/i })).toBeInTheDocument();
+  });
+
+  it("does not show Duplicate in overflow menu when onDuplicate is not provided", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    render(<TaskSheet {...defaultProps} />);
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    expect(screen.queryByRole("menuitem", { name: /duplicate/i })).not.toBeInTheDocument();
+  });
+
+  it("calls onDuplicate when Duplicate menu item is clicked", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const onDuplicate = vi.fn();
+    render(<TaskSheet {...defaultProps} onDuplicate={onDuplicate} />);
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(screen.getByRole("menuitem", { name: /duplicate/i }));
 
     expect(onDuplicate).toHaveBeenCalledWith(mockTask);
   });
 
-  it("shows delete confirmation when Delete is clicked", async () => {
+  it("shows delete confirmation when Delete menu item is clicked", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<TaskSheet {...defaultProps} />);
 
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(screen.getByRole("menuitem", { name: /delete/i }));
     expect(screen.getByText("Delete task?")).toBeInTheDocument();
     expect(screen.getByText(/will be permanently deleted/)).toBeInTheDocument();
   });
@@ -200,8 +212,13 @@ describe("TaskSheet", () => {
     const onDelete = vi.fn().mockResolvedValue(undefined);
     render(<TaskSheet {...defaultProps} onDelete={onDelete} />);
 
-    await user.click(screen.getByRole("button", { name: "Delete" }));
-    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(screen.getByRole("menuitem", { name: /delete/i }));
+    // Click the confirm button in the dialog
+    const confirmButton = screen.getAllByRole("button", { name: /delete/i }).find(
+      (btn) => btn.textContent === "Delete",
+    );
+    await user.click(confirmButton!);
 
     expect(onDelete).toHaveBeenCalledWith("task-1");
   });

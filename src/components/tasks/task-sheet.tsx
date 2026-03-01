@@ -78,7 +78,7 @@ export function TaskSheet({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        className="overflow-y-auto p-0 sm:max-w-lg"
+        className="overflow-hidden p-0 sm:max-w-lg"
         onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <SheetHeader className="sr-only">
@@ -144,11 +144,8 @@ function TaskSheetForm({
     () => [...columns].sort((a, b) => a.order - b.order),
     [columns],
   );
-  const firstColumnId = sortedColumns.length > 0 ? sortedColumns[0].id : null;
-  const lastColumnId =
-    sortedColumns.length > 0
-      ? sortedColumns[sortedColumns.length - 1].id
-      : null;
+  const firstColumnId = sortedColumns.at(0)?.id ?? null;
+  const lastColumnId = sortedColumns.at(-1)?.id ?? null;
 
   const [priority, setPriority] = useState<Priority>(task.priority);
   const [columnId, setColumnId] = useState(task.columnId);
@@ -367,13 +364,15 @@ function TaskSheetForm({
     await onUpdate(task._id, enriched);
   }
 
-  async function handleTaskDelete(taskId: string) {
-    await onDelete(taskId);
+  function handleArchive() {
+    if (!onArchive) return;
+    onArchive(task._id);
+    onClose();
   }
 
   return (
     <>
-      <div className="flex flex-1 flex-col px-6 pt-8 pb-6">
+      <div className="flex-1 overflow-y-auto px-6 pt-8 pb-6">
         <div className="space-y-5">
           {saveStatus !== "idle" && (
             <span
@@ -480,21 +479,20 @@ function TaskSheetForm({
             </>
           )}
         </div>
-
-        <TaskActionsSection
-          taskId={task._id}
-          taskTitle={task.title}
-          taskDescription={task.description}
-          taskPriority={task.priority}
-          taskDueDate={task.dueDate}
-          completedAt={task.completedAt ?? null}
-          onUpdate={handleTaskUpdate}
-          onDelete={handleTaskDelete}
-          onDuplicate={onDuplicate ? () => onDuplicate(task) : undefined}
-          onArchive={onArchive ? () => { onArchive(task._id); onClose(); } : undefined}
-          onClose={onClose}
-        />
       </div>
+      <TaskActionsSection
+        taskId={task._id}
+        taskTitle={task.title}
+        taskDescription={task.description}
+        taskPriority={task.priority}
+        taskDueDate={task.dueDate}
+        completedAt={task.completedAt ?? null}
+        onUpdate={handleTaskUpdate}
+        onDelete={onDelete}
+        onDuplicate={onDuplicate ? () => onDuplicate(task) : undefined}
+        onArchive={onArchive ? handleArchive : undefined}
+        onClose={onClose}
+      />
       <GenerateSubtasksDialog
         open={generateDialogOpen}
         onOpenChange={setGenerateDialogOpen}

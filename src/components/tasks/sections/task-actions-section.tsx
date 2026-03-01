@@ -2,8 +2,23 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { Share2 } from "lucide-react";
+import {
+  CheckCircle2,
+  RotateCcw,
+  MoreHorizontal,
+  Archive,
+  Copy,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { canShareTasks, shareTask } from "@/lib/share-task";
 import type { Priority } from "@/types";
@@ -72,41 +87,57 @@ export function TaskActionsSection({
 
   return (
     <>
-      <div className="mt-auto space-y-2 pt-6">
-        <Button variant="outline" className="w-full" onClick={handleToggleComplete}>
-          {completedAt ? "Reopen" : "Mark Complete"}
+      <div className="border-t bg-background px-6 py-3 flex items-center gap-2">
+        <Button className="flex-1" onClick={handleToggleComplete}>
+          {completedAt ? (
+            <>
+              <RotateCcw className="mr-2 h-4 w-4" />
+              Reopen
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Mark Complete
+            </>
+          )}
         </Button>
-        {completedAt && onArchive && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={onArchive}
-          >
-            Archive
-          </Button>
-        )}
-        {onDuplicate && (
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={onDuplicate}
-          >
-            Duplicate
-          </Button>
-        )}
-        {canShareTasks() && (
-          <Button variant="outline" className="w-full" onClick={handleShare}>
-            <Share2 className="mr-2 h-4 w-4" />
-            Share
-          </Button>
-        )}
-        <Button
-          variant="destructive"
-          className="w-full"
-          onClick={() => setShowDeleteConfirm(true)}
-        >
-          Delete
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="icon" aria-label="More actions">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" side="top">
+            {completedAt && onArchive && (
+              <DropdownMenuItem onClick={onArchive}>
+                <Archive className="mr-2 h-4 w-4" />
+                Archive
+              </DropdownMenuItem>
+            )}
+            {onDuplicate && (
+              <DropdownMenuItem onClick={onDuplicate}>
+                <Copy className="mr-2 h-4 w-4" />
+                Duplicate
+              </DropdownMenuItem>
+            )}
+            {canShareTasks() && (
+              <DropdownMenuItem onClick={handleShare}>
+                <Share2 className="mr-2 h-4 w-4" />
+                Share
+              </DropdownMenuItem>
+            )}
+            {((completedAt && onArchive) || onDuplicate || canShareTasks()) && (
+              <DropdownMenuSeparator />
+            )}
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <ConfirmDialog
         open={showDeleteConfirm}
