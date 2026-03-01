@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Select,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { FilterPresetSelector } from "@/components/filters/filter-preset-selector";
 import type { Project } from "@/types";
 
 interface TaskFiltersProps {
@@ -34,6 +35,31 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
   const clearFilters = useCallback(() => {
     router.push("/overview");
   }, [router]);
+
+  const currentFilters = useMemo(() => {
+    const filters: Record<string, string> = {};
+    const keys = ["projectId", "priority", "completed", "labels", "sortBy", "sortOrder", "dueDateFrom", "dueDateTo"];
+    for (const key of keys) {
+      const val = searchParams.get(key);
+      if (val && val !== "all") filters[key] = val;
+    }
+    return filters;
+  }, [searchParams]);
+
+  const applyPreset = useCallback(
+    (filters: Record<string, string | string[]>) => {
+      const params = new URLSearchParams();
+      for (const [key, value] of Object.entries(filters)) {
+        if (Array.isArray(value)) {
+          params.set(key, value.join(","));
+        } else if (value) {
+          params.set(key, value);
+        }
+      }
+      router.push(`/overview?${params.toString()}`);
+    },
+    [router],
+  );
 
   const activeCount =
     (searchParams.get("projectId") &&
@@ -124,6 +150,12 @@ export function TaskFilters({ projects }: TaskFiltersProps) {
             setParam("labels", value || null);
           }
         }}
+      />
+
+      <FilterPresetSelector
+        context="overview"
+        currentFilters={currentFilters}
+        onApply={applyPreset}
       />
 
       {activeCount > 0 && (

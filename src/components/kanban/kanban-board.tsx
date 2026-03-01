@@ -22,7 +22,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { KanbanColumn } from "./kanban-column";
-import { TaskCard } from "./task-card";
+import { TaskCard, type ContextAction } from "./task-card";
 import { TaskSheet } from "@/components/tasks/task-sheet";
 import { getCompletionForColumnChange } from "@/lib/column-completion";
 import type { BoardFilters } from "./board-filter-bar";
@@ -32,7 +32,11 @@ import { toast } from "sonner";
 import { isToday, isBefore, startOfDay, endOfWeek } from "date-fns";
 import { toLocalDate } from "@/lib/date-utils";
 import { useTimeTracking } from "@/hooks/use-time-tracking";
+import { useKanbanKeyboardNav } from "@/hooks/use-kanban-keyboard-nav";
+import { offlineFetch } from "@/lib/offline-fetch";
 import type { Task, Column, Priority, ProjectMember, Label } from "@/types";
+
+const PRIORITY_CYCLE: Priority[] = ["low", "medium", "high", "urgent"];
 
 interface KanbanBoardProps {
   projectId: string;
@@ -96,6 +100,7 @@ export function KanbanBoard({
       ) {
         return;
       }
+      if (document.querySelector("[role='dialog']")) return;
       if (e.key === "n" && sortedColumns.length > 0) {
         e.preventDefault();
         setNewTaskColumnId(sortedColumns[0].id);
@@ -409,19 +414,78 @@ export function KanbanBoard({
     }
   }
 
-  function toggleSelection(taskId: string) {
+  const lastClickedTaskRef = useRef<string | null>(null);
+
+  function toggleSelection(taskId: string, shiftKey?: boolean) {
+    if (shiftKey && lastClickedTaskRef.current) {
+      // Range selection: select all tasks between last clicked and current within same column
+      const currentTask = filteredTasks.find((t) => t._id === taskId);
+      const lastTask = filteredTasks.find(
+        (t) => t._id === lastClickedTaskRef.current,
+      );
+      if (currentTask && lastTask && currentTask.columnId === lastTask.columnId) {
+        const columnTasks = filteredTasks
+          .filter((t) => t.columnId === currentTask.columnId)
+          .sort((a, b) => a.order - b.order);
+        const startIdx = columnTasks.findIndex(
+          (t) => t._id === lastClickedTaskRef.current,
+        );
+        const endIdx = columnTasks.findIndex((t) => t._id === taskId);
+        const [from, to] =
+          startIdx <= endIdx ? [startIdx, endIdx] : [endIdx, startIdx];
+        setSelectedIds((prev) => {
+          const next = new Set(prev);
+          for (let i = from; i <= to; i++) {
+            next.add(columnTasks[i]._id);
+          }
+          return next;
+        });
+        lastClickedTaskRef.current = taskId;
+        return;
+      }
+    }
+
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(taskId)) next.delete(taskId);
       else next.add(taskId);
       return next;
     });
+    lastClickedTaskRef.current = taskId;
   }
+
+  // Ctrl+A / Cmd+A: select/deselect all visible tasks
+  useEffect(() => {
+    if (readOnly) return;
+    function handleSelectAll(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+      if (document.querySelector("[role='dialog']")) return;
+      if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+        e.preventDefault();
+        const visibleIds = filteredTasks
+          .filter((t) => !t.archived)
+          .map((t) => t._id);
+        setSelectedIds((prev) => {
+          const allSelected = visibleIds.every((id) => prev.has(id));
+          return allSelected ? new Set() : new Set(visibleIds);
+        });
+      }
+    }
+    document.addEventListener("keydown", handleSelectAll);
+    return () => document.removeEventListener("keydown", handleSelectAll);
+  }, [filteredTasks, readOnly]);
 
   async function handleBulkMove(columnId: string) {
     const ids = [...selectedIds];
     try {
-      const res = await fetch("/api/tasks/bulk", {
+      const res = await offlineFetch("/api/tasks/bulk", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskIds: ids, action: "move", columnId }),
@@ -440,7 +504,7 @@ export function KanbanBoard({
   async function handleBulkPriority(priority: Priority) {
     const ids = [...selectedIds];
     try {
-      const res = await fetch("/api/tasks/bulk", {
+      const res = await offlineFetch("/api/tasks/bulk", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskIds: ids, action: "priority", priority }),
@@ -459,7 +523,7 @@ export function KanbanBoard({
   async function handleBulkDelete() {
     const ids = [...selectedIds];
     try {
-      const res = await fetch("/api/tasks/bulk", {
+      const res = await offlineFetch("/api/tasks/bulk", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ taskIds: ids, action: "delete" }),
@@ -483,7 +547,7 @@ export function KanbanBoard({
   }
 
   async function bulkArchive(ids: string[]) {
-    const res = await fetch("/api/tasks/bulk", {
+    const res = await offlineFetch("/api/tasks/bulk", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ taskIds: ids, action: "archive" }),
@@ -513,23 +577,258 @@ export function KanbanBoard({
     }
   }
 
+  async function handleBulkSetDueDate(date: Date) {
+    const ids = [...selectedIds];
+    try {
+      const res = await offlineFetch("/api/tasks/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskIds: ids,
+          action: "set-due-date",
+          dueDate: date.toISOString(),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to set due date");
+      setTasks((prev) =>
+        prev.map((t) =>
+          ids.includes(t._id) ? { ...t, dueDate: date.toISOString() } : t,
+        ),
+      );
+      setSelectedIds(new Set());
+      toast.success(`Set due date on ${ids.length} tasks`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleBulkAssign(assigneeId: string | null) {
+    const ids = [...selectedIds];
+    try {
+      const res = await offlineFetch("/api/tasks/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: ids, action: "assign", assigneeId }),
+      });
+      if (!res.ok) throw new Error("Failed to assign tasks");
+      setTasks((prev) =>
+        prev.map((t) =>
+          ids.includes(t._id)
+            ? { ...t, assigneeId: assigneeId ?? undefined }
+            : t,
+        ),
+      );
+      setSelectedIds(new Set());
+      toast.success(
+        assigneeId
+          ? `Assigned ${ids.length} tasks`
+          : `Unassigned ${ids.length} tasks`,
+      );
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleBulkAddLabel(labelId: string) {
+    const ids = [...selectedIds];
+    try {
+      const res = await offlineFetch("/api/tasks/bulk", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskIds: ids, action: "add-label", labelId }),
+      });
+      if (!res.ok) throw new Error("Failed to add label");
+      setTasks((prev) =>
+        prev.map((t) =>
+          ids.includes(t._id) && !t.labels.includes(labelId)
+            ? { ...t, labels: [...t.labels, labelId] }
+            : t,
+        ),
+      );
+      setSelectedIds(new Set());
+      toast.success(`Added label to ${ids.length} tasks`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
   async function handleArchiveFromSheet(taskId: string) {
     await handleArchiveTask(taskId);
     setSheetOpen(false);
     setSelectedTask(null);
   }
 
+  async function handleTitleSave(taskId: string, title: string) {
+    try {
+      await updateTask(taskId, { title });
+      toast.success("Title updated");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleDueDateChange(taskId: string, dueDate: string | null) {
+    try {
+      await updateTask(taskId, { dueDate: dueDate ?? undefined });
+      toast.success(dueDate ? "Due date updated" : "Due date cleared");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  async function handleContextAction(taskId: string, action: ContextAction) {
+    try {
+      switch (action.type) {
+        case "priority":
+          await updateTask(taskId, { priority: action.priority });
+          toast.success(`Priority set to ${action.priority}`);
+          break;
+        case "moveTo": {
+          const task = tasks.find((t) => t._id === taskId);
+          if (!task) return;
+          const completedAt = getCompletionForColumnChange(
+            task.columnId,
+            action.columnId,
+            columns,
+          );
+          const moveData: Partial<Task> = { columnId: action.columnId };
+          if (completedAt !== undefined) moveData.completedAt = completedAt;
+          await updateTask(taskId, moveData);
+          const colName = columns.find((c) => c.id === action.columnId)?.name ?? action.columnId;
+          toast.success(`Moved to ${colName}`);
+          break;
+        }
+        case "toggleLabel": {
+          const task = tasks.find((t) => t._id === taskId);
+          if (!task) return;
+          const hasLabel = task.labels.includes(action.labelId);
+          const updatedLabels = hasLabel
+            ? task.labels.filter((l) => l !== action.labelId)
+            : [...task.labels, action.labelId];
+          await updateTask(taskId, { labels: updatedLabels });
+          break;
+        }
+        case "complete": {
+          const lastCol = sortedColumns[sortedColumns.length - 1];
+          if (!lastCol) return;
+          const task = tasks.find((t) => t._id === taskId);
+          if (!task) return;
+          const completedAt = getCompletionForColumnChange(
+            task.columnId,
+            lastCol.id,
+            columns,
+          );
+          const data: Partial<Task> = { columnId: lastCol.id };
+          if (completedAt !== undefined) data.completedAt = completedAt;
+          await updateTask(taskId, data);
+          toast.success(`Moved to ${lastCol.name}`);
+          break;
+        }
+        case "reopen": {
+          const firstCol = sortedColumns[0];
+          if (!firstCol) return;
+          await updateTask(taskId, { columnId: firstCol.id, completedAt: undefined });
+          toast.success(`Reopened to ${firstCol.name}`);
+          break;
+        }
+        case "archive":
+          await archiveTask(taskId);
+          toast.success("Task archived");
+          break;
+        case "delete":
+          await deleteTask(taskId);
+          toast.success("Task deleted");
+          break;
+      }
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  }
+
+  function handleCyclePriority(taskId: string) {
+    const task = filteredTasks.find((t) => t._id === taskId);
+    if (!task) return;
+    const idx = PRIORITY_CYCLE.indexOf(task.priority);
+    const next = PRIORITY_CYCLE[(idx + 1) % PRIORITY_CYCLE.length];
+    handlePriorityChange(taskId, next);
+  }
+
+  async function handleToggleComplete(taskId: string) {
+    const task = filteredTasks.find((t) => t._id === taskId);
+    if (!task || sortedColumns.length === 0) return;
+    const lastCol = sortedColumns[sortedColumns.length - 1];
+    const firstCol = sortedColumns[0];
+    if (task.columnId === lastCol.id) {
+      // Move back to first column
+      const completedAt = getCompletionForColumnChange(
+        lastCol.id,
+        firstCol.id,
+        columns,
+      );
+      const data: Partial<Task> = { columnId: firstCol.id };
+      if (completedAt !== undefined) data.completedAt = completedAt;
+      try {
+        await updateTask(taskId, data);
+        toast.success(`Moved to ${firstCol.name}`);
+      } catch (err) {
+        toast.error((err as Error).message);
+      }
+    } else {
+      // Move to done column
+      const completedAt = getCompletionForColumnChange(
+        task.columnId,
+        lastCol.id,
+        columns,
+      );
+      const data: Partial<Task> = { columnId: lastCol.id };
+      if (completedAt !== undefined) data.completedAt = completedAt;
+      try {
+        await updateTask(taskId, data);
+        toast.success(`Moved to ${lastCol.name}`);
+      } catch (err) {
+        toast.error((err as Error).message);
+      }
+    }
+  }
+
+  function handleOpenTaskById(taskId: string) {
+    const task = filteredTasks.find((t) => t._id === taskId);
+    if (task) handleTaskClick(task);
+  }
+
+  // Date picker via keyboard is a no-op at hook level — opening task sheet is sufficient
+  function handleOpenDatePicker(taskId: string) {
+    handleOpenTaskById(taskId);
+  }
+
+  const { focusedTaskId } = useKanbanKeyboardNav({
+    tasks: filteredTasks,
+    columns: sortedColumns,
+    onOpenTask: handleOpenTaskById,
+    onCyclePriority: handleCyclePriority,
+    onToggleComplete: handleToggleComplete,
+    onToggleSelect: toggleSelection,
+    onOpenDatePicker: handleOpenDatePicker,
+    disabled: readOnly || sheetOpen,
+  });
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {!readOnly && (
         <BulkActionsBar
           selectedCount={selectedIds.size}
+          totalCount={filteredTasks.filter((t) => !t.archived).length}
           columns={columns}
+          labels={allLabels}
+          members={members}
           onClearSelection={() => setSelectedIds(new Set())}
           onBulkMove={handleBulkMove}
           onBulkPriority={handleBulkPriority}
           onBulkArchive={handleBulkArchive}
           onBulkDelete={handleBulkDelete}
+          onBulkSetDueDate={handleBulkSetDueDate}
+          onBulkAssign={handleBulkAssign}
+          onBulkAddLabel={handleBulkAddLabel}
         />
       )}
       <DndContext
@@ -549,10 +848,15 @@ export function KanbanBoard({
             >
               <KanbanColumn
                 column={column}
+                columns={sortedColumns}
                 tasks={getColumnTasks(column.id)}
                 onAddTask={(title) => handleAddTask(column.id, title)}
                 onTaskClick={handleTaskClick}
                 onPriorityChange={readOnly ? undefined : handlePriorityChange}
+                onTitleSave={readOnly ? undefined : handleTitleSave}
+                onDueDateChange={readOnly ? undefined : handleDueDateChange}
+                onContextAction={readOnly ? undefined : handleContextAction}
+                allLabels={readOnly ? undefined : allLabels}
                 labelColors={labelColors}
                 labelNames={labelNames}
                 memberNames={memberNames}
@@ -570,6 +874,7 @@ export function KanbanBoard({
                 isLastColumn={!readOnly && column.id === sortedColumns[sortedColumns.length - 1]?.id}
                 onArchiveAll={readOnly ? undefined : () => handleArchiveAll(column.id)}
                 onArchive={readOnly ? undefined : handleArchiveTask}
+                focusedTaskId={focusedTaskId}
               />
             </SortableContext>
           ))}

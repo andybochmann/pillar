@@ -12,4 +12,5 @@ export {
   createTestPushSubscription,
   createTestAccount,
   createTestNote,
+  createTestFilterPreset,
 } from "./factories";

@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 
 export interface SyncEvent {
-  entity: "task" | "project" | "category" | "label" | "member" | "note";
+  entity: "task" | "project" | "category" | "label" | "member" | "note" | "filter-preset";
   action: "created" | "updated" | "deleted" | "reordered";
   userId: string;
   sessionId: string;

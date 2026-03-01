@@ -8,6 +8,7 @@ import { Label } from "@/models/label";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { FilterPreset } from "@/models/filter-preset";
 import { NotificationPreference } from "@/models/notification-preference";
 
 const MetadataSchema = z.object({
@@ -141,6 +142,16 @@ const NoteBackupSchema = z.object({
   updatedAt: z.string(),
 });
 
+const FilterPresetBackupSchema = z.object({
+  _id: z.string(),
+  name: z.string().min(1).max(50),
+  context: z.enum(["overview", "kanban"]),
+  filters: z.record(z.string(), z.union([z.string(), z.array(z.string())])),
+  order: z.number(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
 const BackupSchema = z.object({
   metadata: MetadataSchema,
   categories: z.array(CategoryBackupSchema),
@@ -148,6 +159,7 @@ const BackupSchema = z.object({
   projects: z.array(ProjectBackupSchema),
   tasks: z.array(TaskBackupSchema),
   notes: z.array(NoteBackupSchema),
+  filterPresets: z.array(FilterPresetBackupSchema).optional().default([]),
   notificationPreference: NotificationPreferenceBackupSchema.nullable(),
 });
 
@@ -172,13 +184,14 @@ export async function GET() {
 
   const userId = session.user.id;
 
-  const [categories, labels, projects, tasks, notes, notifPref] =
+  const [categories, labels, projects, tasks, notes, filterPresets, notifPref] =
     await Promise.all([
       Category.find({ userId }).lean(),
       Label.find({ userId }).lean(),
       Project.find({ userId }).lean(),
       Task.find({ userId }).lean(),
       Note.find({ userId }).lean(),
+      FilterPreset.find({ userId }).lean(),
       NotificationPreference.findOne({ userId }).lean(),
     ]);
 
@@ -217,6 +230,9 @@ export async function GET() {
     notes: notes.map((n) =>
       stripFields(n as unknown as Record<string, unknown>, fieldsToStrip),
     ),
+    filterPresets: filterPresets.map((fp) =>
+      stripFields(fp as unknown as Record<string, unknown>, fieldsToStrip),
+    ),
     notificationPreference: notifPref
       ? stripFields(
           notifPref as unknown as Record<string, unknown>,
@@ -254,13 +270,14 @@ export async function POST(request: Request) {
   const data = result.data;
 
   // Collect existing document IDs before insertion (read-only — no data modified)
-  const [oldLabels, oldCategories, oldProjects, oldTasks, oldNotes] =
+  const [oldLabels, oldCategories, oldProjects, oldTasks, oldNotes, oldFilterPresets] =
     await Promise.all([
       Label.find({ userId }, { _id: 1 }).lean(),
       Category.find({ userId }, { _id: 1 }).lean(),
       Project.find({ userId }, { _id: 1 }).lean(),
       Task.find({ userId }, { _id: 1 }).lean(),
       Note.find({ userId }, { _id: 1 }).lean(),
+      FilterPreset.find({ userId }, { _id: 1 }).lean(),
     ]);
 
   // Labels have a unique compound index on {userId, name} — must delete old
@@ -406,6 +423,21 @@ export async function POST(request: Request) {
     }),
   );
 
+  if (data.filterPresets.length > 0) {
+    await FilterPreset.insertMany(
+      data.filterPresets.map((fp) => ({
+        _id: new mongoose.Types.ObjectId(),
+        name: fp.name,
+        userId,
+        context: fp.context,
+        filters: fp.filters,
+        order: fp.order,
+        createdAt: new Date(fp.createdAt),
+        updatedAt: new Date(fp.updatedAt),
+      })),
+    );
+  }
+
   // All inserts succeeded — safe to clean up old data
   // Handle NotificationPreference first (unique index on userId)
   await NotificationPreference.deleteMany({ userId });
@@ -433,6 +465,7 @@ export async function POST(request: Request) {
     Project.deleteMany({ _id: { $in: oldProjects.map((d) => d._id) } }),
     Task.deleteMany({ _id: { $in: oldTasks.map((d) => d._id) } }),
     Note.deleteMany({ _id: { $in: oldNotes.map((d) => d._id) } }),
+    FilterPreset.deleteMany({ _id: { $in: oldFilterPresets.map((d) => d._id) } }),
   ]);
 
   return NextResponse.json({
@@ -443,6 +476,7 @@ export async function POST(request: Request) {
       projects: data.projects.length,
       tasks: data.tasks.length,
       notes: data.notes.length,
+      filterPresets: data.filterPresets.length,
       notificationPreference: !!data.notificationPreference,
     },
   });

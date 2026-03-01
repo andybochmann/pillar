@@ -14,6 +14,7 @@ import { PushSubscription } from "@/models/push-subscription";
 import { Notification } from "@/models/notification";
 import { NotificationPreference } from "@/models/notification-preference";
 import { Account } from "@/models/account";
+import { FilterPreset } from "@/models/filter-preset";
 
 const UpdateProfileSchema = z.object({
   name: z.string().min(1).max(100).optional(),
@@ -111,6 +112,7 @@ export async function DELETE() {
       Notification.deleteMany({ userId: session.user.id }),
       NotificationPreference.deleteMany({ userId: session.user.id }),
       Account.deleteMany({ userId: session.user.id }),
+      FilterPreset.deleteMany({ userId: session.user.id }),
     ]);
 
     return NextResponse.json({ message: "Account deleted" });

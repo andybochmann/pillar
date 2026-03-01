@@ -136,6 +136,7 @@ describe("/api/settings/backup", () => {
       expect(body.projects).toHaveLength(1);
       expect(body.tasks).toHaveLength(1);
       expect(body.notes).toHaveLength(1);
+      expect(body.filterPresets).toHaveLength(0);
       expect(body.notificationPreference).not.toBeNull();
     });
 
@@ -199,6 +200,7 @@ describe("/api/settings/backup", () => {
       expect(body.projects).toEqual([]);
       expect(body.tasks).toEqual([]);
       expect(body.notes).toEqual([]);
+      expect(body.filterPresets).toEqual([]);
       expect(body.notificationPreference).toBeNull();
     });
 
@@ -736,6 +738,7 @@ describe("/api/settings/backup", () => {
         projects: 0,
         tasks: 0,
         notes: 0,
+        filterPresets: 0,
         notificationPreference: false,
       });
     });
@@ -753,6 +756,7 @@ describe("/api/settings/backup", () => {
         projects: 0,
         tasks: 0,
         notes: 0,
+        filterPresets: 0,
         notificationPreference: false,
       });
     });
@@ -1069,6 +1073,7 @@ describe("/api/settings/backup", () => {
         projects: 1,
         tasks: 1,
         notes: 1,
+        filterPresets: 0,
         notificationPreference: true,
       });
 

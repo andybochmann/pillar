@@ -99,6 +99,23 @@ export function Sidebar({ onNavigate }: SidebarProps) {
     fetchAllNotes();
   }, [pathname, refreshCategories, refreshProjects, refreshCounts, showArchived, fetchAllNotes]);
 
+  // Listen for global shortcut to open create project dialog
+  useEffect(() => {
+    function handleOpenCreateProject() {
+      setProjectDialogCategoryId(undefined);
+      setShowProjectDialog(true);
+    }
+    document.addEventListener(
+      "pillar:open-create-project",
+      handleOpenCreateProject,
+    );
+    return () =>
+      document.removeEventListener(
+        "pillar:open-create-project",
+        handleOpenCreateProject,
+      );
+  }, []);
+
   const ownedProjects = projects.filter(
     (p) => !p.currentUserRole || p.currentUserRole === "owner",
   );

@@ -198,6 +198,19 @@ export interface Note {
   updatedAt: string;
 }
 
+export type FilterPresetContext = "overview" | "kanban";
+
+export interface FilterPreset {
+  _id: string;
+  name: string;
+  context: FilterPresetContext;
+  filters: Record<string, string | string[]>;
+  userId: string;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PushSubscriptionRecord {
   _id: string;
   userId: string;

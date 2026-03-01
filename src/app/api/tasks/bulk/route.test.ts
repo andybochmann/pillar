@@ -18,6 +18,7 @@ import {
   createTestProject,
   createTestTask,
   createTestProjectMember,
+  createTestLabel,
 } from "@/test/helpers";
 import { PATCH, DELETE } from "./route";
 
@@ -291,6 +292,277 @@ describe("PATCH /api/tasks/bulk", () => {
     // Other user's task still exists (not accessible)
     const otherCount = await Task.countDocuments({ _id: otherTask._id });
     expect(otherCount).toBe(1);
+  });
+
+  it("bulk sets due date on tasks", async () => {
+    await seedTasks();
+
+    const dueDate = "2026-04-15T00:00:00.000Z";
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [task1Id, task2Id],
+        action: "set-due-date",
+        dueDate,
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+
+    const { Task } = await import("@/models/task");
+    const tasks = await Task.find({ _id: { $in: [task1Id, task2Id] } });
+    expect(tasks.every((t) => t.dueDate?.toISOString() === dueDate)).toBe(true);
+  });
+
+  it("returns 400 when set-due-date action missing dueDate", async () => {
+    await seedTasks();
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({ taskIds: [task1Id], action: "set-due-date" }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(400);
+  });
+
+  it("bulk assigns tasks to a project member", async () => {
+    const user = await createTestUser({ email: "owner@test.com" });
+    const userId = user._id as mongoose.Types.ObjectId;
+    session.user.id = userId.toString();
+
+    const assignee = await createTestUser({ email: "assignee@test.com" });
+    const assigneeId = assignee._id as mongoose.Types.ObjectId;
+
+    const cat = await createTestCategory({ userId });
+    const project = await createTestProject({
+      userId,
+      categoryId: cat._id as mongoose.Types.ObjectId,
+    });
+    const projectOid = project._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({
+      projectId: projectOid,
+      userId,
+      role: "owner",
+      invitedBy: userId,
+    });
+    await createTestProjectMember({
+      projectId: projectOid,
+      userId: assigneeId,
+      role: "editor",
+      invitedBy: userId,
+    });
+
+    const t1 = await createTestTask({
+      projectId: projectOid,
+      userId,
+      columnId: "todo",
+      title: "Assign task 1",
+    });
+    const t2 = await createTestTask({
+      projectId: projectOid,
+      userId,
+      columnId: "todo",
+      title: "Assign task 2",
+    });
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [t1._id.toString(), t2._id.toString()],
+        action: "assign",
+        assigneeId: assigneeId.toString(),
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+
+    const { Task } = await import("@/models/task");
+    const tasks = await Task.find({
+      _id: { $in: [t1._id, t2._id] },
+    });
+    expect(
+      tasks.every((t) => t.assigneeId?.toString() === assigneeId.toString()),
+    ).toBe(true);
+  });
+
+  it("bulk unassigns tasks when assigneeId is null", async () => {
+    const user = await createTestUser({ email: "owner2@test.com" });
+    const userId = user._id as mongoose.Types.ObjectId;
+    session.user.id = userId.toString();
+
+    const assignee = await createTestUser({ email: "assigned2@test.com" });
+    const assigneeId = assignee._id as mongoose.Types.ObjectId;
+
+    const cat = await createTestCategory({ userId });
+    const project = await createTestProject({
+      userId,
+      categoryId: cat._id as mongoose.Types.ObjectId,
+    });
+    const projectOid = project._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({
+      projectId: projectOid,
+      userId,
+      role: "owner",
+      invitedBy: userId,
+    });
+    await createTestProjectMember({
+      projectId: projectOid,
+      userId: assigneeId,
+      role: "editor",
+      invitedBy: userId,
+    });
+
+    const t1 = await createTestTask({
+      projectId: projectOid,
+      userId,
+      columnId: "todo",
+      title: "Unassign task",
+      assigneeId,
+    });
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [t1._id.toString()],
+        action: "assign",
+        assigneeId: null,
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+
+    const { Task } = await import("@/models/task");
+    const task = await Task.findById(t1._id);
+    expect(task!.assigneeId).toBeUndefined();
+  });
+
+  it("returns 400 when assigning to a non-member of the project", async () => {
+    const user = await createTestUser({ email: "owner3@test.com" });
+    const userId = user._id as mongoose.Types.ObjectId;
+    session.user.id = userId.toString();
+
+    const nonMember = await createTestUser({ email: "nonmember@test.com" });
+    const nonMemberId = nonMember._id as mongoose.Types.ObjectId;
+
+    const cat = await createTestCategory({ userId });
+    const project = await createTestProject({
+      userId,
+      categoryId: cat._id as mongoose.Types.ObjectId,
+    });
+    const projectOid = project._id as mongoose.Types.ObjectId;
+    await createTestProjectMember({
+      projectId: projectOid,
+      userId,
+      role: "owner",
+      invitedBy: userId,
+    });
+
+    const t1 = await createTestTask({
+      projectId: projectOid,
+      userId,
+      columnId: "todo",
+      title: "Non-member assign test",
+    });
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [t1._id.toString()],
+        action: "assign",
+        assigneeId: nonMemberId.toString(),
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toContain("not a member");
+  });
+
+  it("returns 400 when assign action missing assigneeId field", async () => {
+    await seedTasks();
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({ taskIds: [task1Id], action: "assign" }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(400);
+  });
+
+  it("bulk adds label to tasks using $addToSet", async () => {
+    await seedTasks();
+
+    const { Label } = await import("@/models/label");
+    const label = await createTestLabel({
+      userId: new mongoose.Types.ObjectId(session.user.id),
+      name: "Bug",
+      color: "#ef4444",
+    });
+    const labelId = (label._id as mongoose.Types.ObjectId).toString();
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [task1Id, task2Id],
+        action: "add-label",
+        labelId,
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+
+    const { Task } = await import("@/models/task");
+    const tasks = await Task.find({ _id: { $in: [task1Id, task2Id] } });
+    for (const t of tasks) {
+      expect(t.labels.map((l) => l.toString())).toContain(labelId);
+    }
+  });
+
+  it("add-label does not duplicate labels already present", async () => {
+    await seedTasks();
+
+    const label = await createTestLabel({
+      userId: new mongoose.Types.ObjectId(session.user.id),
+      name: "Feature",
+      color: "#22c55e",
+    });
+    const labelId = (label._id as mongoose.Types.ObjectId).toString();
+
+    // Pre-assign label to task1
+    const { Task } = await import("@/models/task");
+    await Task.findByIdAndUpdate(task1Id, {
+      $addToSet: { labels: label._id },
+    });
+
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({
+        taskIds: [task1Id, task2Id],
+        action: "add-label",
+        labelId,
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(200);
+
+    // task1 should still have exactly one instance of the label
+    const task1 = await Task.findById(task1Id);
+    const matchingLabels = task1!.labels.filter(
+      (l) => l.toString() === labelId,
+    );
+    expect(matchingLabels).toHaveLength(1);
+
+    // task2 should now have the label
+    const task2 = await Task.findById(task2Id);
+    expect(task2!.labels.map((l) => l.toString())).toContain(labelId);
+  });
+
+  it("returns 400 when add-label action missing labelId", async () => {
+    await seedTasks();
+    const req = new NextRequest("http://localhost/api/tasks/bulk", {
+      method: "PATCH",
+      body: JSON.stringify({ taskIds: [task1Id], action: "add-label" }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(400);
   });
 
   it("cascade-deletes notes when bulk-deleting tasks via PATCH", async () => {

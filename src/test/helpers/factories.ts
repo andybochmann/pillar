@@ -19,6 +19,11 @@ import {
 } from "@/models/push-subscription";
 import { Account, type IAccount } from "@/models/account";
 import { Note, type INote, type NoteParentType } from "@/models/note";
+import {
+  FilterPreset,
+  type IFilterPreset,
+  type FilterPresetContext,
+} from "@/models/filter-preset";
 import { hash } from "bcryptjs";
 import { generateToken, hashToken } from "@/lib/mcp-auth";
 
@@ -258,6 +263,26 @@ export async function createTestNote(
     taskId: overrides.taskId,
     userId: overrides.userId,
     pinned: overrides.pinned ?? false,
+    order: overrides.order ?? 0,
+  });
+}
+
+interface CreateFilterPresetInput {
+  name?: string;
+  userId: mongoose.Types.ObjectId;
+  context?: FilterPresetContext;
+  filters?: Record<string, string | string[]>;
+  order?: number;
+}
+
+export async function createTestFilterPreset(
+  overrides: CreateFilterPresetInput,
+): Promise<IFilterPreset> {
+  return FilterPreset.create({
+    name: overrides.name ?? "Test Preset",
+    userId: overrides.userId,
+    context: overrides.context ?? "overview",
+    filters: overrides.filters ?? {},
     order: overrides.order ?? 0,
   });
 }

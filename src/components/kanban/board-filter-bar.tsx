@@ -1,11 +1,13 @@
 "use client";
 
+import { useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { FilterPresetSelector } from "@/components/filters/filter-preset-selector";
 import type { Label, Priority } from "@/types";
 
 export interface BoardFilters {
@@ -48,6 +50,30 @@ export function BoardFilterBar({
     filters.priorities.length +
     filters.labels.length +
     (filters.dueDateRange ? 1 : 0);
+
+  const currentFiltersFlat = useMemo(() => {
+    const flat: Record<string, string | string[]> = {};
+    if (filters.priorities.length > 0) flat.priorities = filters.priorities;
+    if (filters.labels.length > 0) flat.labels = filters.labels;
+    if (filters.dueDateRange) flat.dueDateRange = filters.dueDateRange;
+    return flat;
+  }, [filters]);
+
+  const applyPreset = useCallback(
+    (preset: Record<string, string | string[]>) => {
+      const priorities = Array.isArray(preset.priorities)
+        ? (preset.priorities as Priority[])
+        : [];
+      const labels = Array.isArray(preset.labels)
+        ? preset.labels
+        : [];
+      const dueDateRange = (typeof preset.dueDateRange === "string"
+        ? preset.dueDateRange
+        : null) as BoardFilters["dueDateRange"];
+      onChange({ priorities, labels, dueDateRange });
+    },
+    [onChange],
+  );
 
   function togglePriority(p: Priority) {
     const next = filters.priorities.includes(p)
@@ -156,6 +182,12 @@ export function BoardFilterBar({
           </div>
         </PopoverContent>
       </Popover>
+
+      <FilterPresetSelector
+        context="kanban"
+        currentFilters={currentFiltersFlat}
+        onApply={applyPreset}
+      />
 
       {activeCount > 0 && (
         <Button variant="ghost" size="sm" onClick={clearAll}>

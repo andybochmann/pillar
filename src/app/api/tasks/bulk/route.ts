@@ -4,14 +4,26 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { ProjectMember } from "@/models/project-member";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 import { emitSyncEvent } from "@/lib/event-bus";
 
 const BulkUpdateSchema = z.object({
-  taskIds: z.array(z.string().min(1)).min(1, "At least one task ID required"),
-  action: z.enum(["move", "priority", "delete", "archive"]),
+  taskIds: z.array(z.string().min(1)).min(1, "At least one task ID required").max(500),
+  action: z.enum([
+    "move",
+    "priority",
+    "delete",
+    "archive",
+    "set-due-date",
+    "assign",
+    "add-label",
+  ]),
   columnId: z.string().min(1).optional(),
   priority: z.enum(["urgent", "high", "medium", "low"]).optional(),
+  dueDate: z.string().datetime().optional(),
+  assigneeId: z.string().nullable().optional(),
+  labelId: z.string().min(1).optional(),
 });
 
 export async function PATCH(request: Request) {
@@ -33,7 +45,8 @@ export async function PATCH(request: Request) {
 
     await connectDB();
 
-    const { taskIds, action, columnId, priority } = result.data;
+    const { taskIds, action, columnId, priority, dueDate, assigneeId, labelId } =
+      result.data;
 
     // Verify all tasks exist and user has access
     const tasks = await Task.find({ _id: { $in: taskIds } }, { projectId: 1 });
@@ -93,6 +106,47 @@ export async function PATCH(request: Request) {
       await Task.updateMany(filter, {
         $set: { archived: true, archivedAt: new Date() },
       });
+    } else if (action === "set-due-date") {
+      if (!dueDate) {
+        return NextResponse.json(
+          { error: "dueDate required for set-due-date action" },
+          { status: 400 },
+        );
+      }
+      await Task.updateMany(filter, { $set: { dueDate: new Date(dueDate) } });
+    } else if (action === "assign") {
+      if (assigneeId === undefined) {
+        return NextResponse.json(
+          { error: "assigneeId required for assign action" },
+          { status: 400 },
+        );
+      }
+      if (assigneeId === null) {
+        await Task.updateMany(filter, { $unset: { assigneeId: "" } });
+      } else {
+        // Validate assignee is a member of all affected projects
+        for (const pid of accessibleProjectIds) {
+          const isMember = await ProjectMember.findOne({
+            projectId: pid,
+            userId: assigneeId,
+          });
+          if (!isMember) {
+            return NextResponse.json(
+              { error: "Assignee is not a member of the project" },
+              { status: 400 },
+            );
+          }
+        }
+        await Task.updateMany(filter, { $set: { assigneeId } });
+      }
+    } else if (action === "add-label") {
+      if (!labelId) {
+        return NextResponse.json(
+          { error: "labelId required for add-label action" },
+          { status: 400 },
+        );
+      }
+      await Task.updateMany(filter, { $addToSet: { labels: labelId } });
     }
 
     // Emit sync events for affected projects

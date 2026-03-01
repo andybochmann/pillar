@@ -60,6 +60,9 @@ export default async function globalSetup() {
     await db.collection("notes").deleteMany({ categoryId: { $in: categoryIds } });
     await db.collection("categories").deleteMany({ _id: { $in: categoryIds } });
 
+    // Also clean up E2E filter presets
+    await db.collection("filterpresets").deleteMany({ userId });
+
     console.log(
       `[global-setup] Cleaned up ${oldCategories.length} E2E categories (${projectIds.length} projects)`,
     );

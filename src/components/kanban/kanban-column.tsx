@@ -7,19 +7,25 @@ import { Button } from "@/components/ui/button";
 import { TaskCard } from "./task-card";
 import { TaskForm } from "@/components/tasks/task-form";
 import { cn } from "@/lib/utils";
-import type { Task, Column, Priority } from "@/types";
+import type { ContextAction } from "./task-card";
+import type { Task, Column, Priority, Label as LabelType } from "@/types";
 
 interface KanbanColumnProps {
   column: Column;
+  columns: Column[];
   tasks: Task[];
   onAddTask: (title: string) => Promise<void>;
   onTaskClick: (task: Task) => void;
   onPriorityChange?: (taskId: string, priority: Priority) => void;
+  onTitleSave?: (taskId: string, title: string) => Promise<void>;
+  onDueDateChange?: (taskId: string, dueDate: string | null) => Promise<void>;
+  onContextAction?: (taskId: string, action: ContextAction) => Promise<void>;
+  allLabels?: LabelType[];
   labelColors?: Map<string, string>;
   labelNames?: Map<string, string>;
   memberNames?: Map<string, string>;
   selectedIds?: Set<string>;
-  onSelect?: (taskId: string) => void;
+  onSelect?: (taskId: string, shiftKey?: boolean) => void;
   showForm?: boolean;
   onFormOpenChange?: (open: boolean) => void;
   readOnly?: boolean;
@@ -30,14 +36,20 @@ interface KanbanColumnProps {
   isLastColumn?: boolean;
   onArchiveAll?: () => void;
   onArchive?: (taskId: string) => void;
+  focusedTaskId?: string | null;
 }
 
 export function KanbanColumn({
   column,
+  columns,
   tasks,
   onAddTask,
   onTaskClick,
   onPriorityChange,
+  onTitleSave,
+  onDueDateChange,
+  onContextAction,
+  allLabels,
   labelColors,
   labelNames,
   memberNames,
@@ -53,6 +65,7 @@ export function KanbanColumn({
   isLastColumn,
   onArchiveAll,
   onArchive,
+  focusedTaskId,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [localShowForm, setLocalShowForm] = useState(false);
@@ -115,6 +128,11 @@ export function KanbanColumn({
             task={task}
             onClick={() => onTaskClick(task)}
             onPriorityChange={onPriorityChange}
+            onTitleSave={onTitleSave}
+            onDueDateChange={onDueDateChange}
+            onContextAction={onContextAction}
+            columns={columns}
+            allLabels={allLabels}
             labelColors={labelColors}
             labelNames={labelNames}
             memberNames={memberNames}
@@ -126,6 +144,7 @@ export function KanbanColumn({
             onSubtaskToggle={onSubtaskToggle}
             isLastColumn={isLastColumn}
             onArchive={onArchive}
+            focused={focusedTaskId === task._id}
           />
         ))}
         {tasks.length === 0 && !showForm && (
