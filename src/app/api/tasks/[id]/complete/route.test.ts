@@ -267,6 +267,31 @@ describe("POST /api/tasks/[id]/complete", () => {
     expect(dbTask!.completedAt).toBeDefined();
   });
 
+  it("clears reminderAt when completing a task with a reminder", async () => {
+    await setupFixtures();
+    const reminderAt = new Date(Date.now() + 60 * 60_000); // 1 hour from now
+    const task = await createTestTask({
+      projectId,
+      userId,
+      columnId: "todo",
+      title: "Task with reminder",
+      reminderAt,
+    });
+
+    // Verify reminderAt is set before completing
+    const beforeTask = await Task.findById(task._id);
+    expect(beforeTask!.reminderAt).toBeDefined();
+
+    const { request, params } = createRequest(task._id.toString());
+    const res = await POST(request, { params });
+    expect(res.status).toBe(200);
+
+    // Verify reminderAt is cleared in DB
+    const dbTask = await Task.findById(task._id);
+    expect(dbTask!.completedAt).toBeDefined();
+    expect(dbTask!.reminderAt).toBeUndefined();
+  });
+
   it("works when project has no columns (edge case)", async () => {
     const user = await createTestUser({ email: "nocolumns@example.com" });
     const uId = user._id as mongoose.Types.ObjectId;

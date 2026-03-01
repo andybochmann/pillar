@@ -80,10 +80,14 @@ async function loadPreferencesMap(
   return map;
 }
 
-/** Push actions for single-task notifications (reminder/overdue). */
+/**
+ * Push actions for single-task notifications (reminder/overdue).
+ * "complete" is placed last because Android Chrome may resolve all action
+ * buttons to the last action string — this ensures the primary action works.
+ */
 const TASK_PUSH_ACTIONS = [
-  { action: "complete", title: "Mark Complete" },
   { action: "snooze", title: "Snooze 1 Day" },
+  { action: "complete", title: "Mark Complete" },
 ];
 
 /**
@@ -126,6 +130,7 @@ function emitNotification(
       ...(isSingleTask && {
         actions: TASK_PUSH_ACTIONS,
         notificationType,
+        primaryAction: "complete",
       }),
     }).catch((err) => {
       console.error(

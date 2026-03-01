@@ -84,10 +84,11 @@ describe("notification-worker push actions", () => {
     expect(payload.actions).toBeDefined();
     expect(payload.actions).toHaveLength(2);
     expect(payload.actions).toEqual([
-      { action: "complete", title: "Mark Complete" },
       { action: "snooze", title: "Snooze 1 Day" },
+      { action: "complete", title: "Mark Complete" },
     ]);
     expect(payload.notificationType).toBe("reminder");
+    expect(payload.primaryAction).toBe("complete");
   });
 
   it("includes actions in push payload for overdue notifications", async () => {
@@ -121,10 +122,11 @@ describe("notification-worker push actions", () => {
     );
     expect(overduePayload).toBeDefined();
     expect(overduePayload!.payload.actions).toEqual([
-      { action: "complete", title: "Mark Complete" },
       { action: "snooze", title: "Snooze 1 Day" },
+      { action: "complete", title: "Mark Complete" },
     ]);
     expect(overduePayload!.payload.notificationType).toBe("overdue");
+    expect(overduePayload!.payload.primaryAction).toBe("complete");
   });
 
   it("does NOT include actions for daily summary notifications", async () => {

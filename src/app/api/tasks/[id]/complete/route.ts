@@ -75,6 +75,7 @@ export async function POST(request: Request, { params }: RouteParams) {
       id,
       {
         ...updateOps,
+        $unset: { reminderAt: 1 },
         $push: {
           statusHistory: {
             columnId: doneColumn?.id || task.columnId,

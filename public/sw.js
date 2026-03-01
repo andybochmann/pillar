@@ -144,6 +144,7 @@ function buildNotificationOptions(data) {
       taskId: data.taskId,
       notificationId: data.notificationId,
       url: data.url || "/",
+      primaryAction: data.primaryAction || null,
     },
     requireInteraction: data.requireInteraction || false,
     actions: data.actions || [],
@@ -320,10 +321,23 @@ function handleActionError(action, taskId, error, url) {
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  const { taskId, notificationId, url } = event.notification.data || {};
+  const { taskId, notificationId, url, primaryAction } = event.notification.data || {};
+
+  // Resolve the action: use event.action if recognized, else fall back
+  // to primaryAction. Handles Android Chrome bugs where event.action
+  // may be empty or unrecognized for certain action buttons.
+  const knownActions = ["complete", "snooze"];
+  const action = knownActions.includes(event.action)
+    ? event.action
+    : (primaryAction || "");
+
+  console.log(
+    "[SW] notificationclick: raw=%s resolved=%s taskId=%s",
+    event.action, action, taskId,
+  );
 
   // Handle "Mark Complete" action button
-  if (event.action === "complete" && taskId) {
+  if (action === "complete" && taskId) {
     event.waitUntil(
       fetch(`/api/tasks/${taskId}/complete`, {
         method: "POST",
@@ -346,7 +360,7 @@ self.addEventListener("notificationclick", (event) => {
   }
 
   // Handle "Snooze 1 Day" action button
-  if (event.action === "snooze" && taskId) {
+  if (action === "snooze" && taskId) {
     event.waitUntil(
       fetch(`/api/tasks/${taskId}/snooze`, {
         method: "POST",
@@ -373,6 +387,6 @@ self.addEventListener("notificationclick", (event) => {
     return;
   }
 
-  // Default: navigate to the URL (existing behavior)
+  // Default: navigate to the URL
   event.waitUntil(openApp(url || "/"));
 });
