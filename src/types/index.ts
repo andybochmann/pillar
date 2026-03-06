@@ -99,7 +99,7 @@ export interface Task {
   assigneeName?: string;
   columnId: string;
   priority: Priority;
-  dueDate?: string;
+  dueDate?: string | null;
   recurrence?: Recurrence;
   order: number;
   labels: string[];
