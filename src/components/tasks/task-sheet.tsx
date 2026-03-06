@@ -276,7 +276,7 @@ function TaskSheetForm({
   function handleDueDateChange(value: string) {
     setDueDate(value);
     saveField({
-      dueDate: value ? new Date(value + "T00:00:00Z").toISOString() : undefined,
+      dueDate: value ? new Date(value + "T00:00:00Z").toISOString() : null,
     });
   }
 

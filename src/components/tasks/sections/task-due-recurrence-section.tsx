@@ -26,6 +26,7 @@ export function TaskDueRecurrenceSection({
           id="task-due-date"
           value={dueDate}
           onChange={onDueDateChange}
+          clearable
         />
       </div>
 

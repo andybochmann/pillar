@@ -669,7 +669,7 @@ export function KanbanBoard({
 
   async function handleDueDateChange(taskId: string, dueDate: string | null) {
     try {
-      await updateTask(taskId, { dueDate: dueDate ?? undefined });
+      await updateTask(taskId, { dueDate: dueDate });
       toast.success(dueDate ? "Due date updated" : "Due date cleared");
     } catch (err) {
       toast.error((err as Error).message);
