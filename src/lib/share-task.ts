@@ -9,7 +9,7 @@ export function buildShareText(task: {
   title: string;
   description?: string;
   priority: Priority;
-  dueDate?: string;
+  dueDate?: string | null;
 }): string {
   const lines: string[] = [task.title];
   if (task.description) lines.push(task.description);
@@ -24,7 +24,7 @@ export async function shareTask(task: {
   title: string;
   description?: string;
   priority: Priority;
-  dueDate?: string;
+  dueDate?: string | null;
 }): Promise<boolean> {
   if (!canShareTasks()) return false;
   try {

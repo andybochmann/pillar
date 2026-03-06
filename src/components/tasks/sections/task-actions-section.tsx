@@ -28,7 +28,7 @@ interface TaskActionsSectionProps {
   taskTitle: string;
   taskDescription?: string;
   taskPriority: Priority;
-  taskDueDate?: string;
+  taskDueDate?: string | null;
   completedAt: string | null;
   onUpdate: (data: { completedAt: string | null }) => Promise<unknown>;
   onDelete: (taskId: string) => Promise<void>;

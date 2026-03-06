@@ -27,7 +27,7 @@ const priorityDotColors = {
   low: "bg-gray-400",
 };
 
-function getDueDateDisplay(dueDateStr?: string) {
+function getDueDateDisplay(dueDateStr?: string | null) {
   if (!dueDateStr) return null;
   const dueDate = toLocalDate(dueDateStr);
   const overdue = isPast(dueDate) && !isToday(dueDate);

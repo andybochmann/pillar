@@ -110,7 +110,7 @@ const priorityConfig = {
   low: { label: "Low", className: "bg-gray-400 text-white hover:bg-gray-500" },
 };
 
-function getDueDateStyle(dueDateStr?: string) {
+function getDueDateStyle(dueDateStr?: string | null) {
   if (!dueDateStr) return null;
   const dueDate = toLocalDate(dueDateStr);
   if (isPast(dueDate) && !isToday(dueDate))
