@@ -54,18 +54,20 @@ export async function POST(request: Request, { params }: RouteParams) {
     const userId = session.user.id;
 
     if (result.data.action === "start") {
-      const updated = await Task.findByIdAndUpdate(
-        id,
+      const updated = await Task.findOneAndUpdate(
         {
-          $push: {
-            timeSessions: { startedAt: new Date(), userId },
-          },
+          _id: id,
+          timeSessions: { $not: { $elemMatch: { userId, endedAt: null } } },
         },
+        { $push: { timeSessions: { startedAt: new Date(), userId } } },
         { returnDocument: "after" },
       );
 
       if (!updated) {
-        return NextResponse.json({ error: "Task not found" }, { status: 404 });
+        return NextResponse.json(
+          { error: "A timer is already running for this task" },
+          { status: 409 },
+        );
       }
       await emitTaskSync(updated, userId, sessionId);
       return NextResponse.json(updated);

@@ -30,7 +30,10 @@ export async function GET(request: Request): Promise<Response> {
         }
       }
 
+      let cleaned = false;
       function cleanup() {
+        if (cleaned) return;
+        cleaned = true;
         syncEventBus.off("sync", onSync);
         syncEventBus.off("notification", onNotification);
         clearInterval(heartbeat);

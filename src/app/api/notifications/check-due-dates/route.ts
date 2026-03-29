@@ -11,10 +11,11 @@ export async function POST() {
   try {
     const result = await processNotifications(session.user.id);
     return NextResponse.json({
-      notificationsCreated: result.reminders + result.overdue + result.dailySummaries,
+      notificationsCreated: result.reminders + result.overdue + result.dailySummaries + result.overdueDigests,
       reminders: result.reminders,
       overdue: result.overdue,
       dailySummaries: result.dailySummaries,
+      overdueDigests: result.overdueDigests,
     });
   } catch {
     return NextResponse.json(

@@ -260,19 +260,27 @@ export function KanbanBoard({
         return [...otherTasks, ...updates];
       });
 
-      // Persist reorder
-      try {
-        const res = await fetch("/api/tasks/reorder", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            tasks: updates.map((t) => ({ id: t._id, order: t.order })),
-          }),
-        });
-        if (!res.ok) throw new Error("Failed to reorder");
-      } catch {
-        const res = await fetch(`/api/tasks?projectId=${projectId}`);
-        if (res.ok) setTasks(await res.json());
+      // Persist reorder — when cross-column, exclude the moved task from the
+      // reorder call because updateTask below will handle it (avoids two
+      // concurrent writes targeting the same task).
+      const reorderTasks = isCrossColumnMove
+        ? updates.filter((t) => t._id !== activeId)
+        : updates;
+
+      if (reorderTasks.length > 0) {
+        try {
+          const res = await fetch("/api/tasks/reorder", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              tasks: reorderTasks.map((t) => ({ id: t._id, order: t.order })),
+            }),
+          });
+          if (!res.ok) throw new Error("Failed to reorder");
+        } catch {
+          const res = await fetch(`/api/tasks?projectId=${projectId}`);
+          if (res.ok) setTasks(await res.json());
+        }
       }
     }
 
@@ -282,7 +290,7 @@ export function KanbanBoard({
         columnId: task.columnId,
       };
 
-      // If we didn't reorder above, also compute correct order for the new column
+      // Compute correct order for the moved task in the new column
       if (!needsReorder) {
         const destinationTasks = columnTasks.filter((t) => t._id !== activeId);
         updateData.order = destinationTasks.length;
@@ -727,7 +735,7 @@ export function KanbanBoard({
         case "reopen": {
           const firstCol = sortedColumns[0];
           if (!firstCol) return;
-          await updateTask(taskId, { columnId: firstCol.id, completedAt: undefined });
+          await updateTask(taskId, { columnId: firstCol.id, completedAt: null });
           toast.success(`Reopened to ${firstCol.name}`);
           break;
         }

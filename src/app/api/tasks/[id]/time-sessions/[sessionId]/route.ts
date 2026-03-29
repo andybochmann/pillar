@@ -35,13 +35,19 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
-    const sessionExists = task.timeSessions.some(
+    const sessionToDelete = task.timeSessions.find(
       (s) => s._id.toString() === sessionId,
     );
-    if (!sessionExists) {
+    if (!sessionToDelete) {
       return NextResponse.json(
         { error: "Time session not found" },
         { status: 404 },
+      );
+    }
+    if (sessionToDelete.userId.toString() !== session.user.id) {
+      return NextResponse.json(
+        { error: "Cannot delete another user's time session" },
+        { status: 403 },
       );
     }
 

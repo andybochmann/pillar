@@ -25,14 +25,15 @@ export async function validateBearerToken(
   await connectDB();
 
   const token = await AccessToken.findOneAndUpdate(
-    { tokenHash: hash },
+    {
+      tokenHash: hash,
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+    },
     { $set: { lastUsedAt: new Date() } },
     { returnDocument: "after" },
   );
 
   if (!token) return null;
-
-  if (token.expiresAt && token.expiresAt < new Date()) return null;
 
   return token.userId.toString();
 }

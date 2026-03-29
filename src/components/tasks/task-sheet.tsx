@@ -179,6 +179,52 @@ function TaskSheetForm({
   const pendingSaveRef = useRef<(() => Promise<void>) | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
 
+  // Sync local state when task prop changes from external updates (e.g. real-time sync)
+  const prevLabelsRef = useRef(task.labels);
+  const prevSubtasksRef = useRef(task.subtasks);
+  useEffect(() => {
+    setColumnId(task.columnId);
+    setPriority(task.priority);
+    setAssigneeId(task.assigneeId ?? null);
+    setDueDate(task.dueDate ? task.dueDate.slice(0, 10) : "");
+    setReminderAt(() => {
+      if (!task.reminderAt) return "";
+      const d = new Date(task.reminderAt);
+      const pad = (n: number) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    });
+    setRecurrence({
+      frequency: task.recurrence?.frequency ?? "none",
+      interval: task.recurrence?.interval ?? 1,
+      endDate: task.recurrence?.endDate,
+    });
+
+    const labelsKey = JSON.stringify(task.labels);
+    const prevLabelsKey = JSON.stringify(prevLabelsRef.current);
+    if (labelsKey !== prevLabelsKey) {
+      setLabels(task.labels);
+      prevLabelsRef.current = task.labels;
+    }
+
+    const subtasksKey = JSON.stringify(task.subtasks);
+    const prevSubtasksKey = JSON.stringify(prevSubtasksRef.current);
+    if (subtasksKey !== prevSubtasksKey) {
+      setSubtasks(task.subtasks ?? []);
+      prevSubtasksRef.current = task.subtasks;
+    }
+  }, [
+    task.columnId,
+    task.priority,
+    task.assigneeId,
+    task.dueDate,
+    task.reminderAt,
+    task.recurrence?.frequency,
+    task.recurrence?.interval,
+    task.recurrence?.endDate,
+    task.labels,
+    task.subtasks,
+  ]);
+
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);

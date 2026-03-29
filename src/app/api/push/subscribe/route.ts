@@ -34,14 +34,21 @@ export async function POST(request: Request) {
 
   await connectDB();
 
-  // Upsert by endpoint — transfers ownership if a different user re-subscribes
+  // Remove any other user's claim on this endpoint (shared device scenario)
+  await PushSubscription.deleteOne({
+    endpoint: result.data.endpoint,
+    userId: { $ne: session.user.id },
+  });
+
+  // Upsert scoped to this user
   const sub = await PushSubscription.findOneAndUpdate(
-    { endpoint: result.data.endpoint },
+    { endpoint: result.data.endpoint, userId: session.user.id },
     {
-      userId: session.user.id,
-      endpoint: result.data.endpoint,
-      keys: result.data.keys,
-      userAgent: result.data.userAgent,
+      $set: {
+        endpoint: result.data.endpoint,
+        keys: result.data.keys,
+        userAgent: result.data.userAgent,
+      },
     },
     { upsert: true, returnDocument: "after" },
   );

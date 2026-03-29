@@ -156,8 +156,8 @@ self.addEventListener("push", (event) => {
   const title = data.title || "Pillar Notification";
 
   const tasks = [self.registration.showNotification(title, buildNotificationOptions(data))];
-  if (data.overdueCount !== undefined) {
-    tasks.push(self.navigator.setAppBadge(data.overdueCount));
+  if (data.overdueCount !== undefined && 'setAppBadge' in navigator) {
+    tasks.push(navigator.setAppBadge(data.overdueCount));
   }
 
   event.waitUntil(Promise.all(tasks));
@@ -171,7 +171,9 @@ self.addEventListener("message", (event) => {
 
   if (event.data?.type === "UPDATE_BADGE") {
     const count = event.data.count || 0;
-    count > 0 ? self.navigator.setAppBadge(count) : self.navigator.clearAppBadge();
+    if ('setAppBadge' in navigator) {
+      count > 0 ? navigator.setAppBadge(count) : navigator.clearAppBadge();
+    }
   }
 
   if (event.data?.type === "CLEAR_AUTH_CACHE") {
@@ -231,10 +233,10 @@ async function replayOfflineQueue() {
     return;
   }
 
-  const sessionId = crypto.randomUUID();
   let hadFailure = false;
 
   for (const mutation of mutations) {
+    const sessionId = mutation.sessionId || crypto.randomUUID();
     const ok = await replayOneMutation(mutation, sessionId, 3, 1000);
     if (ok) {
       await deleteMutation(db, mutation.id);

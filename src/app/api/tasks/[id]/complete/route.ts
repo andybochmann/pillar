@@ -129,7 +129,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           const taskCount = await Task.countDocuments({
             projectId: task.projectId,
             columnId: firstColumn.id,
-            userId: session.user.id,
+            userId: task.userId,
           });
 
           const newTask = await Task.create({

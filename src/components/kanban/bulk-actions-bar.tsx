@@ -51,6 +51,8 @@ export function BulkActionsBar({
   onBulkAddLabel,
 }: BulkActionsBarProps) {
   const [loading, setLoading] = useState(false);
+  const [moveValue, setMoveValue] = useState<string>("");
+  const [priorityValue, setPriorityValue] = useState<string>("");
   const [dateOpen, setDateOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
@@ -80,7 +82,11 @@ export function BulkActionsBar({
       </span>
 
       <Select
-        onValueChange={(val) => handleAction(() => onBulkMove(val))}
+        value={moveValue}
+        onValueChange={(val) => {
+          handleAction(() => onBulkMove(val));
+          setMoveValue("");
+        }}
         disabled={loading}
       >
         <SelectTrigger className="w-36" aria-label="Move to column">
@@ -96,9 +102,11 @@ export function BulkActionsBar({
       </Select>
 
       <Select
-        onValueChange={(val) =>
-          handleAction(() => onBulkPriority(val as Priority))
-        }
+        value={priorityValue}
+        onValueChange={(val) => {
+          handleAction(() => onBulkPriority(val as Priority));
+          setPriorityValue("");
+        }}
         disabled={loading}
       >
         <SelectTrigger className="w-36" aria-label="Set priority">

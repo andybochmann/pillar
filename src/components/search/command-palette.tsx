@@ -173,7 +173,7 @@ export function CommandPalette() {
     if (note.parentType === "task" && note.projectId && note.taskId) {
       router.push(`/projects/${note.projectId}?taskId=${note.taskId}`);
     } else if (note.parentType === "project" && note.projectId) {
-      router.push(`/projects/${note.projectId}`);
+      router.push(`/projects/${note.projectId}/notes`);
     } else if (note.parentType === "category" && note.categoryId) {
       router.push(`/categories/${note.categoryId}/notes`);
     }

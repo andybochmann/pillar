@@ -164,19 +164,36 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     const shouldPushHistory =
       result.data.columnId && existingTask.columnId !== result.data.columnId;
 
+    // When dueDate is updated but reminderAt wasn't explicitly set,
+    // unset reminderAt atomically so the SSE event has the correct state
+    const shouldUnsetReminder =
+      result.data.dueDate !== undefined &&
+      result.data.dueDate !== null &&
+      result.data.reminderAt === undefined;
+
+    if (shouldUnsetReminder) {
+      delete updateData.reminderAt;
+    }
+
+    const updateOp: Record<string, unknown> = shouldPushHistory
+      ? {
+          ...updateData,
+          $push: {
+            statusHistory: {
+              columnId: result.data.columnId,
+              timestamp: new Date(),
+            },
+          },
+        }
+      : { ...updateData };
+
+    if (shouldUnsetReminder) {
+      updateOp.$unset = { reminderAt: 1 };
+    }
+
     const task = await Task.findByIdAndUpdate(
       id,
-      shouldPushHistory
-        ? {
-            ...updateData,
-            $push: {
-              statusHistory: {
-                columnId: result.data.columnId,
-                timestamp: new Date(),
-              },
-            },
-          }
-        : updateData,
+      updateOp,
       { returnDocument: "after" },
     );
 
@@ -186,13 +203,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     // Auto-schedule reminder when dueDate is updated and reminderAt wasn't
     // explicitly set in this request
-    if (
-      result.data.dueDate !== undefined &&
-      result.data.dueDate !== null &&
-      result.data.reminderAt === undefined
-    ) {
-      // Clear existing reminderAt so scheduleNextReminder can set a new one
-      await Task.updateOne({ _id: id }, { $unset: { reminderAt: 1 } });
+    if (shouldUnsetReminder) {
       scheduleNextReminder(id).catch((err) => {
         console.error(`[tasks/PATCH] Failed to schedule reminder for task ${id}:`, err);
       });
@@ -237,7 +248,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           const taskCount = await Task.countDocuments({
             projectId: task.projectId,
             columnId: firstColumn.id,
-            userId: session.user.id,
+            userId: task.userId,
           });
 
           const newTask = await Task.create({

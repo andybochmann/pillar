@@ -33,7 +33,7 @@ export async function offlineFetch(input: string | URL | Request, init?: Request
   }
 
   const body = init?.body ? JSON.parse(init.body as string) : undefined;
-  await addToQueue({ method: method as "POST" | "PATCH" | "DELETE", url, body });
+  await addToQueue({ method: method as "POST" | "PATCH" | "DELETE", url, body, sessionId: getSessionId() });
   requestBackgroundSync();
 
   const syntheticBody = method === "DELETE" ? {} : { ...body, _id: `offline-${crypto.randomUUID()}` };

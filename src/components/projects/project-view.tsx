@@ -229,7 +229,7 @@ export function ProjectView({
 
       <ProjectSettings
         project={currentProject}
-        tasks={initialTasks}
+        tasks={liveTasks}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         onUpdate={handleUpdate}

@@ -121,7 +121,7 @@ describe("POST /api/ai/generate-subtasks", () => {
 
     expect(generateObject).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: expect.stringContaining("2"),
+        system: expect.stringContaining("2"),
       }),
     );
   });

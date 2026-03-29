@@ -280,11 +280,11 @@ export async function POST(request: Request) {
       FilterPreset.find({ userId }, { _id: 1 }).lean(),
     ]);
 
-  // Labels have a unique compound index on {userId, name} — must delete old
-  // labels before inserting new ones to avoid duplicate key conflicts.
-  await Label.deleteMany({ _id: { $in: oldLabels.map((d) => d._id) } });
-
   // Insert new data with fresh ObjectIds (no conflicts with existing data)
+  // Labels have a unique compound index on {userId, name} — insert with a
+  // temporary prefix to avoid conflicts, then rename after old labels are
+  // cleaned up in the final batch.
+  const LABEL_TEMP_PREFIX = `__restore_${Date.now()}_`;
   const labelMap = new Map<string, mongoose.Types.ObjectId>();
   await Label.insertMany(
     data.labels.map((l) => {
@@ -292,7 +292,7 @@ export async function POST(request: Request) {
       labelMap.set(l._id, newId);
       return {
         _id: newId,
-        name: l.name,
+        name: LABEL_TEMP_PREFIX + l.name,
         color: l.color,
         userId,
         createdAt: new Date(l.createdAt),
@@ -321,15 +321,17 @@ export async function POST(request: Request) {
   );
 
   const projectMap = new Map<string, mongoose.Types.ObjectId>();
-  await Project.insertMany(
-    data.projects.map((p) => {
+  const mappedProjects = data.projects
+    .map((p) => {
+      const mappedCategoryId = categoryMap.get(p.categoryId);
+      if (!mappedCategoryId) return null; // skip projects with unmapped categoryIds
       const newId = new mongoose.Types.ObjectId();
       projectMap.set(p._id, newId);
       return {
         _id: newId,
         name: p.name,
         description: p.description,
-        categoryId: categoryMap.get(p.categoryId) ?? p.categoryId,
+        categoryId: mappedCategoryId,
         userId,
         columns: p.columns,
         viewType: p.viewType ?? "board",
@@ -337,19 +339,24 @@ export async function POST(request: Request) {
         createdAt: new Date(p.createdAt),
         updatedAt: new Date(p.updatedAt),
       };
-    }),
-  );
+    })
+    .filter((p): p is NonNullable<typeof p> => p != null);
+  if (mappedProjects.length > 0) {
+    await Project.insertMany(mappedProjects);
+  }
 
   const taskMap = new Map<string, mongoose.Types.ObjectId>();
-  await Task.insertMany(
-    data.tasks.map((t) => {
+  const mappedTasks = data.tasks
+    .map((t) => {
+      const mappedProjectId = projectMap.get(t.projectId);
+      if (!mappedProjectId) return null; // skip tasks with unmapped projectIds
       const newId = new mongoose.Types.ObjectId();
       taskMap.set(t._id, newId);
       return {
         _id: newId,
         title: t.title,
         description: t.description,
-        projectId: projectMap.get(t.projectId) ?? t.projectId,
+        projectId: mappedProjectId,
         userId,
         columnId: t.columnId,
         priority: t.priority,
@@ -364,7 +371,9 @@ export async function POST(request: Request) {
             }
           : undefined,
         order: t.order,
-        labels: t.labels.map((lid) => labelMap.get(lid) ?? lid),
+        labels: t.labels
+          .map((lid) => labelMap.get(lid))
+          .filter((id): id is mongoose.Types.ObjectId => id != null),
         subtasks: t.subtasks,
         timeSessions: t.timeSessions.map((ts) => ({
           startedAt: new Date(ts.startedAt),
@@ -382,11 +391,14 @@ export async function POST(request: Request) {
         createdAt: new Date(t.createdAt),
         updatedAt: new Date(t.updatedAt),
       };
-    }),
-  );
+    })
+    .filter((t): t is NonNullable<typeof t> => t != null);
+  if (mappedTasks.length > 0) {
+    await Task.insertMany(mappedTasks);
+  }
 
-  await Note.insertMany(
-    data.notes.map((n) => {
+  const mappedNotes = data.notes
+    .map((n) => {
       const newId = new mongoose.Types.ObjectId();
       const doc: Record<string, unknown> = {
         _id: newId,
@@ -401,27 +413,38 @@ export async function POST(request: Request) {
       };
       switch (n.parentType) {
         case "category":
-          doc.categoryId = n.categoryId
-            ? (categoryMap.get(n.categoryId) ?? n.categoryId)
-            : undefined;
+          if (n.categoryId) {
+            const mapped = categoryMap.get(n.categoryId);
+            if (!mapped) return null; // skip notes with unmapped categoryId
+            doc.categoryId = mapped;
+          }
           break;
         case "project":
-          doc.projectId = n.projectId
-            ? (projectMap.get(n.projectId) ?? n.projectId)
-            : undefined;
+          if (n.projectId) {
+            const mapped = projectMap.get(n.projectId);
+            if (!mapped) return null; // skip notes with unmapped projectId
+            doc.projectId = mapped;
+          }
           break;
         case "task":
-          doc.projectId = n.projectId
-            ? (projectMap.get(n.projectId) ?? n.projectId)
-            : undefined;
-          doc.taskId = n.taskId
-            ? (taskMap.get(n.taskId) ?? n.taskId)
-            : undefined;
+          if (n.projectId) {
+            const mapped = projectMap.get(n.projectId);
+            if (!mapped) return null; // skip notes with unmapped projectId
+            doc.projectId = mapped;
+          }
+          if (n.taskId) {
+            const mapped = taskMap.get(n.taskId);
+            if (!mapped) return null; // skip notes with unmapped taskId
+            doc.taskId = mapped;
+          }
           break;
       }
       return doc;
-    }),
-  );
+    })
+    .filter((n): n is NonNullable<typeof n> => n != null);
+  if (mappedNotes.length > 0) {
+    await Note.insertMany(mappedNotes);
+  }
 
   if (data.filterPresets.length > 0) {
     await FilterPreset.insertMany(
@@ -438,8 +461,7 @@ export async function POST(request: Request) {
     );
   }
 
-  // All inserts succeeded — safe to clean up old data
-  // Handle NotificationPreference first (unique index on userId)
+  // Handle NotificationPreference (unique index on userId — delete before re-create)
   await NotificationPreference.deleteMany({ userId });
   if (data.notificationPreference) {
     const np = data.notificationPreference;
@@ -459,14 +481,27 @@ export async function POST(request: Request) {
     });
   }
 
-  // Delete old documents by their collected IDs (labels already deleted above)
+  // All inserts succeeded — safe to clean up old data (including labels)
   await Promise.all([
+    Label.deleteMany({ _id: { $in: oldLabels.map((d) => d._id) } }),
     Category.deleteMany({ _id: { $in: oldCategories.map((d) => d._id) } }),
     Project.deleteMany({ _id: { $in: oldProjects.map((d) => d._id) } }),
     Task.deleteMany({ _id: { $in: oldTasks.map((d) => d._id) } }),
     Note.deleteMany({ _id: { $in: oldNotes.map((d) => d._id) } }),
     FilterPreset.deleteMany({ _id: { $in: oldFilterPresets.map((d) => d._id) } }),
   ]);
+
+  // Remove temporary prefix from restored label names now that old labels
+  // (which could conflict on the {userId, name} unique index) are deleted.
+  if (data.labels.length > 0) {
+    await Promise.all(
+      data.labels.map((l) => {
+        const newId = labelMap.get(l._id);
+        if (!newId) return Promise.resolve();
+        return Label.updateOne({ _id: newId }, { $set: { name: l.name } });
+      }),
+    );
+  }
 
   return NextResponse.json({
     success: true,

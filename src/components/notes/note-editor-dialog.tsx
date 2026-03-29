@@ -82,8 +82,16 @@ export function NoteEditorDialog({
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      // Flush any pending changes on unmount
+      if (note && onUpdate) {
+        const pending = { ...pendingRef.current };
+        pendingRef.current = {};
+        if (Object.keys(pending).length > 0) {
+          onUpdate(note._id, pending).catch(() => {});
+        }
+      }
     };
-  }, []);
+  }, [note, onUpdate]);
 
   function handleTitleChange(value: string) {
     setTitle(value);

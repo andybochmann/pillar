@@ -95,18 +95,44 @@ export async function DELETE() {
   await connectDB();
 
   try {
+    // Collect the user's owned project IDs so we can cascade-delete
+    // collaborators' tasks, notes, and membership records for those projects.
+    const userProjects = await Project.find(
+      { userId: session.user.id },
+      { _id: 1 },
+    ).lean();
+    const projectIds = userProjects.map((p) => p._id);
+
     const deleted = await User.findByIdAndDelete(session.user.id);
     if (!deleted) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     await Promise.all([
-      Task.deleteMany({ userId: session.user.id }),
+      // Delete tasks owned by user OR belonging to user's projects (collaborator tasks)
+      Task.deleteMany({
+        $or: [
+          { userId: session.user.id },
+          { projectId: { $in: projectIds } },
+        ],
+      }),
       Project.deleteMany({ userId: session.user.id }),
       Category.deleteMany({ userId: session.user.id }),
       Label.deleteMany({ userId: session.user.id }),
-      Note.deleteMany({ userId: session.user.id }),
-      ProjectMember.deleteMany({ userId: session.user.id }),
+      // Delete notes owned by user OR belonging to user's projects
+      Note.deleteMany({
+        $or: [
+          { userId: session.user.id },
+          { projectId: { $in: projectIds } },
+        ],
+      }),
+      // Delete membership records for user OR for user's projects (other members)
+      ProjectMember.deleteMany({
+        $or: [
+          { userId: session.user.id },
+          { projectId: { $in: projectIds } },
+        ],
+      }),
       AccessToken.deleteMany({ userId: session.user.id }),
       PushSubscription.deleteMany({ userId: session.user.id }),
       Notification.deleteMany({ userId: session.user.id }),

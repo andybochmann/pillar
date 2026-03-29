@@ -51,6 +51,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       );
     }
 
+    if (member.role === "owner") {
+      return NextResponse.json(
+        { error: "Cannot change the role of a project owner" },
+        { status: 400 },
+      );
+    }
+
     member.role = result.data.role;
     await member.save();
 

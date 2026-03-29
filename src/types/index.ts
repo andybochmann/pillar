@@ -136,6 +136,7 @@ export interface QueuedMutation {
   url: string;
   body?: unknown;
   timestamp: number;
+  sessionId?: string;
 }
 
 export interface TaskCounts {

@@ -5,6 +5,7 @@ import { emitSyncEvent } from "@/lib/event-bus";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { ProjectMember } from "@/models/project-member";
+import { Category } from "@/models/category";
 import {
   getAccessibleProjectIds,
   getProjectRole,
@@ -85,6 +86,12 @@ export function registerProjectTools(server: McpServer) {
     },
     async ({ name, categoryId, description, viewType }) => {
       const userId = getMcpUserId();
+
+      if (categoryId) {
+        const category = await Category.findOne({ _id: categoryId, userId });
+        if (!category) return errorResponse("Category not found");
+      }
+
       const project = await Project.create({
         name,
         categoryId,
