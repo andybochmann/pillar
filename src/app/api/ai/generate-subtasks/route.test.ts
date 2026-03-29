@@ -76,6 +76,34 @@ describe("POST /api/ai/generate-subtasks", () => {
     expect(res.status).toBe(400);
   });
 
+  it("returns 400 when title is longer than 200 characters", async () => {
+    const longTitle = "a".repeat(201);
+    const res = await POST(makeRequest({ title: longTitle }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when more than 50 existing subtasks are provided", async () => {
+    const existingSubtasks = Array.from({ length: 51 }, (_, i) => `Subtask ${i}`);
+    const res = await POST(makeRequest({ title: "Valid", existingSubtasks }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when description exceeds 2000 characters", async () => {
+    const longDescription = "x".repeat(2001);
+    const res = await POST(makeRequest({ title: "Valid", description: longDescription }));
+    expect(res.status).toBe(400);
+  });
+
+  it("returns 400 when an existing subtask title exceeds 200 characters", async () => {
+    const res = await POST(
+      makeRequest({
+        title: "Valid",
+        existingSubtasks: ["a".repeat(201)],
+      }),
+    );
+    expect(res.status).toBe(400);
+  });
+
   it("generates subtasks successfully", async () => {
     vi.mocked(generateObject).mockResolvedValueOnce({
       object: { subtasks: ["Write tests", "Implement feature", "Deploy"] },

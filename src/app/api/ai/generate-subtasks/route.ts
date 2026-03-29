@@ -5,10 +5,10 @@ import { auth } from "@/lib/auth";
 import { isAIEnabled, isAIAllowedForUser, getAIModel } from "@/lib/ai";
 
 const RequestSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
+  title: z.string().min(1, "Title is required").max(200),
+  description: z.string().max(2000).optional(),
   priority: z.string().optional(),
-  existingSubtasks: z.array(z.string()).optional(),
+  existingSubtasks: z.array(z.string().max(200)).max(50).optional(),
   maxCount: z.number().int().min(1).max(50).optional(),
   context: z.string().max(2000).optional(),
 });

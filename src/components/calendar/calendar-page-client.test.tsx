@@ -36,6 +36,10 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock("@/lib/offline-fetch", () => ({
+  offlineFetch: vi.fn(),
+}));
+
 // Mock hooks
 vi.mock("@/hooks/use-categories", () => ({
   useCategories: vi.fn(() => ({

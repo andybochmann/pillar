@@ -215,9 +215,17 @@ export function registerTaskTools(server: McpServer) {
         push.statusHistory = { columnId: updates.columnId, timestamp: new Date() };
       }
 
+      const shouldUnsetReminder =
+        updates.dueDate !== undefined &&
+        updates.dueDate !== null &&
+        updates.reminderAt === undefined;
+
       const updateOp: Record<string, unknown> = { $set: update };
       if (Object.keys(push).length > 0) {
         updateOp.$push = push;
+      }
+      if (shouldUnsetReminder) {
+        updateOp.$unset = { reminderAt: 1 };
       }
 
       const task = await Task.findByIdAndUpdate(taskId, updateOp, {
@@ -227,12 +235,7 @@ export function registerTaskTools(server: McpServer) {
       if (!task) return errorResponse("Task not found");
 
       // Auto-schedule reminder when dueDate changed but reminderAt not explicitly set
-      if (
-        updates.dueDate !== undefined &&
-        updates.dueDate !== null &&
-        updates.reminderAt === undefined
-      ) {
-        await Task.updateOne({ _id: taskId }, { $unset: { reminderAt: 1 } });
+      if (shouldUnsetReminder) {
         scheduleNextReminder(taskId).catch(() => {});
       }
 

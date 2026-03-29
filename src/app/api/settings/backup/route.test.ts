@@ -19,13 +19,16 @@ import {
   createTestTask,
   createTestLabel,
   createTestNote,
+  createTestProjectMember,
 } from "@/test/helpers";
 import { Category } from "@/models/category";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { Label } from "@/models/label";
 import { Note } from "@/models/note";
+import { ProjectMember } from "@/models/project-member";
 import { NotificationPreference } from "@/models/notification-preference";
+import { getAccessibleProjectIds } from "@/lib/project-access";
 
 const session = vi.hoisted(() => ({
   user: {
@@ -1031,6 +1034,175 @@ describe("/api/settings/backup", () => {
       const tasks = await Task.find({ userId: user._id });
       expect(tasks).toHaveLength(1);
       expect(tasks[0].title).toBe("Task with extras");
+    });
+
+    it("creates ProjectMember records for each restored project", async () => {
+      const user = await seedUser();
+      const oldCatId = new mongoose.Types.ObjectId().toString();
+      const oldProjId1 = new mongoose.Types.ObjectId().toString();
+      const oldProjId2 = new mongoose.Types.ObjectId().toString();
+      const backup = makeBackup({
+        categories: [
+          {
+            _id: oldCatId,
+            name: "Work",
+            color: "#6366f1",
+            order: 0,
+            collapsed: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        projects: [
+          {
+            _id: oldProjId1,
+            name: "Project A",
+            categoryId: oldCatId,
+            columns: [{ id: "todo", name: "To Do", order: 0 }],
+            viewType: "board",
+            archived: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+          {
+            _id: oldProjId2,
+            name: "Project B",
+            categoryId: oldCatId,
+            columns: [{ id: "todo", name: "To Do", order: 0 }],
+            viewType: "board",
+            archived: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const res = await POST(makeRequest(backup));
+      expect(res.status).toBe(200);
+
+      const projects = await Project.find({ userId: user._id });
+      expect(projects).toHaveLength(2);
+
+      const members = await ProjectMember.find({ userId: user._id });
+      expect(members).toHaveLength(2);
+
+      for (const project of projects) {
+        const member = members.find(
+          (m) => m.projectId.toString() === project._id.toString(),
+        );
+        expect(member).toBeDefined();
+        expect(member!.role).toBe("owner");
+        expect(member!.invitedBy.toString()).toBe(user._id.toString());
+      }
+    });
+
+    it("restored projects are accessible via getAccessibleProjectIds", async () => {
+      const user = await seedUser();
+      const oldCatId = new mongoose.Types.ObjectId().toString();
+      const backup = makeBackup({
+        categories: [
+          {
+            _id: oldCatId,
+            name: "Work",
+            color: "#6366f1",
+            order: 0,
+            collapsed: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        projects: [
+          {
+            _id: new mongoose.Types.ObjectId().toString(),
+            name: "Accessible Project",
+            categoryId: oldCatId,
+            columns: [{ id: "todo", name: "To Do", order: 0 }],
+            viewType: "board",
+            archived: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const res = await POST(makeRequest(backup));
+      expect(res.status).toBe(200);
+
+      const accessibleIds = await getAccessibleProjectIds(user._id.toString());
+      expect(accessibleIds).toHaveLength(1);
+
+      const projects = await Project.find({ userId: user._id });
+      expect(accessibleIds[0]).toBe(projects[0]._id.toString());
+    });
+
+    it("cleans up old ProjectMember records during restore", async () => {
+      const user = await seedUser();
+
+      // Create existing project with ProjectMember records
+      const existingCat = await createTestCategory({
+        userId: user._id,
+        name: "Old Cat",
+      });
+      const existingProject = await createTestProject({
+        categoryId: existingCat._id,
+        userId: user._id,
+        name: "Old Project",
+      });
+      await createTestProjectMember({
+        projectId: existingProject._id as mongoose.Types.ObjectId,
+        userId: user._id,
+        role: "owner",
+        invitedBy: user._id,
+      });
+
+      // Verify old ProjectMember exists
+      const oldMembers = await ProjectMember.find({ userId: user._id });
+      expect(oldMembers).toHaveLength(1);
+
+      // Import a backup with new data
+      const oldCatId = new mongoose.Types.ObjectId().toString();
+      const backup = makeBackup({
+        categories: [
+          {
+            _id: oldCatId,
+            name: "New Cat",
+            color: "#6366f1",
+            order: 0,
+            collapsed: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+        projects: [
+          {
+            _id: new mongoose.Types.ObjectId().toString(),
+            name: "New Project",
+            categoryId: oldCatId,
+            columns: [{ id: "todo", name: "To Do", order: 0 }],
+            viewType: "board",
+            archived: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          },
+        ],
+      });
+
+      const res = await POST(makeRequest(backup));
+      expect(res.status).toBe(200);
+
+      // Old ProjectMember for old project should be cleaned up
+      const remainingMembers = await ProjectMember.find({
+        projectId: existingProject._id,
+      });
+      expect(remainingMembers).toHaveLength(0);
+
+      // New project should have a new ProjectMember
+      const newProjects = await Project.find({ userId: user._id });
+      const newMembers = await ProjectMember.find({ userId: user._id });
+      expect(newMembers).toHaveLength(1);
+      expect(newMembers[0].projectId.toString()).toBe(
+        newProjects[0]._id.toString(),
+      );
     });
 
   });

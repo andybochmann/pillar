@@ -233,25 +233,36 @@ async function replayOfflineQueue() {
     return;
   }
 
-  let hadFailure = false;
+  let hadTransientFailure = false;
+  let permanentFailureCount = 0;
 
   for (const mutation of mutations) {
     const sessionId = mutation.sessionId || crypto.randomUUID();
-    const ok = await replayOneMutation(mutation, sessionId, 3, 1000);
-    if (ok) {
+    const result = await replayOneMutation(mutation, sessionId, 3, 1000);
+    if (result === "success") {
       await deleteMutation(db, mutation.id);
+    } else if (result === "permanent") {
+      // 4xx — not retryable; remove from queue so it doesn't replay forever
+      await deleteMutation(db, mutation.id);
+      permanentFailureCount++;
     } else {
-      hadFailure = true;
+      // "transient" — leave in queue for next sync attempt
+      hadTransientFailure = true;
     }
   }
 
   db.close();
 
   const allClients = await self.clients.matchAll({ type: "window" });
-  allClients.forEach((client) => client.postMessage({ type: "SYNC_COMPLETE" }));
+  allClients.forEach((client) =>
+    client.postMessage({
+      type: "SYNC_COMPLETE",
+      permanentFailures: permanentFailureCount,
+    }),
+  );
 
-  if (hadFailure) {
-    throw new Error("Some offline mutations failed to sync");
+  if (hadTransientFailure) {
+    throw new Error("Some offline mutations had transient failures — will retry");
   }
 }
 
@@ -268,8 +279,9 @@ async function replayOneMutation(mutation, sessionId, maxRetries, baseDelay) {
       if (mutation.body !== undefined) init.body = JSON.stringify(mutation.body);
 
       const res = await fetch(mutation.url, init);
-      if (res.ok) return true;
-      if (res.status >= 400 && res.status < 500) return false;
+      if (res.ok) return "success";
+      if (res.status >= 400 && res.status < 500) return "permanent";
+      // 5xx — fall through to retry
     } catch {
       // Network error — retry
     }
@@ -277,7 +289,7 @@ async function replayOneMutation(mutation, sessionId, maxRetries, baseDelay) {
       await new Promise((r) => setTimeout(r, baseDelay * 2 ** attempt));
     }
   }
-  return false;
+  return "transient";
 }
 
 /**

@@ -17,6 +17,8 @@ export async function GET(request: Request): Promise<Response> {
   const clientSessionId = searchParams.get("sessionId") ?? "";
   const userId = session.user.id;
 
+  let cleanupRef: (() => void) | null = null;
+
   const stream = new ReadableStream({
     start(controller) {
       const encoder = new TextEncoder();
@@ -43,6 +45,7 @@ export async function GET(request: Request): Promise<Response> {
           // already closed
         }
       }
+      cleanupRef = cleanup;
 
       function onSync(event: SyncEvent) {
         // Skip events from the same browser tab
@@ -68,6 +71,9 @@ export async function GET(request: Request): Promise<Response> {
       }, HEARTBEAT_INTERVAL_MS);
 
       request.signal.addEventListener("abort", cleanup);
+    },
+    cancel() {
+      cleanupRef?.();
     },
   });
 

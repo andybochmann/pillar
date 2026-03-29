@@ -19,7 +19,6 @@ import {
   createTestTask,
   createTestProjectMember,
 } from "@/test/helpers";
-import { GET, PATCH, DELETE } from "./route";
 
 const session = vi.hoisted(() => ({
   user: {
@@ -30,6 +29,8 @@ const session = vi.hoisted(() => ({
   expires: new Date(Date.now() + 86400000).toISOString(),
 }));
 
+const emitSyncEvent = vi.hoisted(() => vi.fn());
+
 vi.mock("@/lib/db", () => ({
   connectDB: vi.fn().mockResolvedValue(undefined),
 }));
@@ -37,6 +38,12 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/auth", () => ({
   auth: vi.fn(() => Promise.resolve(session)),
 }));
+
+vi.mock("@/lib/event-bus", () => ({
+  emitSyncEvent,
+}));
+
+import { GET, PATCH, DELETE } from "./route";
 
 describe("Projects [id] API", () => {
   let userId: mongoose.Types.ObjectId;
@@ -230,6 +237,215 @@ describe("Projects [id] API", () => {
       expect(res.status).toBe(200);
       const data = await res.json();
       expect(data.viewType).toBe("list");
+    });
+
+    it("rejects editor changing project name", async () => {
+      await setupFixtures();
+      const ownerUserId = userId;
+      const proj = await createTestProject({
+        name: "Owner Project",
+        userId: ownerUserId,
+        categoryId,
+      });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId: ownerUserId,
+        role: "owner",
+        invitedBy: ownerUserId,
+      });
+
+      // Create editor user
+      const editorUser = await createTestUser({ email: "editor@example.com" });
+      const editorUserId = editorUser._id as mongoose.Types.ObjectId;
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId: editorUserId,
+        role: "editor",
+        invitedBy: ownerUserId,
+      });
+
+      // Mock session as editor
+      session.user.id = editorUserId.toString();
+
+      const res = await PATCH(
+        new NextRequest(`http://localhost:3000/api/projects/${proj._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "Hacked Name" }),
+        }),
+        makeParams(proj._id.toString()),
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("rejects editor changing columns", async () => {
+      await setupFixtures();
+      const ownerUserId = userId;
+      const proj = await createTestProject({
+        name: "Owner Project",
+        userId: ownerUserId,
+        categoryId,
+        columns: [{ id: "todo", name: "Todo", order: 0 }],
+      });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId: ownerUserId,
+        role: "owner",
+        invitedBy: ownerUserId,
+      });
+
+      const editorUser = await createTestUser({ email: "editor2@example.com" });
+      const editorUserId = editorUser._id as mongoose.Types.ObjectId;
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId: editorUserId,
+        role: "editor",
+        invitedBy: ownerUserId,
+      });
+
+      session.user.id = editorUserId.toString();
+
+      const res = await PATCH(
+        new NextRequest(`http://localhost:3000/api/projects/${proj._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            columns: [
+              { id: "todo", name: "Todo", order: 0 },
+              { id: "hacked", name: "Hacked", order: 1 },
+            ],
+          }),
+        }),
+        makeParams(proj._id.toString()),
+      );
+      expect(res.status).toBe(403);
+    });
+
+    it("allows owner to change project settings", async () => {
+      await setupFixtures();
+      const proj = await createTestProject({
+        name: "Owner Project",
+        userId,
+        categoryId,
+      });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        role: "owner",
+        invitedBy: userId,
+      });
+
+      const res = await PATCH(
+        new NextRequest(`http://localhost:3000/api/projects/${proj._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: "Updated by Owner", description: "New desc" }),
+        }),
+        makeParams(proj._id.toString()),
+      );
+      expect(res.status).toBe(200);
+      const data = await res.json();
+      expect(data.name).toBe("Updated by Owner");
+      expect(data.description).toBe("New desc");
+    });
+
+    it("validates categoryId against project owner, not session user", async () => {
+      await setupFixtures();
+      const ownerUserId = userId;
+
+      // Create a category owned by the project owner
+      const ownerCategory = await createTestCategory({
+        userId: ownerUserId,
+        name: "Owner Category",
+      });
+
+      const proj = await createTestProject({
+        name: "Shared Project",
+        userId: ownerUserId,
+        categoryId,
+      });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId: ownerUserId,
+        role: "owner",
+        invitedBy: ownerUserId,
+      });
+
+      // Owner should be able to move project to their own category
+      const res = await PATCH(
+        new NextRequest(`http://localhost:3000/api/projects/${proj._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ categoryId: ownerCategory._id.toString() }),
+        }),
+        makeParams(proj._id.toString()),
+      );
+      expect(res.status).toBe(200);
+    });
+
+    it("emits sync events after task migration when columns change", async () => {
+      await setupFixtures();
+      const proj = await createTestProject({
+        name: "Sync Order Test",
+        userId,
+        categoryId,
+        columns: [
+          { id: "todo", name: "Todo", order: 0 },
+          { id: "in-progress", name: "In Progress", order: 1 },
+          { id: "done", name: "Done", order: 2 },
+        ],
+      });
+      await createTestProjectMember({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        role: "owner",
+        invitedBy: userId,
+      });
+
+      await createTestTask({
+        projectId: proj._id as mongoose.Types.ObjectId,
+        userId,
+        columnId: "in-progress",
+        title: "Orphan for sync test",
+      });
+
+      emitSyncEvent.mockClear();
+
+      const newColumns = [
+        { id: "todo", name: "Todo", order: 0 },
+        { id: "done", name: "Done", order: 1 },
+      ];
+
+      const res = await PATCH(
+        new NextRequest(`http://localhost:3000/api/projects/${proj._id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ columns: newColumns }),
+        }),
+        makeParams(proj._id.toString()),
+      );
+      expect(res.status).toBe(200);
+
+      // Verify task was migrated first
+      const { Task } = await import("@/models/task");
+      const task = await Task.findOne({ title: "Orphan for sync test" });
+      expect(task!.columnId).toBe("todo");
+
+      // emitSyncEvent should have been called for project update AND task reorder
+      expect(emitSyncEvent).toHaveBeenCalledTimes(2);
+
+      // First call should be for project update
+      expect(emitSyncEvent.mock.calls[0][0]).toMatchObject({
+        entity: "project",
+        action: "updated",
+      });
+
+      // Second call should be for task reorder (after migration)
+      expect(emitSyncEvent.mock.calls[1][0]).toMatchObject({
+        entity: "task",
+        action: "reordered",
+        projectId: proj._id.toString(),
+      });
     });
 
     it("reassigns orphaned tasks when column is removed", async () => {

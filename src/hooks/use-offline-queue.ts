@@ -95,9 +95,17 @@ export function useOfflineQueue() {
     }
   }, [refreshCount]);
 
-  // Auto-sync when coming back online
+  // Auto-sync when coming back online.
+  // If Background Sync is supported, the service worker handles replay via
+  // the "sync" event — no need to also replay from the app layer. Only run
+  // app-level sync as a fallback for browsers without Background Sync.
   useEffect(() => {
     if (isOnline && queueCount > 0 && !syncingRef.current) {
+      const hasBgSync = "serviceWorker" in navigator && "SyncManager" in window;
+      if (hasBgSync) {
+        // Let the service worker handle it via Background Sync
+        return;
+      }
       syncNow();
     }
   }, [isOnline, queueCount, syncNow]);

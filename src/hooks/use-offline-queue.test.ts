@@ -147,6 +147,109 @@ describe("useOfflineQueue", () => {
     });
   });
 
+  it("defers to Background Sync when SyncManager is available (Bug #5)", async () => {
+    // Simulate a browser with Background Sync support
+    Object.defineProperty(window, "SyncManager", {
+      value: class {},
+      writable: true,
+      configurable: true,
+    });
+    Object.defineProperty(navigator, "serviceWorker", {
+      value: {
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      },
+      writable: true,
+      configurable: true,
+    });
+
+    Object.defineProperty(navigator, "onLine", {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
+
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "queued" },
+    });
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+
+    const { result } = renderHook(() => useOfflineQueue());
+
+    await waitFor(() => {
+      expect(result.current.queueCount).toBe(1);
+    });
+
+    // Go back online — with SyncManager available, app-level sync should NOT fire
+    await act(async () => {
+      Object.defineProperty(navigator, "onLine", {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
+      window.dispatchEvent(new Event("online"));
+    });
+
+    // Give it time to potentially fire
+    await new Promise((r) => setTimeout(r, 50));
+
+    // fetch should NOT have been called — Background Sync handles it
+    expect(fetchSpy).not.toHaveBeenCalled();
+    // Queue count should still be 1 (not replayed by app)
+    expect(result.current.queueCount).toBe(1);
+
+    // Clean up
+    delete (window as Record<string, unknown>).SyncManager;
+  });
+
+  it("runs app-level sync when SyncManager is NOT available (Bug #5)", async () => {
+    // Ensure SyncManager is NOT available
+    delete (window as Record<string, unknown>).SyncManager;
+
+    Object.defineProperty(navigator, "onLine", {
+      value: false,
+      writable: true,
+      configurable: true,
+    });
+
+    await addToQueue({
+      method: "POST",
+      url: "/api/tasks",
+      body: { title: "queued" },
+    });
+
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({}), { status: 200 }),
+    );
+
+    const { result } = renderHook(() => useOfflineQueue());
+
+    await waitFor(() => {
+      expect(result.current.queueCount).toBe(1);
+    });
+
+    // Go back online — without SyncManager, app-level sync SHOULD fire
+    await act(async () => {
+      Object.defineProperty(navigator, "onLine", {
+        value: true,
+        writable: true,
+        configurable: true,
+      });
+      window.dispatchEvent(new Event("online"));
+    });
+
+    await waitFor(() => {
+      expect(result.current.queueCount).toBe(0);
+    });
+
+    expect(fetchSpy).toHaveBeenCalled();
+  });
+
   it("dispatches pillar:sync-complete after successful sync", async () => {
     Object.defineProperty(navigator, "onLine", {
       value: true,

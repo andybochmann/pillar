@@ -6,6 +6,7 @@ import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { ProjectMember } from "@/models/project-member";
 import { Category } from "@/models/category";
+import { Note } from "@/models/note";
 import {
   getAccessibleProjectIds,
   getProjectRole,
@@ -200,6 +201,7 @@ export function registerProjectTools(server: McpServer) {
         Project.findByIdAndDelete(projectId),
         Task.deleteMany({ projectId }),
         ProjectMember.deleteMany({ projectId }),
+        Note.deleteMany({ projectId }),
       ]);
 
       emitSyncEvent({

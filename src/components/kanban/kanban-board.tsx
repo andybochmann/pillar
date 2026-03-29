@@ -10,6 +10,7 @@ import {
   type DragStartEvent,
   type DragEndEvent,
   type DragOverEvent,
+  type DragCancelEvent,
   MouseSensor,
   TouchSensor,
   KeyboardSensor,
@@ -49,6 +50,7 @@ interface KanbanBoardProps {
   filters: BoardFilters;
   allLabels: Label[];
   onCreateLabel: (data: { name: string; color: string }) => Promise<void>;
+  openTaskId?: string | null;
 }
 
 export function KanbanBoard({
@@ -62,6 +64,7 @@ export function KanbanBoard({
   filters,
   allLabels,
   onCreateLabel,
+  openTaskId,
 }: KanbanBoardProps) {
   const { tasks, setTasks, createTask, updateTask, deleteTask, duplicateTask, archiveTask } =
     useTasks(initialTasks, projectId);
@@ -74,6 +77,17 @@ export function KanbanBoard({
   useEffect(() => {
     onTasksChange?.(tasks);
   }, [tasks, onTasksChange]);
+
+  // Auto-open task sheet when openTaskId is provided (e.g. from command palette)
+  useEffect(() => {
+    if (openTaskId) {
+      const task = tasks.find((t) => t._id === openTaskId);
+      if (task) {
+        setSelectedTask(task);
+        setSheetOpen(true);
+      }
+    }
+  }, [openTaskId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const {
     startTracking,
@@ -226,6 +240,13 @@ export function KanbanBoard({
 
     const { active, over } = event;
     if (!over) {
+      if (startColumn) {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t._id === (active.id as string) ? { ...t, columnId: startColumn } : t
+          )
+        );
+      }
       setDndAnnouncement("Task dropped");
       return;
     }
@@ -310,7 +331,10 @@ export function KanbanBoard({
       }
 
       try {
-        await updateTask(activeId, updateData);
+        const moved = await updateTask(activeId, updateData);
+        if (selectedTask?._id === activeId && moved) {
+          setSelectedTask(moved);
+        }
       } catch {
         const res = await fetch(`/api/tasks?projectId=${projectId}`);
         if (res.ok) setTasks(await res.json());
@@ -319,6 +343,22 @@ export function KanbanBoard({
       // Same column, same position — no-op (dropped in place)
       setDndAnnouncement("Task dropped");
     }
+  }
+
+  function handleDragCancel(event: DragCancelEvent) {
+    setActiveTask(null);
+    const startColumn = dragStartColumnRef.current;
+    dragStartColumnRef.current = null;
+
+    if (startColumn) {
+      const activeId = event.active.id as string;
+      setTasks((prev) =>
+        prev.map((t) =>
+          t._id === activeId ? { ...t, columnId: startColumn } : t
+        )
+      );
+    }
+    setDndAnnouncement("Task dropped");
   }
 
   async function handleAddTask(columnId: string, title: string) {
@@ -846,6 +886,7 @@ export function KanbanBoard({
         onDragStart={readOnly ? undefined : handleDragStart}
         onDragOver={readOnly ? undefined : handleDragOver}
         onDragEnd={readOnly ? undefined : handleDragEnd}
+        onDragCancel={readOnly ? undefined : handleDragCancel}
       >
         <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto pb-4">
           {sortedColumns.map((column) => (

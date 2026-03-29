@@ -7,6 +7,7 @@ import { Category } from "@/models/category";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { ProjectMember } from "@/models/project-member";
+import { Note } from "@/models/note";
 
 export function registerCategoryTools(server: McpServer) {
   server.tool(
@@ -150,6 +151,7 @@ export function registerCategoryTools(server: McpServer) {
         Task.deleteMany({ projectId: { $in: projectIds } }),
         ProjectMember.deleteMany({ projectId: { $in: projectIds } }),
         Project.deleteMany({ categoryId, userId }),
+        Note.deleteMany({ $or: [{ categoryId }, { projectId: { $in: projectIds } }] }),
       ]);
 
       emitSyncEvent({

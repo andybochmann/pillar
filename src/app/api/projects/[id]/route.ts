@@ -79,10 +79,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
 
     await connectDB();
 
-    // Archiving requires owner role; other edits require editor
-    const minimumRole = result.data.archived !== undefined ? "owner" : "editor";
+    // All project settings changes require owner role
     try {
-      await requireProjectRole(session.user.id, id, minimumRole);
+      await requireProjectRole(session.user.id, id, "owner");
     } catch (err) {
       const status = (err as Error & { status?: number }).status ?? 404;
       return NextResponse.json(
@@ -92,9 +91,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     if (result.data.categoryId) {
+      // Validate categoryId against the project owner's userId, not the
+      // session user (relevant for shared projects where the owner differs)
+      const project = await Project.findById(id, { userId: 1 });
       const category = await Category.findOne({
         _id: result.data.categoryId,
-        userId: session.user.id,
+        userId: project?.userId,
       });
       if (!category) {
         return NextResponse.json(
@@ -115,16 +117,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     const targetUserIds = await getProjectMemberUserIds(id);
-    emitSyncEvent({
-      entity: "project",
-      action: "updated",
-      userId: session.user.id,
-      sessionId: request.headers.get("X-Session-Id") ?? "",
-      entityId: id,
-      targetUserIds,
-      data: project.toJSON(),
-      timestamp: Date.now(),
-    });
+    const sessionId = request.headers.get("X-Session-Id") ?? "";
 
     if (result.data.columns) {
       const newColumnIds = result.data.columns.map((c) => c.id);
@@ -138,6 +131,30 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         },
         { $set: { columnId: firstColumnId } },
       );
+    }
+
+    emitSyncEvent({
+      entity: "project",
+      action: "updated",
+      userId: session.user.id,
+      sessionId,
+      entityId: id,
+      targetUserIds,
+      data: project.toJSON(),
+      timestamp: Date.now(),
+    });
+
+    if (result.data.columns) {
+      emitSyncEvent({
+        entity: "task",
+        action: "reordered",
+        userId: session.user.id,
+        sessionId,
+        entityId: "",
+        projectId: id,
+        targetUserIds,
+        timestamp: Date.now(),
+      });
     }
 
     return NextResponse.json(project);

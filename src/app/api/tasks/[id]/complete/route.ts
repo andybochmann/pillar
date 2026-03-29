@@ -71,18 +71,23 @@ export async function POST(request: Request, { params }: RouteParams) {
       updateOps.columnId = doneColumn.id;
     }
 
+    const updateDoc: Record<string, unknown> = {
+      ...updateOps,
+      $unset: { reminderAt: 1 },
+    };
+
+    if (doneColumn && task.columnId !== doneColumn.id) {
+      updateDoc.$push = {
+        statusHistory: {
+          columnId: doneColumn.id,
+          timestamp: now,
+        },
+      };
+    }
+
     const updatedTask = await Task.findByIdAndUpdate(
       id,
-      {
-        ...updateOps,
-        $unset: { reminderAt: 1 },
-        $push: {
-          statusHistory: {
-            columnId: doneColumn?.id || task.columnId,
-            timestamp: now,
-          },
-        },
-      },
+      updateDoc,
       { returnDocument: "after" },
     );
 

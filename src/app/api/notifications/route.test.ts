@@ -172,6 +172,7 @@ describe("GET /api/notifications", () => {
       type: "reminder",
       title: "Reminder 1",
       message: "Reminder message",
+      scheduledFor: new Date("2026-01-01T10:00:00Z"),
     });
 
     await Notification.create({
@@ -188,6 +189,7 @@ describe("GET /api/notifications", () => {
       type: "reminder",
       title: "Reminder 2",
       message: "Reminder message 2",
+      scheduledFor: new Date("2026-01-01T11:00:00Z"),
     });
 
     // Filter by single type — should return only the 1 overdue
@@ -242,7 +244,7 @@ describe("GET /api/notifications", () => {
     const project = await createTestProject({ userId: user._id, categoryId: category._id });
     const task = await createTestTask({ userId: user._id, projectId: project._id });
 
-    // Create 5 notifications
+    // Create 5 notifications with unique scheduledFor to satisfy compound index
     for (let i = 0; i < 5; i++) {
       await Notification.create({
         userId: user._id,
@@ -250,6 +252,7 @@ describe("GET /api/notifications", () => {
         type: "reminder",
         title: `Notification ${i}`,
         message: "Message",
+        scheduledFor: new Date(`2026-01-01T${10 + i}:00:00Z`),
       });
     }
 
@@ -286,6 +289,7 @@ describe("DELETE /api/notifications", () => {
       title: "Active 1",
       message: "Active notification 1",
       dismissed: false,
+      scheduledFor: new Date("2026-01-01T10:00:00Z"),
     });
 
     await Notification.create({
@@ -304,6 +308,7 @@ describe("DELETE /api/notifications", () => {
       title: "Already dismissed",
       message: "Already dismissed",
       dismissed: true,
+      scheduledFor: new Date("2026-01-01T11:00:00Z"),
     });
 
     const response = await DELETE();

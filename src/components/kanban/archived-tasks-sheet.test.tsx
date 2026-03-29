@@ -270,4 +270,37 @@ describe("ArchivedTasksSheet", () => {
     // Radix DropdownMenu uses data-disabled attribute
     expect(deleteSelected).toHaveAttribute("data-disabled");
   });
+
+  describe("readOnly mode", () => {
+    function renderReadOnlySheet() {
+      return render(
+        <ArchivedTasksSheet
+          projectId="proj-1"
+          open={true}
+          onOpenChange={vi.fn()}
+          readOnly
+        />,
+      );
+    }
+
+    it("hides restore and delete buttons when readOnly", () => {
+      renderReadOnlySheet();
+      expect(screen.getByText("Old archived task")).toBeInTheDocument();
+      expect(screen.getByText("Recent archived task")).toBeInTheDocument();
+
+      // No restore or delete buttons should be present
+      expect(screen.queryByRole("button", { name: /restore/i })).not.toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /delete.*permanently/i })).not.toBeInTheDocument();
+    });
+
+    it("hides checkboxes when readOnly", () => {
+      renderReadOnlySheet();
+      expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    });
+
+    it("hides bulk actions toolbar when readOnly", () => {
+      renderReadOnlySheet();
+      expect(screen.queryByRole("button", { name: /bulk actions/i })).not.toBeInTheDocument();
+    });
+  });
 });

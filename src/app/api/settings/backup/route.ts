@@ -9,6 +9,7 @@ import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
 import { FilterPreset } from "@/models/filter-preset";
+import { ProjectMember } from "@/models/project-member";
 import { NotificationPreference } from "@/models/notification-preference";
 
 const MetadataSchema = z.object({
@@ -343,6 +344,14 @@ export async function POST(request: Request) {
     .filter((p): p is NonNullable<typeof p> => p != null);
   if (mappedProjects.length > 0) {
     await Project.insertMany(mappedProjects);
+    await ProjectMember.insertMany(
+      mappedProjects.map((p) => ({
+        projectId: p._id,
+        userId,
+        role: "owner",
+        invitedBy: userId,
+      })),
+    );
   }
 
   const taskMap = new Map<string, mongoose.Types.ObjectId>();
@@ -482,13 +491,15 @@ export async function POST(request: Request) {
   }
 
   // All inserts succeeded — safe to clean up old data (including labels)
+  const oldProjectIds = oldProjects.map((d) => d._id);
   await Promise.all([
     Label.deleteMany({ _id: { $in: oldLabels.map((d) => d._id) } }),
     Category.deleteMany({ _id: { $in: oldCategories.map((d) => d._id) } }),
-    Project.deleteMany({ _id: { $in: oldProjects.map((d) => d._id) } }),
+    Project.deleteMany({ _id: { $in: oldProjectIds } }),
     Task.deleteMany({ _id: { $in: oldTasks.map((d) => d._id) } }),
     Note.deleteMany({ _id: { $in: oldNotes.map((d) => d._id) } }),
     FilterPreset.deleteMany({ _id: { $in: oldFilterPresets.map((d) => d._id) } }),
+    ProjectMember.deleteMany({ projectId: { $in: oldProjectIds } }),
   ]);
 
   // Remove temporary prefix from restored label names now that old labels

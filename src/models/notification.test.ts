@@ -305,6 +305,65 @@ describe("Notification Model", () => {
       );
       expect(hasScheduledIndex).toBe(true);
     });
+
+    it("should have unique compound index on taskId+userId+type+scheduledFor", async () => {
+      const indexes = Notification.schema.indexes();
+      const hasDedupIndex = indexes.some(
+        (idx) =>
+          JSON.stringify(idx[0]) ===
+            JSON.stringify({ taskId: 1, userId: 1, type: 1, scheduledFor: 1 }) &&
+          idx[1] &&
+          (idx[1] as Record<string, unknown>).unique === true &&
+          (idx[1] as Record<string, unknown>).sparse === true,
+      );
+      expect(hasDedupIndex).toBe(true);
+    });
+
+    it("should enforce unique constraint on taskId+userId+type+scheduledFor", async () => {
+      const scheduledFor = new Date("2025-01-15T10:00:00Z");
+
+      await Notification.create({
+        userId: testUserId,
+        taskId: testTaskId,
+        type: "reminder",
+        title: "First reminder",
+        message: "First message",
+        scheduledFor,
+      });
+
+      await expect(
+        Notification.create({
+          userId: testUserId,
+          taskId: testTaskId,
+          type: "reminder",
+          title: "Duplicate reminder",
+          message: "Duplicate message",
+          scheduledFor,
+        }),
+      ).rejects.toThrow();
+    });
+
+    it("should allow same task+user+type with different scheduledFor", async () => {
+      await Notification.create({
+        userId: testUserId,
+        taskId: testTaskId,
+        type: "reminder",
+        title: "Reminder 1",
+        message: "Message 1",
+        scheduledFor: new Date("2025-01-15T10:00:00Z"),
+      });
+
+      const second = await Notification.create({
+        userId: testUserId,
+        taskId: testTaskId,
+        type: "reminder",
+        title: "Reminder 2",
+        message: "Message 2",
+        scheduledFor: new Date("2025-01-16T10:00:00Z"),
+      });
+
+      expect(second).toBeDefined();
+    });
   });
 
   describe("Update Operations", () => {

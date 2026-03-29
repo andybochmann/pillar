@@ -292,6 +292,61 @@ describe("POST /api/tasks/[id]/complete", () => {
     expect(dbTask!.reminderAt).toBeUndefined();
   });
 
+  it("should not add statusHistory entry when task is already in done column", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      columnId: "done",
+      title: "Already done task",
+      statusHistory: [{ columnId: "done", timestamp: new Date("2026-03-01") }],
+    });
+
+    // Task is not completed yet, but is already in the done column
+    const { request, params } = createRequest(task._id.toString());
+    const res = await POST(request, { params });
+    expect(res.status).toBe(200);
+
+    const data = await res.json();
+    expect(data.completedAt).toBeDefined();
+    // statusHistory should NOT get a duplicate entry since task was already in done
+    expect(data.statusHistory).toHaveLength(1);
+    expect(data.statusHistory[0].columnId).toBe("done");
+
+    // Verify in DB
+    const dbTask = await Task.findById(task._id);
+    expect(dbTask!.statusHistory).toHaveLength(1);
+  });
+
+  it("should add statusHistory entry when task moves to done column", async () => {
+    await setupFixtures();
+    const task = await createTestTask({
+      projectId,
+      userId,
+      columnId: "in-progress",
+      title: "Moving to done",
+      statusHistory: [
+        { columnId: "todo", timestamp: new Date("2026-03-01") },
+        { columnId: "in-progress", timestamp: new Date("2026-03-02") },
+      ],
+    });
+
+    const { request, params } = createRequest(task._id.toString());
+    const res = await POST(request, { params });
+    expect(res.status).toBe(200);
+
+    const data = await res.json();
+    expect(data.completedAt).toBeDefined();
+    expect(data.columnId).toBe("done");
+    // statusHistory should get a new entry for moving to done
+    expect(data.statusHistory).toHaveLength(3);
+    expect(data.statusHistory[2].columnId).toBe("done");
+
+    // Verify in DB
+    const dbTask = await Task.findById(task._id);
+    expect(dbTask!.statusHistory).toHaveLength(3);
+  });
+
   it("works when project has no columns (edge case)", async () => {
     const user = await createTestUser({ email: "nocolumns@example.com" });
     const uId = user._id as mongoose.Types.ObjectId;

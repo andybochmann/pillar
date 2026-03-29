@@ -19,31 +19,20 @@ export async function GET(request: Request) {
 
   await connectDB();
 
-  // Find all projects the current user is a member of
-  const userProjects = await ProjectMember.find(
-    { userId: session.user.id },
-    { projectId: 1 },
-  ).lean();
+  // Only project owners can search for users (sharing is owner-only)
+  const ownsAnyProject = await ProjectMember.exists({
+    userId: session.user.id,
+    role: "owner",
+  });
 
-  if (userProjects.length === 0) {
+  if (!ownsAnyProject) {
     return NextResponse.json([]);
   }
 
-  const projectIds = userProjects.map((p) => p.projectId);
-
-  // Find all users who are members of those projects
-  const allowedUserIds = await ProjectMember.find(
-    { projectId: { $in: projectIds } },
-    { userId: 1 },
-  ).distinct("userId");
-
-  // Search for users matching email within allowed users
+  // Search for any user by email (owners need to discover new collaborators)
   const users = await User.find(
     {
-      _id: {
-        $in: allowedUserIds,
-        $ne: session.user.id,
-      },
+      _id: { $ne: session.user.id },
       email: { $regex: email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" },
     },
     { _id: 1, name: 1, email: 1, image: 1 },

@@ -63,24 +63,25 @@ describe("GET /api/users/search", () => {
     expect(data[0]).not.toHaveProperty("passwordHash");
   });
 
-  it("excludes users not in shared projects", async () => {
+  it("owners can discover any user by email, even non-members", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
     const alice = await createTestUser({ email: "alice@test.com", name: "Alice" });
-    const bob = await createTestUser({ email: "bob@test.com", name: "Bob" });
 
-    // Create a project with only current user
+    // Create a project with only current user as owner
     const category = await createTestCategory({ userId: currentUser._id });
     const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
     await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
 
+    // alice is NOT a member of any project, but owner can still find her
     const res = await GET(
       new Request("http://localhost/api/users/search?email=alice"),
     );
 
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toHaveLength(0);
+    expect(data).toHaveLength(1);
+    expect(data[0].email).toBe("alice@test.com");
   });
 
   it("excludes current user from results", async () => {
@@ -149,8 +150,7 @@ describe("GET /api/users/search", () => {
     await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
 
     for (let i = 0; i < 15; i++) {
-      const user = await createTestUser({ email: `user${i}@search.com` });
-      await createTestProjectMember({ projectId: project._id, userId: user._id, invitedBy: currentUser._id, role: "editor" });
+      await createTestUser({ email: `user${i}@search.com` });
     }
 
     const res = await GET(
@@ -160,6 +160,59 @@ describe("GET /api/users/search", () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.length).toBeLessThanOrEqual(10);
+  });
+
+  it("should not return members from projects where caller is only an editor", async () => {
+    const owner = await createTestUser({ email: "owner@test.com" });
+    const currentUser = await createTestUser({ email: "me@test.com" });
+    session.user.id = currentUser._id.toString();
+    const alice = await createTestUser({ email: "alice@test.com", name: "Alice" });
+
+    // Owner creates a project and invites currentUser as editor + alice as editor
+    const category = await createTestCategory({ userId: owner._id });
+    const project = await createTestProject({ categoryId: category._id, userId: owner._id });
+    await createTestProjectMember({ projectId: project._id, userId: owner._id, invitedBy: owner._id, role: "owner" });
+    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: owner._id, role: "editor" });
+    await createTestProjectMember({ projectId: project._id, userId: alice._id, invitedBy: owner._id, role: "editor" });
+
+    // currentUser is only an editor — should NOT be able to search users from this project
+    const res = await GET(
+      new Request("http://localhost/api/users/search?email=alice"),
+    );
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveLength(0);
+  });
+
+  it("owners can search for any user including non-project-members", async () => {
+    const currentUser = await createTestUser({ email: "me@test.com" });
+    session.user.id = currentUser._id.toString();
+    const alice = await createTestUser({ email: "alice@test.com", name: "Alice" });
+    const bob = await createTestUser({ email: "bob@test.com", name: "Bob" });
+
+    const category = await createTestCategory({ userId: currentUser._id });
+
+    // currentUser owns a project — that's all that's needed to enable search
+    const project1 = await createTestProject({ categoryId: category._id, userId: currentUser._id });
+    await createTestProjectMember({ projectId: project1._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
+
+    // Both alice and bob are findable — owners can discover new collaborators
+    const resAlice = await GET(
+      new Request("http://localhost/api/users/search?email=alice"),
+    );
+    expect(resAlice.status).toBe(200);
+    const aliceData = await resAlice.json();
+    expect(aliceData).toHaveLength(1);
+    expect(aliceData[0].email).toBe("alice@test.com");
+
+    const resBob = await GET(
+      new Request("http://localhost/api/users/search?email=bob"),
+    );
+    expect(resBob.status).toBe(200);
+    const bobData = await resBob.json();
+    expect(bobData).toHaveLength(1);
+    expect(bobData[0].email).toBe("bob@test.com");
   });
 
   it("is case-insensitive", async () => {

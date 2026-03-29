@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +41,8 @@ export function ProjectView({
   currentUserId,
 }: ProjectViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const openTaskId = searchParams.get("taskId");
   const [currentProject, setCurrentProject] = useState(project);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const readOnly = currentProject.currentUserRole === "viewer";
@@ -218,6 +220,7 @@ export function ProjectView({
           filters={filters}
           allLabels={allLabels}
           onCreateLabel={async (data) => { await createLabel(data); }}
+          openTaskId={openTaskId}
         />
       )}
 
@@ -225,6 +228,7 @@ export function ProjectView({
         projectId={currentProject._id}
         open={archivedOpen}
         onOpenChange={setArchivedOpen}
+        readOnly={readOnly}
       />
 
       <ProjectSettings

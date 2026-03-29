@@ -35,6 +35,12 @@ vi.mock("@/lib/event-bus", () => ({
   emitNotificationEvent: vi.fn(),
 }));
 
+const scheduleNextReminderMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+
+vi.mock("@/lib/reminder-scheduler", () => ({
+  scheduleNextReminder: scheduleNextReminderMock,
+}));
+
 import {
   processNotifications,
   processDailySummary,
@@ -52,6 +58,8 @@ afterAll(async () => {
 afterEach(async () => {
   await clearTestDB();
   pushPayloads.length = 0;
+  scheduleNextReminderMock.mockReset();
+  scheduleNextReminderMock.mockResolvedValue(undefined);
 });
 
 describe("notification-worker push actions", () => {
@@ -698,5 +706,119 @@ describe("processOverdueDigest", () => {
 
     const result = await processNotifications(user._id.toString());
     expect(result.overdueDigests).toBe(1);
+  });
+});
+
+describe("notification-worker duplicate key handling (Bug #6)", () => {
+  it("silently ignores duplicate reminder notifications from concurrent runs", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    const reminderAt = new Date(Date.now() - 60_000);
+    await createTestTask({
+      title: "Concurrent reminder",
+      userId: user._id,
+      projectId: project._id,
+      reminderAt,
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: true,
+      enableBrowserPush: false,
+      quietHoursEnabled: false,
+    });
+
+    // First run should succeed
+    const result1 = await processNotifications(user._id.toString());
+    expect(result1.reminders).toBe(1);
+
+    // Verify exactly one notification was created
+    const notifications = await Notification.find({
+      userId: user._id,
+      type: "reminder",
+    });
+    expect(notifications).toHaveLength(1);
+  });
+});
+
+describe("notification-worker reminderAt recovery (Bug #13)", () => {
+  it("retries scheduleNextReminder on first failure", async () => {
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    const reminderAt = new Date(Date.now() - 60_000);
+    const task = await createTestTask({
+      title: "Retry scheduler",
+      userId: user._id,
+      projectId: project._id,
+      reminderAt,
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: true,
+      enableBrowserPush: false,
+      quietHoursEnabled: false,
+    });
+
+    // First call fails, second succeeds
+    scheduleNextReminderMock
+      .mockRejectedValueOnce(new Error("Transient DB error"))
+      .mockResolvedValueOnce(undefined);
+
+    await processNotifications(user._id.toString());
+
+    // Should have been called twice (initial + retry)
+    expect(scheduleNextReminderMock).toHaveBeenCalledTimes(2);
+    expect(scheduleNextReminderMock).toHaveBeenCalledWith(task._id.toString());
+  });
+
+  it("re-sets reminderAt when both attempts fail", async () => {
+    const { Task } = await import("@/models/task");
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    const reminderAt = new Date(Date.now() - 60_000);
+    const task = await createTestTask({
+      title: "Both retries fail",
+      userId: user._id,
+      projectId: project._id,
+      reminderAt,
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: true,
+      enableBrowserPush: false,
+      quietHoursEnabled: false,
+    });
+
+    // Both calls fail
+    scheduleNextReminderMock
+      .mockRejectedValueOnce(new Error("First failure"))
+      .mockRejectedValueOnce(new Error("Second failure"));
+
+    await processNotifications(user._id.toString());
+
+    // Should have been called twice (initial + retry)
+    expect(scheduleNextReminderMock).toHaveBeenCalledTimes(2);
+
+    // reminderAt should be re-set on the task so the next worker tick picks it up
+    const updatedTask = await Task.findById(task._id);
+    expect(updatedTask?.reminderAt).toBeDefined();
+    expect(updatedTask!.reminderAt!.getTime()).toBe(reminderAt.getTime());
   });
 });

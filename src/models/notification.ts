@@ -82,6 +82,12 @@ NotificationSchema.index({ userId: 1, read: 1 });
 NotificationSchema.index({ userId: 1, scheduledFor: 1 });
 NotificationSchema.index({ userId: 1, type: 1, createdAt: 1 });
 
+// Prevent duplicate reminder/overdue notifications for the same task+user+type+scheduledFor
+NotificationSchema.index(
+  { taskId: 1, userId: 1, type: 1, scheduledFor: 1 },
+  { unique: true, sparse: true },
+);
+
 export const Notification: Model<INotification> =
   mongoose.models.Notification ||
   mongoose.model<INotification>("Notification", NotificationSchema);

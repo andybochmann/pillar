@@ -269,19 +269,28 @@ async function processReminders(
       const dedupKey = `${taskId}_${userId}_${task.reminderAt?.toISOString()}`;
       if (existingSet.has(dedupKey)) continue;
 
-      const notification = await Notification.create({
-        userId,
-        taskId: task._id,
-        type: "reminder",
-        title: "Task reminder",
-        message: `"${task.title}" needs your attention.`,
-        scheduledFor: task.reminderAt,
-        metadata: {
-          priority: task.priority,
-          dueDate: task.dueDate?.toISOString(),
-          projectId: task.projectId.toString(),
-        },
-      });
+      let notification: InstanceType<typeof Notification>;
+      try {
+        notification = await Notification.create({
+          userId,
+          taskId: task._id,
+          type: "reminder",
+          title: "Task reminder",
+          message: `"${task.title}" needs your attention.`,
+          scheduledFor: task.reminderAt,
+          metadata: {
+            priority: task.priority,
+            dueDate: task.dueDate?.toISOString(),
+            projectId: task.projectId.toString(),
+          },
+        });
+      } catch (err: unknown) {
+        if (err && typeof err === "object" && "code" in err && (err as { code: number }).code === 11000) {
+          // Duplicate — another concurrent process already created this notification
+          continue;
+        }
+        throw err;
+      }
 
       emitNotification(
         notification,
@@ -296,12 +305,27 @@ async function processReminders(
 
     // Clear reminderAt (one-shot) then schedule next timing
     await Task.updateOne({ _id: task._id }, { $unset: { reminderAt: 1 } });
-    scheduleNextReminder(taskId).catch((err) => {
+    try {
+      await scheduleNextReminder(taskId);
+    } catch (err) {
       console.error(
-        `[notification-worker] Failed to schedule next reminder for task ${taskId}:`,
+        `[notification-worker] Failed to schedule next reminder for task ${taskId}, retrying...`,
         err,
       );
-    });
+      try {
+        await scheduleNextReminder(taskId);
+      } catch (retryErr) {
+        console.error(
+          `[notification-worker] Retry failed for task ${taskId}:`,
+          retryErr,
+        );
+        // Re-set the reminderAt so the next worker tick picks it up
+        await Task.updateOne(
+          { _id: task._id },
+          { $set: { reminderAt: task.reminderAt } },
+        ).catch(() => {});
+      }
+    }
   }
 
   return created;
@@ -355,18 +379,27 @@ async function processOverdue(
       const dedupKey = `${taskId}_${userId}`;
       if (existingSet.has(dedupKey)) continue;
 
-      const notification = await Notification.create({
-        userId,
-        taskId: task._id,
-        type: "overdue",
-        title: "Task is overdue",
-        message: `"${task.title}" is overdue and needs your attention.`,
-        metadata: {
-          priority: task.priority,
-          dueDate: task.dueDate!.toISOString(),
-          projectId: task.projectId.toString(),
-        },
-      });
+      let notification: InstanceType<typeof Notification>;
+      try {
+        notification = await Notification.create({
+          userId,
+          taskId: task._id,
+          type: "overdue",
+          title: "Task is overdue",
+          message: `"${task.title}" is overdue and needs your attention.`,
+          metadata: {
+            priority: task.priority,
+            dueDate: task.dueDate!.toISOString(),
+            projectId: task.projectId.toString(),
+          },
+        });
+      } catch (err: unknown) {
+        if (err && typeof err === "object" && "code" in err && (err as { code: number }).code === 11000) {
+          // Duplicate — another concurrent process already created this notification
+          continue;
+        }
+        throw err;
+      }
 
       emitNotification(
         notification,

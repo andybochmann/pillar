@@ -198,4 +198,29 @@ describe("GET /api/events", () => {
     const listenersAfterAbort = syncEventBus.listenerCount("sync");
     expect(listenersAfterAbort).toBe(listenersBefore);
   });
+
+  it("cleans up listener when stream is cancelled (Bug #12)", async () => {
+    const controller = new AbortController();
+    const request = new Request("http://localhost/api/events?sessionId=abc", {
+      signal: controller.signal,
+    });
+
+    const listenersBefore = syncEventBus.listenerCount("sync");
+    const response = await GET(request);
+    const listenersAfter = syncEventBus.listenerCount("sync");
+    expect(listenersAfter).toBe(listenersBefore + 1);
+
+    // Cancel the reader (simulates dropped connection detected by the consumer)
+    const reader = response.body!.getReader();
+    await reader.read(); // Read initial connection message
+    await reader.cancel();
+
+    // Wait for cancel to propagate
+    await new Promise((r) => setTimeout(r, 10));
+
+    const listenersAfterCancel = syncEventBus.listenerCount("sync");
+    expect(listenersAfterCancel).toBe(listenersBefore);
+
+    controller.abort();
+  });
 });

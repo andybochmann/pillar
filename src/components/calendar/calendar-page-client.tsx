@@ -10,6 +10,7 @@ import { TaskSheet } from "@/components/tasks/task-sheet";
 import { useTasks } from "@/hooks/use-tasks";
 import { useLabels } from "@/hooks/use-labels";
 import { useCategories } from "@/hooks/use-categories";
+import { offlineFetch } from "@/lib/offline-fetch";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { getNextDueDate, toLocalDate } from "@/lib/date-utils";
@@ -190,7 +191,7 @@ export function CalendarPageClient({
     }
     const columnId = defaultProject.columns[0]?.id ?? "todo";
 
-    const res = await fetch("/api/tasks", {
+    const res = await offlineFetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
