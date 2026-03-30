@@ -272,6 +272,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
             description: task.description,
             projectId: task.projectId,
             userId: task.userId,
+            assigneeId: task.assigneeId,
             columnId: firstColumn.id,
             priority: task.priority,
             dueDate: nextDueDate,
@@ -337,8 +338,20 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     );
   }
 
+  // Block deletion if any time session is actively running
+  const hasActiveSession = task.timeSessions?.some(
+    (s: { endedAt?: Date | null }) => !s.endedAt,
+  );
+  if (hasActiveSession) {
+    return NextResponse.json(
+      { error: "Cannot delete a task with an active time tracking session. Stop the timer first." },
+      { status: 409 },
+    );
+  }
+
   await Task.deleteOne({ _id: id });
   await Note.deleteMany({ taskId: id });
+  await Notification.deleteMany({ taskId: id });
 
   const targetUserIds = await getProjectMemberUserIds(task.projectId.toString());
   emitSyncEvent({

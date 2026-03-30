@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { Notification } from "@/models/notification";
 import { Project } from "@/models/project";
 import { ProjectMember } from "@/models/project-member";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
@@ -136,6 +137,7 @@ export async function PATCH(request: Request) {
       await Task.updateMany(filter, { $set: { priority } });
     } else if (action === "delete") {
       await Note.deleteMany({ taskId: { $in: accessibleTaskIds } });
+      await Notification.deleteMany({ taskId: { $in: accessibleTaskIds } });
       await Task.deleteMany(filter);
     } else if (action === "archive") {
       await Task.updateMany(filter, {
@@ -268,6 +270,7 @@ export async function DELETE(request: Request) {
 
     if (matchingIds.length > 0) {
       await Note.deleteMany({ taskId: { $in: matchingIds } });
+      await Notification.deleteMany({ taskId: { $in: matchingIds } });
       await Task.deleteMany({ _id: { $in: matchingIds } });
 
       const targetUserIds = await getProjectMemberUserIds(projectId);

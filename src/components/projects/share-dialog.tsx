@@ -95,7 +95,7 @@ export function ShareDialog({
       if (isSelf) {
         onOpenChange(false);
         // Redirect after leaving project
-        window.location.assign("/");
+        window.location.assign("/home");
       }
     } catch (err) {
       toast.error((err as Error).message);

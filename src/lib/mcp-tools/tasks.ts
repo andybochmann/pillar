@@ -3,6 +3,8 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getMcpUserId } from "@/lib/mcp-server";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
+import { Note } from "@/models/note";
+import { Notification } from "@/models/notification";
 import { Project } from "@/models/project";
 import {
   requireProjectRole,
@@ -288,6 +290,8 @@ export function registerTaskTools(server: McpServer) {
       );
 
       await Task.findByIdAndDelete(taskId);
+      await Note.deleteMany({ taskId });
+      await Notification.deleteMany({ taskId });
 
       emitSyncEvent({
         entity: "task",

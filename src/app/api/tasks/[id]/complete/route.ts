@@ -145,6 +145,7 @@ export async function POST(request: Request, { params }: RouteParams) {
             description: updatedTask.description,
             projectId: updatedTask.projectId,
             userId: updatedTask.userId,
+            assigneeId: updatedTask.assigneeId,
             columnId: firstColumn.id,
             priority: updatedTask.priority,
             dueDate: nextDueDate,

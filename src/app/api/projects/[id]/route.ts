@@ -6,6 +6,7 @@ import { emitSyncEvent } from "@/lib/event-bus";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { Notification } from "@/models/notification";
 import { Category } from "@/models/category";
 import { ProjectMember } from "@/models/project-member";
 import { getProjectRole, requireProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
@@ -199,8 +200,11 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Cascade: delete all tasks, notes, and members
+    // Cascade: delete all tasks, notifications, notes, and members
+    const projectTaskIds = await Task.find({ projectId: id }, { _id: 1 }).lean();
+    const taskIds = projectTaskIds.map((t) => t._id);
     await Task.deleteMany({ projectId: id });
+    await Notification.deleteMany({ taskId: { $in: taskIds } });
     await Note.deleteMany({ projectId: id });
     await ProjectMember.deleteMany({ projectId: id });
 

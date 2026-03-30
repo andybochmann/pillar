@@ -7,6 +7,7 @@ import { Category } from "@/models/category";
 import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { Notification } from "@/models/notification";
 import { ProjectMember } from "@/models/project-member";
 
 const UpdateCategorySchema = z.object({
@@ -122,7 +123,13 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       { _id: 1 },
     );
     const projectIds = projects.map((p) => p._id);
+    const categoryTaskIds = await Task.find(
+      { projectId: { $in: projectIds } },
+      { _id: 1 },
+    ).lean();
+    const taskIds = categoryTaskIds.map((t) => t._id);
     await Task.deleteMany({ projectId: { $in: projectIds } });
+    await Notification.deleteMany({ taskId: { $in: taskIds } });
     await ProjectMember.deleteMany({ projectId: { $in: projectIds } });
     await Note.deleteMany({
       $or: [
