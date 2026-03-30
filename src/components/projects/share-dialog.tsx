@@ -31,6 +31,7 @@ interface ShareDialogProps {
   projectId: string;
   projectName: string;
   currentUserRole: ProjectRole;
+  currentUserId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
@@ -39,6 +40,7 @@ export function ShareDialog({
   projectId,
   projectName,
   currentUserRole,
+  currentUserId,
   open,
   onOpenChange,
 }: ShareDialogProps) {
@@ -221,15 +223,26 @@ export function ShareDialog({
                         {member.role === "editor" ? "Editor" : "Viewer"}
                       </Badge>
                     )}
-                    {member.role !== "owner" && (
+                    {member.role !== "owner" && isOwner && (
                       <Button
                         variant="ghost"
-                        size={isOwner ? "icon" : "sm"}
-                        className={isOwner ? "h-7 w-7" : "h-7 text-xs"}
-                        onClick={() => handleRemoveMember(member._id, member.userName ?? "member", !isOwner)}
-                        aria-label={isOwner ? `Remove ${member.userName}` : "Leave project"}
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => handleRemoveMember(member._id, member.userName ?? "member", false)}
+                        aria-label={`Remove ${member.userName}`}
                       >
-                        {isOwner ? <X className="h-3.5 w-3.5" /> : "Leave"}
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    {!isOwner && member.userId === currentUserId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleRemoveMember(member._id, member.userName ?? "member", true)}
+                        aria-label="Leave project"
+                      >
+                        Leave
                       </Button>
                     )}
                   </div>

@@ -261,6 +261,7 @@ async function processReminders(
   for (const task of tasks) {
     const taskId = task._id.toString();
     const usersToNotify = getUsersToNotify(task);
+    let notifiedAny = false;
 
     for (const userId of usersToNotify) {
       const prefs = prefsMap.get(userId);
@@ -301,29 +302,33 @@ async function processReminders(
         "reminder",
       );
       created++;
+      notifiedAny = true;
     }
 
-    // Clear reminderAt (one-shot) then schedule next timing
-    await Task.updateOne({ _id: task._id }, { $unset: { reminderAt: 1 } });
-    try {
-      await scheduleNextReminder(taskId);
-    } catch (err) {
-      console.error(
-        `[notification-worker] Failed to schedule next reminder for task ${taskId}, retrying...`,
-        err,
-      );
+    // Only clear reminderAt and advance to next reminder when at least one user was notified.
+    // If all users were skipped (e.g. quiet hours), leave reminderAt so the next tick retries.
+    if (notifiedAny) {
+      await Task.updateOne({ _id: task._id }, { $unset: { reminderAt: 1 } });
       try {
         await scheduleNextReminder(taskId);
-      } catch (retryErr) {
+      } catch (err) {
         console.error(
-          `[notification-worker] Retry failed for task ${taskId}:`,
-          retryErr,
+          `[notification-worker] Failed to schedule next reminder for task ${taskId}, retrying...`,
+          err,
         );
-        // Re-set the reminderAt so the next worker tick picks it up
-        await Task.updateOne(
-          { _id: task._id },
-          { $set: { reminderAt: task.reminderAt } },
-        ).catch(() => {});
+        try {
+          await scheduleNextReminder(taskId);
+        } catch (retryErr) {
+          console.error(
+            `[notification-worker] Retry failed for task ${taskId}:`,
+            retryErr,
+          );
+          // Re-set the reminderAt so the next worker tick picks it up
+          await Task.updateOne(
+            { _id: task._id },
+            { $set: { reminderAt: task.reminderAt } },
+          ).catch(() => {});
+        }
       }
     }
   }

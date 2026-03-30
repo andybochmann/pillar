@@ -89,6 +89,21 @@ export function KanbanBoard({
     }
   }, [openTaskId]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Bug 12 fix: Sync selectedTask when the matching task in tasks array changes via SSE
+  useEffect(() => {
+    if (!selectedTask) return;
+    const updated = tasks.find((t) => t._id === selectedTask._id);
+    if (updated && updated !== selectedTask) {
+      setSelectedTask(updated);
+    }
+  }, [tasks, selectedTask]);
+
+  // Bug 13 fix: Keep a ref in sync with tasks so handleDragEnd reads fresh state
+  const tasksRef = useRef(tasks);
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
+
   const {
     startTracking,
     stopTracking,
@@ -254,14 +269,15 @@ export function KanbanBoard({
     const activeId = active.id as string;
     const overId = over.id as string;
 
-    const task = tasks.find((t) => t._id === activeId);
+    const currentTasks = tasksRef.current;
+    const task = currentTasks.find((t) => t._id === activeId);
     if (!task) return;
 
     const isCrossColumnMove =
       startColumn !== null && startColumn !== task.columnId;
 
     // Compute new order for the column the task is now in
-    const columnTasks = tasks
+    const columnTasks = currentTasks
       .filter((t) => t.columnId === task.columnId)
       .sort((a, b) => a.order - b.order);
 

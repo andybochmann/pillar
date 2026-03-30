@@ -144,19 +144,12 @@ export async function POST(request: Request, { params }: RouteParams) {
       );
     }
 
-    // Auto-create owner's ProjectMember record if not yet present
-    const ownerExists = await ProjectMember.exists({
-      projectId: id,
-      userId: session.user.id,
-    });
-    if (!ownerExists) {
-      await ProjectMember.create({
-        projectId: id,
-        userId: session.user.id,
-        role: "owner",
-        invitedBy: session.user.id,
-      });
-    }
+    // Auto-create owner's ProjectMember record if not yet present (atomic upsert)
+    await ProjectMember.updateOne(
+      { projectId: id, userId: session.user.id },
+      { $setOnInsert: { role: "owner", invitedBy: session.user.id } },
+      { upsert: true },
+    );
 
     const member = await ProjectMember.create({
       projectId: id,

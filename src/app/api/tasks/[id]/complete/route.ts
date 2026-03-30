@@ -131,11 +131,14 @@ export async function POST(request: Request, { params }: RouteParams) {
         const firstColumn = sortedColumns?.[0];
 
         if (firstColumn) {
-          const taskCount = await Task.countDocuments({
+          const maxOrderTask = await Task.findOne({
             projectId: task.projectId,
             columnId: firstColumn.id,
-            userId: task.userId,
-          });
+          })
+            .sort({ order: -1 })
+            .select("order")
+            .lean();
+          const newOrder = (maxOrderTask?.order ?? -1) + 1;
 
           const newTask = await Task.create({
             title: updatedTask.title,
@@ -146,7 +149,7 @@ export async function POST(request: Request, { params }: RouteParams) {
             priority: updatedTask.priority,
             dueDate: nextDueDate,
             recurrence: updatedTask.recurrence,
-            order: taskCount,
+            order: newOrder,
             labels: updatedTask.labels,
             subtasks: updatedTask.subtasks.map((s) => ({
               title: s.title,

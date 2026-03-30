@@ -1,6 +1,8 @@
 // Pillar Service Worker
 // Caching strategies: cache-first for static, network-first for API/pages
 
+const SW_SESSION_ID = crypto.randomUUID();
+
 const PRECACHE_NAME = "pillar-precache-v1";
 const API_CACHE_NAME = "pillar-api-v1";
 const STATIC_CACHE_NAME = "pillar-static-v1";
@@ -356,6 +358,7 @@ self.addEventListener("notificationclick", (event) => {
       fetch(`/api/tasks/${taskId}/complete`, {
         method: "POST",
         credentials: "same-origin",
+        headers: { "X-Session-Id": SW_SESSION_ID },
       })
         .then(async (res) => {
           // Detect auth redirect (middleware returns 302 → browser follows to login page)
@@ -379,7 +382,7 @@ self.addEventListener("notificationclick", (event) => {
       fetch(`/api/tasks/${taskId}/snooze`, {
         method: "POST",
         credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "X-Session-Id": SW_SESSION_ID },
         body: JSON.stringify({ notificationId }),
       })
         .then(async (res) => {

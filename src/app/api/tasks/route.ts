@@ -115,30 +115,14 @@ export async function GET(request: Request) {
   }
 
   if (sortBy === "priority") {
-    const aggFilter: Record<string, unknown> = { ...filter };
-    if (typeof filter.projectId === "string") {
-      aggFilter.projectId = new mongoose.Types.ObjectId(filter.projectId);
-    }
-    const tasks = await Task.aggregate([
-      { $match: aggFilter },
-      {
-        $addFields: {
-          priorityOrder: {
-            $switch: {
-              branches: [
-                { case: { $eq: ["$priority", "urgent"] }, then: 0 },
-                { case: { $eq: ["$priority", "high"] }, then: 1 },
-                { case: { $eq: ["$priority", "medium"] }, then: 2 },
-                { case: { $eq: ["$priority", "low"] }, then: 3 },
-              ],
-              default: 4,
-            },
-          },
-        },
-      },
-      { $sort: { priorityOrder: sortOrder, order: 1 } },
-      { $project: { priorityOrder: 0 } },
-    ]);
+    const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+    const tasks = await Task.find(filter).lean();
+    tasks.sort((a, b) => {
+      const pa = PRIORITY_ORDER[a.priority] ?? 4;
+      const pb = PRIORITY_ORDER[b.priority] ?? 4;
+      const diff = (pa - pb) * sortOrder;
+      return diff !== 0 ? diff : (a.order - b.order);
+    });
     return NextResponse.json(tasks);
   }
 

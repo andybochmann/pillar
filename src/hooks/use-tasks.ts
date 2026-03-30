@@ -213,7 +213,7 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
         setTasks((prev) => prev.filter((t) => t._id !== event.entityId));
         break;
       case "reordered":
-        if (projectId) fetchTasks(projectId);
+        if (projectId && (!event.projectId || event.projectId === projectId)) fetchTasks(projectId);
         break;
     }
   }, [projectId, fetchTasks]));

@@ -238,6 +238,7 @@ export function ProjectView({
         onOpenChange={setSettingsOpen}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
+        currentUserId={currentUserId}
       />
 
       {aiEnabled && !readOnly && (

@@ -6,6 +6,7 @@ import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { Notification } from "@/models/notification";
 import { Project } from "@/models/project";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 import { getNextDueDate } from "@/lib/date-utils";
@@ -134,7 +135,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     // Find task and verify membership
-    const existingTask = await Task.findById(id).select("columnId projectId");
+    const existingTask = await Task.findById(id).select("columnId projectId completedAt");
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
@@ -209,6 +210,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       });
     }
 
+    // Dismiss stale overdue notifications when dueDate is rescheduled to the future
+    if (task.dueDate && task.dueDate > new Date()) {
+      await Notification.updateMany(
+        { taskId: task._id, type: "overdue", dismissed: false },
+        { $set: { dismissed: true } },
+      );
+    }
+
     const sessionId = request.headers.get("X-Session-Id") ?? "";
     const targetUserIds = await getProjectMemberUserIds(task.projectId.toString());
 
@@ -224,9 +233,13 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       timestamp: Date.now(),
     });
 
-    // If task is being completed and has recurrence, create the next occurrence
+    // If task is transitioning from incomplete to complete and has recurrence, create the next occurrence
+    const wasAlreadyCompleted = !!existingTask.completedAt;
+    const isBeingCompleted = !!result.data.completedAt;
+
     if (
-      result.data.completedAt &&
+      isBeingCompleted &&
+      !wasAlreadyCompleted &&
       task.recurrence?.frequency !== "none" &&
       task.dueDate
     ) {
@@ -245,11 +258,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           ?.sort((a: { order: number }, b: { order: number }) => a.order - b.order)[0];
 
         if (firstColumn) {
-          const taskCount = await Task.countDocuments({
+          const maxOrderTask = await Task.findOne({
             projectId: task.projectId,
             columnId: firstColumn.id,
-            userId: task.userId,
-          });
+          })
+            .sort({ order: -1 })
+            .select("order")
+            .lean();
+          const newOrder = (maxOrderTask?.order ?? -1) + 1;
 
           const newTask = await Task.create({
             title: task.title,
@@ -260,7 +276,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
             priority: task.priority,
             dueDate: nextDueDate,
             recurrence: task.recurrence,
-            order: taskCount,
+            order: newOrder,
             labels: task.labels,
             subtasks: task.subtasks.map((s) => ({
               title: s.title,

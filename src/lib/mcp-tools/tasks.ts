@@ -187,6 +187,15 @@ export function registerTaskTools(server: McpServer) {
         return errorResponse(status === 403 ? "Forbidden" : "Project not found");
       }
 
+      if (updates.columnId !== undefined) {
+        const project = await Project.findById(existing.projectId).lean();
+        if (!project) return errorResponse("Project not found");
+        const validColumnIds = project.columns?.map((c: { id: string }) => c.id) ?? [];
+        if (!validColumnIds.includes(updates.columnId)) {
+          return errorResponse(`Column '${updates.columnId}' does not exist in this project`);
+        }
+      }
+
       const update: Record<string, unknown> = {};
       const push: Record<string, unknown> = {};
 
@@ -310,6 +319,13 @@ export function registerTaskTools(server: McpServer) {
         await requireProjectRole(userId, existing.projectId.toString(), "editor");
       } catch {
         return errorResponse("Task not found");
+      }
+
+      const project = await Project.findById(existing.projectId).lean();
+      if (!project) return errorResponse("Project not found");
+      const validColumnIds = project.columns?.map((c: { id: string }) => c.id) ?? [];
+      if (!validColumnIds.includes(columnId)) {
+        return errorResponse(`Column '${columnId}' does not exist in this project`);
       }
 
       const task = await Task.findByIdAndUpdate(

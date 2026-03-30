@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { Project } from "@/models/project";
 import { ProjectMember } from "@/models/project-member";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 import { emitSyncEvent } from "@/lib/event-bus";
@@ -84,13 +85,47 @@ export async function PATCH(request: Request) {
         );
       }
 
-      await Task.updateMany(
-        { ...filter, columnId: { $ne: columnId } },
-        {
-          $set: { columnId },
-          $push: { statusHistory: { columnId, timestamp: new Date() } },
-        },
+      // Look up each project's last column to determine completedAt
+      const projects = await Project.find(
+        { _id: { $in: [...accessibleProjectIds] } },
+        { columns: 1 },
       );
+      const lastColumnByProject = new Map<string, string>();
+      for (const project of projects) {
+        const sorted = [...project.columns].sort((a, b) => a.order - b.order);
+        if (sorted.length > 0) {
+          lastColumnByProject.set(project._id.toString(), sorted[sorted.length - 1].id);
+        }
+      }
+
+      // Group accessible tasks by project so we can conditionally set/clear completedAt
+      const tasksByProject = new Map<string, string[]>();
+      for (const t of tasks) {
+        const pid = t.projectId.toString();
+        if (!accessibleProjectIds.has(pid)) continue;
+        if (!tasksByProject.has(pid)) tasksByProject.set(pid, []);
+        tasksByProject.get(pid)!.push(t._id.toString());
+      }
+
+      for (const [pid, tIds] of tasksByProject) {
+        const lastCol = lastColumnByProject.get(pid);
+        const isMovingToLastColumn = columnId === lastCol;
+
+        const updateSet: Record<string, unknown> = { columnId };
+        if (isMovingToLastColumn) {
+          updateSet.completedAt = new Date();
+        } else {
+          updateSet.completedAt = null;
+        }
+
+        await Task.updateMany(
+          { _id: { $in: tIds }, columnId: { $ne: columnId } },
+          {
+            $set: updateSet,
+            $push: { statusHistory: { columnId, timestamp: new Date() } },
+          },
+        );
+      }
     } else if (action === "priority") {
       if (!priority) {
         return NextResponse.json(
@@ -155,10 +190,10 @@ export async function PATCH(request: Request) {
       const targetUserIds = await getProjectMemberUserIds(pid);
       emitSyncEvent({
         entity: "task",
-        action: action === "delete" ? "deleted" : "updated",
+        action: "reordered",
         userId: session.user.id,
         sessionId,
-        entityId: pid,
+        entityId: "",
         projectId: pid,
         targetUserIds,
         timestamp: Date.now(),

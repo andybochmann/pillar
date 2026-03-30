@@ -106,7 +106,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     }
 
     await Task.updateMany(
-      { userId: session.user.id, labels: label._id },
+      { labels: label._id },
       { $pull: { labels: label._id } },
     );
 

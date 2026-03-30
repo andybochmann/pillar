@@ -30,6 +30,7 @@ interface ProjectSettingsProps {
   onOpenChange: (open: boolean) => void;
   onUpdate: (data: Partial<Project>) => Promise<void>;
   onDelete: () => Promise<void>;
+  currentUserId?: string;
 }
 
 export function ProjectSettings({
@@ -39,6 +40,7 @@ export function ProjectSettings({
   onOpenChange,
   onUpdate,
   onDelete,
+  currentUserId,
 }: ProjectSettingsProps) {
   useBackButton("project-settings", open, () => onOpenChange(false));
 
@@ -212,6 +214,7 @@ export function ProjectSettings({
         projectId={project._id}
         projectName={project.name}
         currentUserRole={project.currentUserRole ?? "owner"}
+        currentUserId={currentUserId}
         open={showShareDialog}
         onOpenChange={setShowShareDialog}
       />

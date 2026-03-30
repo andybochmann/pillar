@@ -278,7 +278,7 @@ describe("POST /api/ai/generate-tasks", () => {
 
     expect(generateObject).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt: expect.stringContaining("3 tasks"),
+        system: expect.stringContaining("3 tasks"),
       }),
     );
   });
