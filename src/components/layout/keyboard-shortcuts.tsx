@@ -27,6 +27,7 @@ const shortcutGroups: ShortcutGroup[] = [
       { key: "/", description: "Open search" },
       { key: "n", description: "Create new task (in current board)" },
       { key: `${modKey}+Shift+N`, description: "Create new project" },
+      { key: "q", description: "Quick add task (global)" },
       { key: "?", description: "Show keyboard shortcuts" },
       { key: "Escape", description: "Close dialog / sheet / search" },
     ],
@@ -70,6 +71,13 @@ export function KeyboardShortcutsDialog() {
       if (e.key === "N" && e.shiftKey && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
         document.dispatchEvent(new CustomEvent("pillar:open-create-project"));
+      }
+
+      // q: quick add task (global)
+      if (e.key === "q" && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        if (document.querySelector("[role='dialog']")) return;
+        e.preventDefault();
+        document.dispatchEvent(new CustomEvent("pillar:open-quick-add-task"));
       }
     }
 

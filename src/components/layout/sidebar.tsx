@@ -177,6 +177,19 @@ export function Sidebar({ onNavigate }: SidebarProps) {
           </Link>
         )}
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() =>
+              document.dispatchEvent(
+                new CustomEvent("pillar:open-quick-add-task"),
+              )
+            }
+            aria-label="Quick add task"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
           <NotificationBell
             iconSize={16}
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
@@ -421,6 +434,25 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             /* Collapsed state — icon-only nav */
             <TooltipProvider>
               <div className="flex flex-col items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        document.dispatchEvent(
+                          new CustomEvent("pillar:open-quick-add-task"),
+                        )
+                      }
+                      className="flex h-9 w-9 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+                      aria-label="Quick add task"
+                    >
+                      <Plus className="h-4 w-4" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    Quick add task
+                  </TooltipContent>
+                </Tooltip>
                 {navItems.map((item) => {
                   const isActive =
                     item.href === "/home"

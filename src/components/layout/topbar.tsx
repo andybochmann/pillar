@@ -1,6 +1,6 @@
 "use client";
 
-import { Menu, FolderKanban } from "lucide-react";
+import { Menu, FolderKanban, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface TopbarProps {
@@ -25,6 +25,19 @@ export function Topbar({ onMenuToggle }: TopbarProps) {
         </div>
         <span className="text-lg font-bold tracking-tight">Pillar</span>
       </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() =>
+          document.dispatchEvent(
+            new CustomEvent("pillar:open-quick-add-task"),
+          )
+        }
+        aria-label="Quick add task"
+        className="ml-auto h-9 w-9"
+      >
+        <Plus className="h-5 w-5" />
+      </Button>
     </header>
   );
 }

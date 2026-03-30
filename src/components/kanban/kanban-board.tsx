@@ -379,8 +379,9 @@ export function KanbanBoard({
 
   async function handleAddTask(columnId: string, title: string) {
     try {
-      await createTask({ title, projectId, columnId });
+      const created = await createTask({ title, projectId, columnId });
       toast.success("Task created");
+      handleTaskClick(created);
     } catch (err) {
       toast.error((err as Error).message);
       throw err;

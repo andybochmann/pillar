@@ -1,6 +1,7 @@
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { CommandPalette } from "@/components/search/command-palette";
 import { KeyboardShortcutsDialog } from "@/components/layout/keyboard-shortcuts";
+import { QuickAddTaskProvider } from "@/components/layout/quick-add-task-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { SwRegistrar } from "@/components/layout/sw-registrar";
 import { OfflineBanner } from "@/components/layout/offline-banner";
@@ -30,6 +31,7 @@ export default function DashboardLayout({
       <DashboardShell>{children}</DashboardShell>
       <CommandPalette />
       <KeyboardShortcutsDialog />
+      <QuickAddTaskProvider />
       <Toaster />
       <SwRegistrar />
     </>
