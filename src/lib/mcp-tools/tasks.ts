@@ -120,6 +120,15 @@ export function registerTaskTools(server: McpServer) {
         return errorResponse(status === 403 ? "Forbidden" : "Project not found");
       }
 
+      if (columnId) {
+        const project = await Project.findById(projectId).lean();
+        if (!project) return errorResponse("Project not found");
+        const validColumnIds = project.columns?.map((c: { id: string }) => c.id) ?? [];
+        if (!validColumnIds.includes(columnId)) {
+          return errorResponse(`Column '${columnId}' does not exist in this project`);
+        }
+      }
+
       const taskCount = await Task.countDocuments({
         projectId,
         columnId: columnId ?? "todo",

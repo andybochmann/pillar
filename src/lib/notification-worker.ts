@@ -262,10 +262,16 @@ async function processReminders(
     const taskId = task._id.toString();
     const usersToNotify = getUsersToNotify(task);
     let notifiedAny = false;
+    let skippedDueToQuietHours = false;
 
     for (const userId of usersToNotify) {
       const prefs = prefsMap.get(userId);
-      if (shouldSkipUser(prefs, now)) continue;
+      if (shouldSkipUser(prefs, now)) {
+        if (prefs && (prefs.enableInAppNotifications || prefs.enableBrowserPush)) {
+          skippedDueToQuietHours = true;
+        }
+        continue;
+      }
 
       const dedupKey = `${taskId}_${userId}_${task.reminderAt?.toISOString()}`;
       if (existingSet.has(dedupKey)) continue;
@@ -305,9 +311,10 @@ async function processReminders(
       notifiedAny = true;
     }
 
-    // Only clear reminderAt and advance to next reminder when at least one user was notified.
-    // If all users were skipped (e.g. quiet hours), leave reminderAt so the next tick retries.
-    if (notifiedAny) {
+    // Only clear reminderAt and advance to next reminder when at least one user was notified
+    // AND no users were skipped due to quiet hours. If some users still need to be notified
+    // after their quiet hours end, leave reminderAt so the next tick retries for them.
+    if (notifiedAny && !skippedDueToQuietHours) {
       await Task.updateOne({ _id: task._id }, { $unset: { reminderAt: 1 } });
       try {
         await scheduleNextReminder(taskId);

@@ -47,6 +47,7 @@ export function registerSubtaskTools(server: McpServer) {
         entityId: taskId,
         projectId: existing.projectId.toString(),
         targetUserIds,
+        data: task,
         timestamp: Date.now(),
       });
 
@@ -102,6 +103,7 @@ export function registerSubtaskTools(server: McpServer) {
         entityId: taskId,
         projectId: existing.projectId.toString(),
         targetUserIds,
+        data: task,
         timestamp: Date.now(),
       });
 
@@ -134,9 +136,11 @@ export function registerSubtaskTools(server: McpServer) {
         return errorResponse("Task not found");
       }
 
-      await Task.findByIdAndUpdate(taskId, {
-        $pull: { subtasks: { _id: subtaskId } },
-      });
+      const updatedTask = await Task.findByIdAndUpdate(
+        taskId,
+        { $pull: { subtasks: { _id: subtaskId } } },
+        { returnDocument: "after" },
+      ).lean();
 
       const targetUserIds = await getProjectMemberUserIds(
         existing.projectId.toString(),
@@ -149,6 +153,7 @@ export function registerSubtaskTools(server: McpServer) {
         entityId: taskId,
         projectId: existing.projectId.toString(),
         targetUserIds,
+        data: updatedTask,
         timestamp: Date.now(),
       });
 

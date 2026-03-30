@@ -12,6 +12,7 @@ import { FilterPreset } from "@/models/filter-preset";
 import { ProjectMember } from "@/models/project-member";
 import { Notification } from "@/models/notification";
 import { NotificationPreference } from "@/models/notification-preference";
+import { getAccessibleProjectIds } from "@/lib/project-access";
 
 const MetadataSchema = z.object({
   version: z.literal(1),
@@ -186,12 +187,13 @@ export async function GET() {
 
   const userId = session.user.id;
 
+  const accessibleProjectIds = await getAccessibleProjectIds(userId);
   const [categories, labels, projects, tasks, notes, filterPresets, notifPref] =
     await Promise.all([
       Category.find({ userId }).lean(),
       Label.find({ userId }).lean(),
       Project.find({ userId }).lean(),
-      Task.find({ userId }).lean(),
+      Task.find({ projectId: { $in: accessibleProjectIds } }).lean(),
       Note.find({ userId }).lean(),
       FilterPreset.find({ userId }).lean(),
       NotificationPreference.findOne({ userId }).lean(),
@@ -277,7 +279,7 @@ export async function POST(request: Request) {
       Label.find({ userId }, { _id: 1 }).lean(),
       Category.find({ userId }, { _id: 1 }).lean(),
       Project.find({ userId }, { _id: 1 }).lean(),
-      Task.find({ userId }, { _id: 1 }).lean(),
+      Task.find({ projectId: { $in: await getAccessibleProjectIds(userId.toString()) } }, { _id: 1 }).lean(),
       Note.find({ userId }, { _id: 1 }).lean(),
       FilterPreset.find({ userId }, { _id: 1 }).lean(),
     ]);
@@ -468,6 +470,7 @@ export async function POST(request: Request) {
 
     if (mappedProjects.length > 0) {
       await Project.insertMany(mappedProjects);
+      projectsInserted = true;
       await ProjectMember.insertMany(
         mappedProjects.map((p) => ({
           projectId: p._id,
@@ -476,7 +479,6 @@ export async function POST(request: Request) {
           invitedBy: userId,
         })),
       );
-      projectsInserted = true;
     }
 
     if (mappedTasks.length > 0) {
@@ -539,21 +541,27 @@ export async function POST(request: Request) {
   // All inserts succeeded — safe to clean up old data (including labels)
   const oldProjectIds = oldProjects.map((d) => d._id);
   const oldTaskIds = oldTasks.map((d) => d._id);
-  await Promise.all([
-    Label.deleteMany({ _id: { $in: oldLabels.map((d) => d._id) } }),
-    Category.deleteMany({ _id: { $in: oldCategories.map((d) => d._id) } }),
-    Project.deleteMany({ _id: { $in: oldProjectIds } }),
-    // Also remove collaborator tasks in the user's old projects (different userId)
-    Task.deleteMany({ projectId: { $in: oldProjectIds } }),
-    Task.deleteMany({ _id: { $in: oldTaskIds } }),
-    Notification.deleteMany({ taskId: { $in: oldTaskIds } }),
-    Note.deleteMany({ _id: { $in: oldNotes.map((d) => d._id) } }),
-    FilterPreset.deleteMany({ _id: { $in: oldFilterPresets.map((d) => d._id) } }),
-    ProjectMember.deleteMany({ projectId: { $in: oldProjectIds } }),
-  ]);
+  let cleanupFailed = false;
+  try {
+    await Promise.all([
+      Label.deleteMany({ _id: { $in: oldLabels.map((d) => d._id) } }),
+      Category.deleteMany({ _id: { $in: oldCategories.map((d) => d._id) } }),
+      Project.deleteMany({ _id: { $in: oldProjectIds } }),
+      // Also remove collaborator tasks in the user's old projects (different userId)
+      Task.deleteMany({ projectId: { $in: oldProjectIds } }),
+      Task.deleteMany({ _id: { $in: oldTaskIds } }),
+      Notification.deleteMany({ taskId: { $in: oldTaskIds } }),
+      Note.deleteMany({ _id: { $in: oldNotes.map((d) => d._id) } }),
+      FilterPreset.deleteMany({ _id: { $in: oldFilterPresets.map((d) => d._id) } }),
+      ProjectMember.deleteMany({ projectId: { $in: oldProjectIds } }),
+    ]);
+  } catch (cleanupErr) {
+    console.error("[backup/POST] Cleanup of old data failed, attempting label rename:", cleanupErr);
+    cleanupFailed = true;
+  }
 
-  // Remove temporary prefix from restored label names now that old labels
-  // (which could conflict on the {userId, name} unique index) are deleted.
+  // Always attempt to remove temporary prefix from restored label names,
+  // even if cleanup failed, so labels are at least readable.
   if (data.labels.length > 0) {
     await Promise.all(
       data.labels.map((l) => {
@@ -566,6 +574,7 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     success: true,
+    ...(cleanupFailed && { warning: "Restore succeeded but cleanup of old data failed. Some duplicate data may remain." }),
     summary: {
       categories: data.categories.length,
       labels: data.labels.length,

@@ -114,7 +114,11 @@ export async function DELETE(request: Request, { params }: RouteParams) {
 
     const isSelf = member.userId.toString() === session.user.id;
     if (!isSelf) {
-      await requireProjectRole(session.user.id, id, "owner");
+      try {
+        await requireProjectRole(session.user.id, id, "owner");
+      } catch {
+        return NextResponse.json({ error: "Member not found" }, { status: 404 });
+      }
     }
 
     // Prevent removing the last owner

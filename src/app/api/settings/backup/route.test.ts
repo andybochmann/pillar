@@ -75,6 +75,12 @@ describe("/api/settings/backup", () => {
       categoryId: category._id,
       userId,
     });
+    await createTestProjectMember({
+      projectId: project._id,
+      userId,
+      role: "owner",
+      invitedBy: userId,
+    });
     const task = await createTestTask({
       projectId: project._id,
       userId,
@@ -214,6 +220,12 @@ describe("/api/settings/backup", () => {
         categoryId: category._id,
         userId: user._id,
       });
+      await createTestProjectMember({
+        projectId: project._id,
+        userId: user._id,
+        role: "owner",
+        invitedBy: user._id,
+      });
       const otherUser = await createTestUser({ email: "assignee@example.com" });
       await createTestTask({
         projectId: project._id,
@@ -237,6 +249,12 @@ describe("/api/settings/backup", () => {
       const project = await createTestProject({
         categoryId: category._id,
         userId: user._id,
+      });
+      await createTestProjectMember({
+        projectId: project._id,
+        userId: user._id,
+        role: "owner",
+        invitedBy: user._id,
       });
       await createTestTask({
         projectId: project._id,

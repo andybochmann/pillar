@@ -289,6 +289,7 @@ describe("DELETE /api/projects/[id]/members/[memberId]", () => {
       },
     );
 
-    expect(res.status).toBe(403);
+    // Returns 404 (not 403) to prevent membership enumeration
+    expect(res.status).toBe(404);
   });
 });

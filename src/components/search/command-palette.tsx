@@ -132,8 +132,6 @@ export function CommandPalette() {
         if (res.ok) {
           const data: SearchResults = await res.json();
           setResults(data);
-          addRecentSearch(q.trim());
-          setRecentSearches(getRecentSearches());
         }
       } finally {
         setLoading(false);
@@ -160,6 +158,10 @@ export function CommandPalette() {
   }
 
   function handleSelectTask(task: TaskResult) {
+    if (query.trim()) {
+      addRecentSearch(query.trim());
+      setRecentSearches(getRecentSearches());
+    }
     setOpen(false);
     setQuery("");
     setResults({ tasks: [], notes: [], archivedTasks: [] });
@@ -167,6 +169,10 @@ export function CommandPalette() {
   }
 
   function handleSelectNote(note: NoteResult) {
+    if (query.trim()) {
+      addRecentSearch(query.trim());
+      setRecentSearches(getRecentSearches());
+    }
     setOpen(false);
     setQuery("");
     setResults({ tasks: [], notes: [], archivedTasks: [] });

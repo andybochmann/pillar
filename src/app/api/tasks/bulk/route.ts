@@ -137,6 +137,16 @@ export async function PATCH(request: Request) {
       }
       await Task.updateMany(filter, { $set: { priority } });
     } else if (action === "delete") {
+      const activeTimerTask = await Task.findOne({
+        _id: { $in: accessibleTaskIds },
+        timeSessions: { $elemMatch: { endedAt: null } },
+      }).select("_id title").lean();
+      if (activeTimerTask) {
+        return NextResponse.json(
+          { error: "Cannot delete tasks with an active time tracking session. Stop all timers first." },
+          { status: 409 },
+        );
+      }
       await Note.deleteMany({ taskId: { $in: accessibleTaskIds } });
       await Notification.deleteMany({ taskId: { $in: accessibleTaskIds } });
       await Task.deleteMany(filter);

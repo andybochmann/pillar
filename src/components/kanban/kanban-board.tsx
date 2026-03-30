@@ -306,7 +306,7 @@ export function KanbanBoard({
 
       if (reorderTasks.length > 0) {
         try {
-          const res = await fetch("/api/tasks/reorder", {
+          const res = await offlineFetch("/api/tasks/reorder", {
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -626,7 +626,7 @@ export function KanbanBoard({
   }
 
   async function handleArchiveAll(columnId: string) {
-    const ids = tasks.filter((t) => t.columnId === columnId).map((t) => t._id);
+    const ids = filteredTasks.filter((t) => t.columnId === columnId).map((t) => t._id);
     if (ids.length === 0) return;
     try {
       await bulkArchive(ids);
