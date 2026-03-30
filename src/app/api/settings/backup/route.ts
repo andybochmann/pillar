@@ -187,17 +187,20 @@ export async function GET() {
 
   const userId = session.user.id;
 
-  const accessibleProjectIds = await getAccessibleProjectIds(userId);
-  const [categories, labels, projects, tasks, notes, filterPresets, notifPref] =
+  const [categories, labels, projects, notes, filterPresets, notifPref] =
     await Promise.all([
       Category.find({ userId }).lean(),
       Label.find({ userId }).lean(),
       Project.find({ userId }).lean(),
-      Task.find({ projectId: { $in: accessibleProjectIds } }).lean(),
       Note.find({ userId }).lean(),
       FilterPreset.find({ userId }).lean(),
       NotificationPreference.findOne({ userId }).lean(),
     ]);
+
+  // Query tasks scoped to user-owned projects only (not shared projects)
+  const tasks = await Task.find({
+    projectId: { $in: projects.map((p) => p._id) },
+  }).lean();
 
   const fieldsToStrip = ["userId", "__v"];
 

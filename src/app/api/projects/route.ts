@@ -120,13 +120,21 @@ export async function POST(request: Request) {
       userId: session.user.id,
     });
 
-    // Create owner membership record
-    await ProjectMember.create({
-      projectId: project._id,
-      userId: session.user.id,
-      role: "owner",
-      invitedBy: session.user.id,
-    });
+    // Create owner membership record — compensate if this fails
+    try {
+      await ProjectMember.create({
+        projectId: project._id,
+        userId: session.user.id,
+        role: "owner",
+        invitedBy: session.user.id,
+      });
+    } catch {
+      await Project.findByIdAndDelete(project._id);
+      return NextResponse.json(
+        { error: "Internal server error" },
+        { status: 500 },
+      );
+    }
 
     emitSyncEvent({
       entity: "project",

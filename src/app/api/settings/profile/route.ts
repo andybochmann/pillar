@@ -103,6 +103,13 @@ export async function DELETE() {
     ).lean();
     const projectIds = userProjects.map((p) => p._id);
 
+    // Collect task IDs before deletion to clean up all notifications (including collaborators')
+    const projectTaskIds = await Task.find(
+      { projectId: { $in: projectIds } },
+      { _id: 1 },
+    ).lean();
+    const taskIds = projectTaskIds.map((t) => t._id);
+
     const deleted = await User.findByIdAndDelete(session.user.id);
     if (!deleted) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -135,7 +142,12 @@ export async function DELETE() {
       }),
       AccessToken.deleteMany({ userId: session.user.id }),
       PushSubscription.deleteMany({ userId: session.user.id }),
-      Notification.deleteMany({ userId: session.user.id }),
+      Notification.deleteMany({
+        $or: [
+          { userId: session.user.id },
+          { taskId: { $in: taskIds } },
+        ],
+      }),
       NotificationPreference.deleteMany({ userId: session.user.id }),
       Account.deleteMany({ userId: session.user.id }),
       FilterPreset.deleteMany({ userId: session.user.id }),

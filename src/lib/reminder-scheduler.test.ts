@@ -739,7 +739,17 @@ describe("recalculateRemindersForUser", () => {
       userId: user._id,
       projectId: project._id,
       dueDate,
-      reminderAt: new Date(Date.now() + 2 * 24 * 60 * 60_000), // old reminder
+      // No reminderAt — simulates auto-scheduled (will be recalculated)
+    });
+
+    // Task with manual reminderAt (should be PRESERVED, not cleared)
+    const manualReminderDate = new Date(Date.now() + 2 * 24 * 60 * 60_000);
+    const manualTask = await createTestTask({
+      title: "Manual reminder task",
+      userId: user._id,
+      projectId: project._id,
+      dueDate: new Date(Date.now() + 4 * 24 * 60 * 60_000),
+      reminderAt: manualReminderDate,
     });
 
     // Completed task (should NOT be recalculated)
@@ -767,7 +777,7 @@ describe("recalculateRemindersForUser", () => {
 
     await recalculateRemindersForUser(user._id.toString());
 
-    // Future task should have new reminderAt: day-of at 08:00 UTC
+    // Future task (no manual reminderAt) should have new reminderAt
     const updatedFuture = await Task.findById(futureTask._id);
     expect(updatedFuture?.reminderAt).toBeDefined();
     const expectedDayOf = computeReminderDate(
@@ -776,6 +786,10 @@ describe("recalculateRemindersForUser", () => {
       "UTC",
     );
     expect(updatedFuture!.reminderAt!.getTime()).toBe(expectedDayOf.getTime());
+
+    // Manual reminder task should be PRESERVED (not cleared and re-scheduled)
+    const updatedManual = await Task.findById(manualTask._id);
+    expect(updatedManual!.reminderAt!.getTime()).toBe(manualReminderDate.getTime());
 
     // Completed task should be unaffected
     const updatedCompleted = await Task.findById(completedTask._id);
@@ -822,10 +836,10 @@ describe("recalculateRemindersForUser", () => {
       projectId: project._id,
       assigneeId: assignee._id,
       dueDate,
-      reminderAt: new Date(Date.now() + 1 * 24 * 60 * 60_000), // old
+      // No reminderAt — simulates auto-scheduled (will be recalculated)
     });
 
-    // Recalculate for assignee — should still merge both users' reminders
+    // Recalculate for assignee — should merge both users' reminders
     await recalculateRemindersForUser(assignee._id.toString());
 
     const updated = await Task.findById(task._id);

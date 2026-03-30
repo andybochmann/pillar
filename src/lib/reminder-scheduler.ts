@@ -158,19 +158,25 @@ export async function recalculateRemindersForUser(
     $or: [{ userId }, { assigneeId: userId }],
     dueDate: { $gte: cutoff },
     completedAt: null,
-  }).select("_id");
+  }).select("_id reminderAt");
 
   if (tasks.length === 0) return;
 
-  const taskIds = tasks.map((t) => t._id);
-  // Clear all auto-scheduled reminderAt values
+  // Only clear and re-schedule tasks without a manually-set reminderAt.
+  // Tasks with an existing reminderAt are preserved (they were set manually
+  // by the user or via the API, and scheduleNextReminder's guard would
+  // normally protect them — but $unset defeats that guard).
+  const autoTasks = tasks.filter((t) => !t.reminderAt);
+  if (autoTasks.length === 0) return;
+
+  const autoTaskIds = autoTasks.map((t) => t._id);
   await Task.updateMany(
-    { _id: { $in: taskIds } },
+    { _id: { $in: autoTaskIds } },
     { $unset: { reminderAt: 1 } },
   );
 
-  // Re-schedule each task
-  for (const task of tasks) {
+  // Re-schedule only the auto-scheduled tasks
+  for (const task of autoTasks) {
     await scheduleNextReminder(task._id.toString());
   }
 }

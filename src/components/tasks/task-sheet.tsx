@@ -273,11 +273,12 @@ function TaskSheetForm({
       const doSave = async () => {
         try {
           await onUpdate(task._id, data);
+          markSaved();
         } catch (err) {
+          setSaveStatus("idle");
           toast.error(err instanceof Error ? err.message : "Failed to save");
         } finally {
           pendingSaveRef.current = null;
-          markSaved();
         }
       };
       pendingSaveRef.current = doSave;
@@ -387,7 +388,7 @@ function TaskSheetForm({
     }
   }
 
-  function handleSubtasksAdded(titles: string[]) {
+  async function handleSubtasksAdded(titles: string[]) {
     const MAX_SUBTASKS = 50;
     const newSubtasks: Subtask[] = titles.map((title, i) => ({
       _id: `temp-${Date.now()}-${i}`,
@@ -397,7 +398,15 @@ function TaskSheetForm({
 
     const updated = [...subtasks, ...newSubtasks].slice(0, MAX_SUBTASKS);
     setSubtasks(updated);
-    onUpdate(task._id, { subtasks: updated });
+    try {
+      const result = await onUpdate(task._id, { subtasks: updated });
+      if (result && typeof result === "object" && "subtasks" in result) {
+        setSubtasks((result as Task).subtasks ?? updated);
+      }
+    } catch {
+      // Revert optimistic update on failure
+      setSubtasks(subtasks);
+    }
     toast.success(`Added ${newSubtasks.length} subtasks`);
   }
 

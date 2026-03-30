@@ -8,6 +8,7 @@ import { Notification } from "@/models/notification";
 import { Project } from "@/models/project";
 import {
   requireProjectRole,
+  getProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
 import {
@@ -120,6 +121,11 @@ export function registerTaskTools(server: McpServer) {
         return errorResponse(status === 403 ? "Forbidden" : "Project not found");
       }
 
+      if (assigneeId) {
+        const assigneeRole = await getProjectRole(assigneeId, projectId);
+        if (!assigneeRole) return errorResponse("Assignee is not a project member");
+      }
+
       if (columnId) {
         const project = await Project.findById(projectId).lean();
         if (!project) return errorResponse("Project not found");
@@ -196,6 +202,11 @@ export function registerTaskTools(server: McpServer) {
       } catch (err) {
         const status = (err as Error & { status?: number }).status;
         return errorResponse(status === 403 ? "Forbidden" : "Project not found");
+      }
+
+      if (updates.assigneeId !== undefined && updates.assigneeId !== null) {
+        const assigneeRole = await getProjectRole(updates.assigneeId, existing.projectId.toString());
+        if (!assigneeRole) return errorResponse("Assignee is not a project member");
       }
 
       if (updates.columnId !== undefined) {

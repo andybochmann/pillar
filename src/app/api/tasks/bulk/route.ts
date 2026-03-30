@@ -151,6 +151,16 @@ export async function PATCH(request: Request) {
       await Notification.deleteMany({ taskId: { $in: accessibleTaskIds } });
       await Task.deleteMany(filter);
     } else if (action === "archive") {
+      const activeTimerTask = await Task.findOne({
+        _id: { $in: accessibleTaskIds },
+        timeSessions: { $elemMatch: { endedAt: null } },
+      }).select("_id title").lean();
+      if (activeTimerTask) {
+        return NextResponse.json(
+          { error: "Cannot archive tasks with an active time tracking session. Stop all timers first." },
+          { status: 409 },
+        );
+      }
       await Task.updateMany(filter, {
         $set: { archived: true, archivedAt: new Date() },
       });

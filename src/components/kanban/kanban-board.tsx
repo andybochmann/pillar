@@ -556,11 +556,8 @@ export function KanbanBoard({
         body: JSON.stringify({ taskIds: ids, action: "move", columnId }),
       });
       if (!res.ok) throw new Error("Failed to move tasks");
-      const sortedCols = [...columns].sort((a, b) => a.order - b.order);
-      const lastColId = sortedCols[sortedCols.length - 1]?.id;
-      const completedAt = columnId === lastColId ? new Date().toISOString() : null;
       setTasks((prev) =>
-        prev.map((t) => (ids.includes(t._id) ? { ...t, columnId, completedAt } : t)),
+        prev.map((t) => (ids.includes(t._id) ? { ...t, columnId } : t)),
       );
       setSelectedIds(new Set());
       toast.success(`Moved ${ids.length} tasks`);
