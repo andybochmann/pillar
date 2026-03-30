@@ -62,17 +62,33 @@ export async function handleOAuthSignIn(
     return existingUser._id.toString();
   }
 
-  const newUser = await User.create({
-    name: profile.name ?? profile.email.split("@")[0],
-    email: profile.email.toLowerCase(),
-    image: profile.image ?? undefined,
-  });
+  let newUser;
+  try {
+    newUser = await User.create({
+      name: profile.name ?? profile.email.split("@")[0],
+      email: profile.email.toLowerCase(),
+      image: profile.image ?? undefined,
+    });
+  } catch (err) {
+    if ((err as { code?: number }).code === 11000) {
+      // Race condition: another concurrent OAuth callback already created the user
+      newUser = await User.findOne({ email: profile.email.toLowerCase() });
+      if (!newUser) return null;
+    } else {
+      throw err;
+    }
+  }
 
-  await Account.create({
-    userId: newUser._id,
-    provider: account.provider,
-    providerAccountId: account.providerAccountId,
-  });
+  try {
+    await Account.create({
+      userId: newUser._id,
+      provider: account.provider,
+      providerAccountId: account.providerAccountId,
+    });
+  } catch (err) {
+    // Race: concurrent request already created the account — that's fine
+    if ((err as { code?: number }).code !== 11000) throw err;
+  }
 
   return newUser._id.toString();
 }

@@ -60,7 +60,7 @@ describe("TaskList", () => {
     const row = screen.getByTestId("task-t1");
     await user.click(row);
 
-    expect(mockPush).toHaveBeenCalledWith("/projects/proj-42");
+    expect(mockPush).toHaveBeenCalledWith("/projects/proj-42?taskId=t1");
   });
 
   it("navigates to the correct project for each task", async () => {
@@ -75,7 +75,7 @@ describe("TaskList", () => {
     const rowB = screen.getByTestId("task-t2");
     await user.click(rowB);
 
-    expect(mockPush).toHaveBeenCalledWith("/projects/proj-2");
+    expect(mockPush).toHaveBeenCalledWith("/projects/proj-2?taskId=t2");
   });
 
   it("applies cursor-pointer class to task items", () => {

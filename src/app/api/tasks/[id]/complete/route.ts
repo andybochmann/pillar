@@ -62,17 +62,17 @@ export async function POST(request: Request, { params }: RouteParams) {
       : undefined;
 
     const now = new Date();
-    const updateOps: Record<string, unknown> = {
+    const setFields: Record<string, unknown> = {
       completedAt: now,
     };
 
     // Move to done column if found and different from current
     if (doneColumn && task.columnId !== doneColumn.id) {
-      updateOps.columnId = doneColumn.id;
+      setFields.columnId = doneColumn.id;
     }
 
     const updateDoc: Record<string, unknown> = {
-      ...updateOps,
+      $set: setFields,
       $unset: { reminderAt: 1 },
     };
 

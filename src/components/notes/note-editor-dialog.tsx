@@ -136,10 +136,12 @@ export function NoteEditorDialog({
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
       if (!isOpen) {
-        flushPending().catch(() => {
-          // Error already shown via toast; keep dialog open on failure
-          onOpenChange(true);
-        });
+        flushPending()
+          .then(() => onOpenChange(false))
+          .catch(() => {
+            // Error already shown via toast; keep dialog open on failure
+          });
+        return;
       }
       onOpenChange(isOpen);
     }}>

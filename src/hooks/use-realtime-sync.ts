@@ -75,6 +75,7 @@ export function useRealtimeSync(): void {
     connect();
 
     const handleOnline = () => {
+      retriesRef.current = 0;
       if (!esRef.current) connect();
     };
 

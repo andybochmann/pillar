@@ -28,6 +28,19 @@ export function TaskTitleDescriptionSection({
   const [description, setDescription] = useState(initialDescription);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Sync local state from props when not actively editing (SSE updates)
+  useEffect(() => {
+    if (!debounceRef.current) {
+      setTitle(initialTitle);
+    }
+  }, [initialTitle]);
+
+  useEffect(() => {
+    if (!debounceRef.current) {
+      setDescription(initialDescription);
+    }
+  }, [initialDescription]);
+
   // Refs to track latest values for the cleanup effect
   const titleRef = useRef(title);
   const descriptionRef = useRef(description);
@@ -74,6 +87,7 @@ export function TaskTitleDescriptionSection({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     onSaveStatusChange?.("saving");
     debounceRef.current = setTimeout(async () => {
+      debounceRef.current = null;
       try {
         await onUpdate(data);
       } catch (err) {

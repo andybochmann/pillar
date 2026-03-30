@@ -8,6 +8,18 @@ import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { requireProjectRole } from "@/lib/project-access";
 
+// Simple per-user rate limiter: max 10 requests per minute
+const rateLimitMap = new Map<string, number[]>();
+export const _resetRateLimitForTesting = () => rateLimitMap.clear();
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const windowStart = now - 60_000;
+  const timestamps = (rateLimitMap.get(userId) ?? []).filter(t => t > windowStart);
+  if (timestamps.length >= 10) return false;
+  rateLimitMap.set(userId, [...timestamps, now]);
+  return true;
+}
+
 const RequestSchema = z.object({
   projectId: z.string().min(1, "Project ID is required"),
   maxCount: z.number().int().min(1).max(20).optional(),
@@ -45,6 +57,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!checkRateLimit(session.user.id)) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment." },
+      { status: 429 },
+    );
+  }
+
   const body = await request.json();
   const result = RequestSchema.safeParse(body);
   if (!result.success) {
@@ -62,11 +81,11 @@ export async function POST(request: Request) {
   try {
     await requireProjectRole(session.user.id, projectId, "editor");
   } catch (err) {
-    const status = (err as Error & { status?: number }).status ?? 500;
-    return NextResponse.json(
-      { error: (err as Error).message },
-      { status },
-    );
+    const status = (err as { status?: number }).status;
+    if (status === 403 || status === 404) {
+      return NextResponse.json({ error: (err as Error).message }, { status });
+    }
+    return NextResponse.json({ error: "Failed to check project access" }, { status: 500 });
   }
 
   const project = await Project.findById(projectId).lean();

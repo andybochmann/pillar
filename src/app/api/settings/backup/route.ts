@@ -10,6 +10,7 @@ import { Task } from "@/models/task";
 import { Note } from "@/models/note";
 import { FilterPreset } from "@/models/filter-preset";
 import { ProjectMember } from "@/models/project-member";
+import { Notification } from "@/models/notification";
 import { NotificationPreference } from "@/models/notification-preference";
 
 const MetadataSchema = z.object({
@@ -537,13 +538,15 @@ export async function POST(request: Request) {
 
   // All inserts succeeded — safe to clean up old data (including labels)
   const oldProjectIds = oldProjects.map((d) => d._id);
+  const oldTaskIds = oldTasks.map((d) => d._id);
   await Promise.all([
     Label.deleteMany({ _id: { $in: oldLabels.map((d) => d._id) } }),
     Category.deleteMany({ _id: { $in: oldCategories.map((d) => d._id) } }),
     Project.deleteMany({ _id: { $in: oldProjectIds } }),
     // Also remove collaborator tasks in the user's old projects (different userId)
     Task.deleteMany({ projectId: { $in: oldProjectIds } }),
-    Task.deleteMany({ _id: { $in: oldTasks.map((d) => d._id) } }),
+    Task.deleteMany({ _id: { $in: oldTaskIds } }),
+    Notification.deleteMany({ taskId: { $in: oldTaskIds } }),
     Note.deleteMany({ _id: { $in: oldNotes.map((d) => d._id) } }),
     FilterPreset.deleteMany({ _id: { $in: oldFilterPresets.map((d) => d._id) } }),
     ProjectMember.deleteMany({ projectId: { $in: oldProjectIds } }),

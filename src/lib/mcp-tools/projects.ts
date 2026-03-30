@@ -126,7 +126,7 @@ export function registerProjectTools(server: McpServer) {
 
   server.tool(
     "update_project",
-    "Update a project's name, description, view type, archived status, or columns. Requires editor role or higher.",
+    "Update a project's name, description, view type, archived status, or columns. Requires owner role.",
     {
       projectId: z.string(),
       name: z.string().min(1).max(100).optional(),
@@ -146,7 +146,7 @@ export function registerProjectTools(server: McpServer) {
     async ({ projectId, ...updates }) => {
       const userId = getMcpUserId();
       try {
-        await requireProjectRole(userId, projectId, "editor");
+        await requireProjectRole(userId, projectId, "owner");
       } catch (err) {
         const status = (err as Error & { status?: number }).status;
         return errorResponse(status === 403 ? "Forbidden" : "Project not found");

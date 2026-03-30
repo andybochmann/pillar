@@ -79,19 +79,28 @@ export function useOfflineQueue() {
     if (syncingRef.current) return;
     syncingRef.current = true;
     setSyncing(true);
-    try {
-      const result = await replayQueue();
-      if (result.succeeded > 0) {
-        toast.success(`${result.succeeded} change${result.succeeded === 1 ? "" : "s"} synced`);
-        window.dispatchEvent(new CustomEvent("pillar:sync-complete"));
+
+    const runReplay = async () => {
+      try {
+        const result = await replayQueue();
+        if (result.succeeded > 0) {
+          toast.success(`${result.succeeded} change${result.succeeded === 1 ? "" : "s"} synced`);
+          window.dispatchEvent(new CustomEvent("pillar:sync-complete"));
+        }
+        if (result.failed > 0) {
+          toast.error(`${result.failed} change${result.failed === 1 ? "" : "s"} failed to sync`);
+        }
+        await refreshCount();
+      } finally {
+        syncingRef.current = false;
+        setSyncing(false);
       }
-      if (result.failed > 0) {
-        toast.error(`${result.failed} change${result.failed === 1 ? "" : "s"} failed to sync`);
-      }
-      await refreshCount();
-    } finally {
-      syncingRef.current = false;
-      setSyncing(false);
+    };
+
+    if ("locks" in navigator) {
+      await navigator.locks.request("pillar-sync", runReplay);
+    } else {
+      await runReplay();
     }
   }, [refreshCount]);
 

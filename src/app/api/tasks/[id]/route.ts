@@ -188,17 +188,18 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       delete updateData.reminderAt;
     }
 
-    const updateOp: Record<string, unknown> = shouldPushHistory
-      ? {
-          ...updateData,
-          $push: {
-            statusHistory: {
-              columnId: result.data.columnId,
-              timestamp: new Date(),
-            },
-          },
-        }
-      : { ...updateData };
+    const updateOp: Record<string, unknown> = {
+      $set: updateData,
+    };
+
+    if (shouldPushHistory) {
+      updateOp.$push = {
+        statusHistory: {
+          columnId: result.data.columnId,
+          timestamp: new Date(),
+        },
+      };
+    }
 
     if (shouldUnsetReminder) {
       updateOp.$unset = { reminderAt: 1 };

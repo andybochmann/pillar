@@ -170,7 +170,9 @@ export function useTimeTracking(
       }
 
       const updated: Task = await res.json();
-      updateTaskInList(updated);
+      if (navigator.onLine) {
+        updateTaskInList(updated);
+      }
       return updated;
     },
     [updateTaskInList],

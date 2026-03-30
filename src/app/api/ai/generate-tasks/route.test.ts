@@ -49,7 +49,7 @@ vi.mock("@/lib/db", () => ({
   connectDB: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { POST } from "./route";
+import { POST, _resetRateLimitForTesting } from "./route";
 import { auth } from "@/lib/auth";
 import { isAIEnabled, isAIAllowedForUser } from "@/lib/ai";
 import { generateObject } from "ai";
@@ -94,6 +94,7 @@ describe("POST /api/ai/generate-tasks", () => {
     vi.mocked(isAIEnabled).mockReturnValue(true);
     vi.mocked(isAIAllowedForUser).mockReturnValue(true);
     vi.mocked(auth).mockResolvedValue(session);
+    _resetRateLimitForTesting();
   });
 
   afterEach(async () => {

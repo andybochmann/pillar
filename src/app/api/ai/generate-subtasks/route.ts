@@ -4,6 +4,18 @@ import { generateObject } from "ai";
 import { auth } from "@/lib/auth";
 import { isAIEnabled, isAIAllowedForUser, getAIModel } from "@/lib/ai";
 
+// Simple per-user rate limiter: max 10 requests per minute
+const rateLimitMap = new Map<string, number[]>();
+export const _resetRateLimitForTesting = () => rateLimitMap.clear();
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const windowStart = now - 60_000;
+  const timestamps = (rateLimitMap.get(userId) ?? []).filter(t => t > windowStart);
+  if (timestamps.length >= 10) return false;
+  rateLimitMap.set(userId, [...timestamps, now]);
+  return true;
+}
+
 const RequestSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   description: z.string().max(2000).optional(),
@@ -34,6 +46,13 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "AI is not available for this user" },
       { status: 403 },
+    );
+  }
+
+  if (!checkRateLimit(session.user.id)) {
+    return NextResponse.json(
+      { error: "Too many requests. Please wait a moment." },
+      { status: 429 },
     );
   }
 
