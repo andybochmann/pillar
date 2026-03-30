@@ -81,7 +81,7 @@ export function TaskList({ tasks, projects, labels = [] }: TaskListProps) {
               key={task._id}
               data-testid={`task-${task._id}`}
               className="cursor-pointer rounded-md border p-3 hover:bg-accent/50 md:rounded-none md:border-x-0 md:border-t-0 md:border-b md:p-0 md:last:border-b-0"
-              onClick={() => router.push(`/projects/${task.projectId}`)}
+              onClick={() => router.push(`/projects/${task.projectId}?taskId=${task._id}`)}
             >
               {/* Mobile layout */}
               <div className="md:hidden">

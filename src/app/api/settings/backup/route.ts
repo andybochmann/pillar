@@ -287,39 +287,35 @@ export async function POST(request: Request) {
   // cleaned up in the final batch.
   const LABEL_TEMP_PREFIX = `__restore_${Date.now()}_`;
   const labelMap = new Map<string, mongoose.Types.ObjectId>();
-  await Label.insertMany(
-    data.labels.map((l) => {
-      const newId = new mongoose.Types.ObjectId();
-      labelMap.set(l._id, newId);
-      return {
-        _id: newId,
-        name: LABEL_TEMP_PREFIX + l.name,
-        color: l.color,
-        userId,
-        createdAt: new Date(l.createdAt),
-        updatedAt: new Date(l.updatedAt),
-      };
-    }),
-  );
+  const labelsToInsert = data.labels.map((l) => {
+    const newId = new mongoose.Types.ObjectId();
+    labelMap.set(l._id, newId);
+    return {
+      _id: newId,
+      name: LABEL_TEMP_PREFIX + l.name,
+      color: l.color,
+      userId,
+      createdAt: new Date(l.createdAt),
+      updatedAt: new Date(l.updatedAt),
+    };
+  });
 
   const categoryMap = new Map<string, mongoose.Types.ObjectId>();
-  await Category.insertMany(
-    data.categories.map((c) => {
-      const newId = new mongoose.Types.ObjectId();
-      categoryMap.set(c._id, newId);
-      return {
-        _id: newId,
-        name: c.name,
-        color: c.color,
-        icon: c.icon,
-        userId,
-        order: c.order,
-        collapsed: c.collapsed,
-        createdAt: new Date(c.createdAt),
-        updatedAt: new Date(c.updatedAt),
-      };
-    }),
-  );
+  const categoriesToInsert = data.categories.map((c) => {
+    const newId = new mongoose.Types.ObjectId();
+    categoryMap.set(c._id, newId);
+    return {
+      _id: newId,
+      name: c.name,
+      color: c.color,
+      icon: c.icon,
+      userId,
+      order: c.order,
+      collapsed: c.collapsed,
+      createdAt: new Date(c.createdAt),
+      updatedAt: new Date(c.updatedAt),
+    };
+  });
 
   const projectMap = new Map<string, mongoose.Types.ObjectId>();
   const mappedProjects = data.projects
@@ -342,17 +338,6 @@ export async function POST(request: Request) {
       };
     })
     .filter((p): p is NonNullable<typeof p> => p != null);
-  if (mappedProjects.length > 0) {
-    await Project.insertMany(mappedProjects);
-    await ProjectMember.insertMany(
-      mappedProjects.map((p) => ({
-        projectId: p._id,
-        userId,
-        role: "owner",
-        invitedBy: userId,
-      })),
-    );
-  }
 
   const taskMap = new Map<string, mongoose.Types.ObjectId>();
   const mappedTasks = data.tasks
@@ -402,9 +387,6 @@ export async function POST(request: Request) {
       };
     })
     .filter((t): t is NonNullable<typeof t> => t != null);
-  if (mappedTasks.length > 0) {
-    await Task.insertMany(mappedTasks);
-  }
 
   const mappedNotes = data.notes
     .map((n) => {
@@ -451,43 +433,106 @@ export async function POST(request: Request) {
       return doc;
     })
     .filter((n): n is NonNullable<typeof n> => n != null);
-  if (mappedNotes.length > 0) {
-    await Note.insertMany(mappedNotes);
-  }
 
-  if (data.filterPresets.length > 0) {
-    await FilterPreset.insertMany(
-      data.filterPresets.map((fp) => ({
-        _id: new mongoose.Types.ObjectId(),
-        name: fp.name,
+  const filterPresetsToInsert = data.filterPresets.map((fp) => ({
+    _id: new mongoose.Types.ObjectId(),
+    name: fp.name,
+    userId,
+    context: fp.context,
+    filters: fp.filters,
+    order: fp.order,
+    createdAt: new Date(fp.createdAt),
+    updatedAt: new Date(fp.updatedAt),
+  }));
+
+  // Execute inserts sequentially. On any failure, roll back all completed
+  // inserts as compensating deletes (no transactions on standalone MongoDB).
+  let labelsInserted = false;
+  let categoriesInserted = false;
+  let projectsInserted = false;
+  let tasksInserted = false;
+  let notesInserted = false;
+  let filterPresetsInserted = false;
+
+  try {
+    if (labelsToInsert.length > 0) {
+      await Label.insertMany(labelsToInsert);
+      labelsInserted = true;
+    }
+
+    if (categoriesToInsert.length > 0) {
+      await Category.insertMany(categoriesToInsert);
+      categoriesInserted = true;
+    }
+
+    if (mappedProjects.length > 0) {
+      await Project.insertMany(mappedProjects);
+      await ProjectMember.insertMany(
+        mappedProjects.map((p) => ({
+          projectId: p._id,
+          userId,
+          role: "owner",
+          invitedBy: userId,
+        })),
+      );
+      projectsInserted = true;
+    }
+
+    if (mappedTasks.length > 0) {
+      await Task.insertMany(mappedTasks);
+      tasksInserted = true;
+    }
+
+    if (mappedNotes.length > 0) {
+      await Note.insertMany(mappedNotes);
+      notesInserted = true;
+    }
+
+    if (filterPresetsToInsert.length > 0) {
+      await FilterPreset.insertMany(filterPresetsToInsert);
+      filterPresetsInserted = true;
+    }
+
+    // Handle NotificationPreference (unique index on userId — delete before re-create)
+    await NotificationPreference.deleteMany({ userId });
+    if (data.notificationPreference) {
+      const np = data.notificationPreference;
+      await NotificationPreference.create({
         userId,
-        context: fp.context,
-        filters: fp.filters,
-        order: fp.order,
-        createdAt: new Date(fp.createdAt),
-        updatedAt: new Date(fp.updatedAt),
-      })),
-    );
-  }
-
-  // Handle NotificationPreference (unique index on userId — delete before re-create)
-  await NotificationPreference.deleteMany({ userId });
-  if (data.notificationPreference) {
-    const np = data.notificationPreference;
-    await NotificationPreference.create({
-      userId,
-      enableInAppNotifications: np.enableInAppNotifications,
-      enableBrowserPush: np.enableBrowserPush,
-      quietHoursEnabled: np.quietHoursEnabled,
-      quietHoursStart: np.quietHoursStart,
-      quietHoursEnd: np.quietHoursEnd,
-      enableOverdueSummary: np.enableOverdueSummary,
-      overdueSummaryTime: np.overdueSummaryTime,
-      enableDailySummary: np.enableDailySummary,
-      dailySummaryTime: np.dailySummaryTime,
-      dueDateReminders: np.dueDateReminders,
-      timezone: np.timezone,
-    });
+        enableInAppNotifications: np.enableInAppNotifications,
+        enableBrowserPush: np.enableBrowserPush,
+        quietHoursEnabled: np.quietHoursEnabled,
+        quietHoursStart: np.quietHoursStart,
+        quietHoursEnd: np.quietHoursEnd,
+        enableOverdueSummary: np.enableOverdueSummary,
+        overdueSummaryTime: np.overdueSummaryTime,
+        enableDailySummary: np.enableDailySummary,
+        dailySummaryTime: np.dailySummaryTime,
+        dueDateReminders: np.dueDateReminders,
+        timezone: np.timezone,
+      });
+    }
+  } catch (insertErr) {
+    // Compensating deletes — remove only what was successfully inserted
+    const rollback: Promise<unknown>[] = [];
+    if (labelsInserted)
+      rollback.push(Label.deleteMany({ _id: { $in: labelsToInsert.map((l) => l._id) } }));
+    if (categoriesInserted)
+      rollback.push(Category.deleteMany({ _id: { $in: categoriesToInsert.map((c) => c._id) } }));
+    if (projectsInserted) {
+      const projIds = mappedProjects.map((p) => p._id);
+      rollback.push(Project.deleteMany({ _id: { $in: projIds } }));
+      rollback.push(ProjectMember.deleteMany({ projectId: { $in: projIds } }));
+    }
+    if (tasksInserted)
+      rollback.push(Task.deleteMany({ _id: { $in: mappedTasks.map((t) => t._id) } }));
+    if (notesInserted)
+      rollback.push(Note.deleteMany({ _id: { $in: mappedNotes.map((n) => n._id as mongoose.Types.ObjectId) } }));
+    if (filterPresetsInserted)
+      rollback.push(FilterPreset.deleteMany({ _id: { $in: filterPresetsToInsert.map((fp) => fp._id) } }));
+    await Promise.all(rollback);
+    console.error("[backup/POST] Insert failed, rollback complete:", insertErr);
+    return NextResponse.json({ error: "Restore failed" }, { status: 500 });
   }
 
   // All inserts succeeded — safe to clean up old data (including labels)
@@ -496,6 +541,8 @@ export async function POST(request: Request) {
     Label.deleteMany({ _id: { $in: oldLabels.map((d) => d._id) } }),
     Category.deleteMany({ _id: { $in: oldCategories.map((d) => d._id) } }),
     Project.deleteMany({ _id: { $in: oldProjectIds } }),
+    // Also remove collaborator tasks in the user's old projects (different userId)
+    Task.deleteMany({ projectId: { $in: oldProjectIds } }),
     Task.deleteMany({ _id: { $in: oldTasks.map((d) => d._id) } }),
     Note.deleteMany({ _id: { $in: oldNotes.map((d) => d._id) } }),
     FilterPreset.deleteMany({ _id: { $in: oldFilterPresets.map((d) => d._id) } }),

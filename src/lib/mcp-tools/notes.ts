@@ -182,7 +182,7 @@ export function registerNoteTools(server: McpServer) {
         projectIdForSync = pId;
       }
 
-      const note = await Note.findByIdAndUpdate(noteId, updates, { returnDocument: "after" });
+      const note = await Note.findByIdAndUpdate(noteId, { $set: updates }, { returnDocument: "after" });
       if (!note) return errorResponse("Note not found");
 
       const targetUserIds = projectIdForSync

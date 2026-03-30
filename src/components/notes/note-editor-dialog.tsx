@@ -49,15 +49,17 @@ export function NoteEditorDialog({
     setPinned(note?.pinned ?? false);
   }, [open, note]);
 
-  const flushPending = useCallback(() => {
+  const flushPending = useCallback((): Promise<Note | void> => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     const pending = { ...pendingRef.current };
     pendingRef.current = {};
     if (note && onUpdate && Object.keys(pending).length > 0) {
-      onUpdate(note._id, pending).catch((err) => {
+      return onUpdate(note._id, pending).catch((err) => {
         toast.error(err instanceof Error ? err.message : "Failed to save");
+        throw err;
       });
     }
+    return Promise.resolve();
   }, [note, onUpdate]);
 
   const autoSave = useCallback(
@@ -133,7 +135,12 @@ export function NoteEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen) flushPending();
+      if (!isOpen) {
+        flushPending().catch(() => {
+          // Error already shown via toast; keep dialog open on failure
+          onOpenChange(true);
+        });
+      }
       onOpenChange(isOpen);
     }}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">

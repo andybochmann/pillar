@@ -6,6 +6,7 @@ import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Note } from "@/models/note";
+import { Label } from "@/models/label";
 import { Notification } from "@/models/notification";
 import { Project } from "@/models/project";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
@@ -159,6 +160,17 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           { error: "Assignee is not a project member" },
           { status: 400 },
         );
+      }
+    }
+
+    // Validate label ownership — labels are user-scoped
+    if (result.data.labels && result.data.labels.length > 0) {
+      const validLabels = await Label.find({
+        _id: { $in: result.data.labels },
+        userId: session.user.id,
+      }).select("_id").lean();
+      if (validLabels.length !== result.data.labels.length) {
+        return NextResponse.json({ error: "Invalid label IDs" }, { status: 400 });
       }
     }
 

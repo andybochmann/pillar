@@ -366,6 +366,7 @@ async function processOverdue(
   const existingOverdue = await Notification.find({
     taskId: { $in: taskIds },
     type: "overdue",
+    dismissed: false,
   });
   const existingSet = new Set(
     existingOverdue.map(

@@ -87,7 +87,7 @@ export function KanbanBoard({
         setSheetOpen(true);
       }
     }
-  }, [openTaskId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [openTaskId, tasks]);
 
   // Bug 12 fix: Sync selectedTask when the matching task in tasks array changes via SSE
   useEffect(() => {
@@ -556,8 +556,11 @@ export function KanbanBoard({
         body: JSON.stringify({ taskIds: ids, action: "move", columnId }),
       });
       if (!res.ok) throw new Error("Failed to move tasks");
+      const sortedCols = [...columns].sort((a, b) => a.order - b.order);
+      const lastColId = sortedCols[sortedCols.length - 1]?.id;
+      const completedAt = columnId === lastColId ? new Date().toISOString() : null;
       setTasks((prev) =>
-        prev.map((t) => (ids.includes(t._id) ? { ...t, columnId } : t)),
+        prev.map((t) => (ids.includes(t._id) ? { ...t, columnId, completedAt } : t)),
       );
       setSelectedIds(new Set());
       toast.success(`Moved ${ids.length} tasks`);

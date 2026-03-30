@@ -73,10 +73,9 @@ export function TaskSheet({
 }: TaskSheetProps) {
   useBackButton("task-sheet", open, () => onOpenChange(false));
 
-  if (!task) return null;
-
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
+      {task && (
       <SheetContent
         className="overflow-hidden p-0 sm:max-w-lg"
         onOpenAutoFocus={(e) => e.preventDefault()}
@@ -103,6 +102,7 @@ export function TaskSheet({
           onArchive={onArchive}
         />
       </SheetContent>
+      )}
     </Sheet>
   );
 }
@@ -183,6 +183,8 @@ function TaskSheetForm({
   const prevLabelsRef = useRef(task.labels);
   const prevSubtasksRef = useRef(task.subtasks);
   useEffect(() => {
+    // Don't overwrite fields the user is currently editing
+    if (saveStatus === "saving") return;
     setColumnId(task.columnId);
     setPriority(task.priority);
     setAssigneeId(task.assigneeId ?? null);
@@ -213,6 +215,7 @@ function TaskSheetForm({
       prevSubtasksRef.current = task.subtasks;
     }
   }, [
+    saveStatus,
     task.columnId,
     task.priority,
     task.assigneeId,

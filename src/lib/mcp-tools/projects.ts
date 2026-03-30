@@ -7,6 +7,7 @@ import { Task } from "@/models/task";
 import { ProjectMember } from "@/models/project-member";
 import { Category } from "@/models/category";
 import { Note } from "@/models/note";
+import { Notification } from "@/models/notification";
 import {
   getAccessibleProjectIds,
   getProjectRole,
@@ -197,11 +198,15 @@ export function registerProjectTools(server: McpServer) {
 
       const targetUserIds = await getProjectMemberUserIds(projectId);
 
+      const projectTasks = await Task.find({ projectId }, { _id: 1 }).lean();
+      const taskIds = projectTasks.map((t) => t._id);
+
       await Promise.all([
         Project.findByIdAndDelete(projectId),
         Task.deleteMany({ projectId }),
         ProjectMember.deleteMany({ projectId }),
         Note.deleteMany({ projectId }),
+        Notification.deleteMany({ taskId: { $in: taskIds } }),
       ]);
 
       emitSyncEvent({

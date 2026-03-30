@@ -8,6 +8,7 @@ import { Notification } from "@/models/notification";
 import { Project } from "@/models/project";
 import { ProjectMember } from "@/models/project-member";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
+import { Label } from "@/models/label";
 import { emitSyncEvent } from "@/lib/event-bus";
 
 const BulkUpdateSchema = z.object({
@@ -182,6 +183,11 @@ export async function PATCH(request: Request) {
           { error: "labelId required for add-label action" },
           { status: 400 },
         );
+      }
+      // Validate label belongs to the session user — labels are user-scoped
+      const validLabel = await Label.findOne({ _id: labelId, userId: session.user.id }).lean();
+      if (!validLabel) {
+        return NextResponse.json({ error: "Invalid label ID" }, { status: 400 });
       }
       await Task.updateMany(filter, { $addToSet: { labels: labelId } });
     }

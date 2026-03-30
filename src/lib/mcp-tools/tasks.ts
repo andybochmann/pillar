@@ -381,12 +381,13 @@ export function registerTaskTools(server: McpServer) {
 
       const now = new Date();
 
-      // Find the "done" column for the project
+      // Derive done column (last by order) and first column (for recurring tasks)
       const project = await Project.findById(existing.projectId).lean();
-      const doneColumn = project?.columns?.find(
-        (c) => c.id === "done",
-      );
-      const doneColumnId = doneColumn?.id ?? "done";
+      const sortedCols = [...(project?.columns ?? [])].sort((a, b) => a.order - b.order);
+      const doneCol = sortedCols[sortedCols.length - 1];
+      const doneColumnId = doneCol?.id ?? "done";
+      const firstCol = sortedCols[0];
+      const firstColId = firstCol?.id ?? "todo";
 
       const task = await Task.findByIdAndUpdate(
         taskId,
@@ -420,10 +421,11 @@ export function registerTaskTools(server: McpServer) {
       // Handle recurrence
       if (
         existing.recurrence &&
-        existing.recurrence.frequency !== "none"
+        existing.recurrence.frequency !== "none" &&
+        existing.dueDate
       ) {
         const nextDue = computeNextDueDate(
-          existing.dueDate ?? now,
+          existing.dueDate,
           existing.recurrence.frequency,
           existing.recurrence.interval,
         );
@@ -437,7 +439,7 @@ export function registerTaskTools(server: McpServer) {
             description: existing.description,
             projectId: existing.projectId,
             userId: existing.userId,
-            columnId: "todo",
+            columnId: firstColId,
             priority: existing.priority,
             dueDate: nextDue,
             recurrence: existing.recurrence,
@@ -447,7 +449,7 @@ export function registerTaskTools(server: McpServer) {
               title: s.title,
               completed: false,
             })),
-            statusHistory: [{ columnId: "todo", timestamp: now }],
+            statusHistory: [{ columnId: firstColId, timestamp: now }],
           });
 
           emitSyncEvent({

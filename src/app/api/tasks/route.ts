@@ -7,6 +7,7 @@ import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
 import { ProjectMember } from "@/models/project-member";
+import { Label } from "@/models/label";
 import { startOfDayUTC, endOfDayUTC } from "@/lib/date-utils";
 import {
   getAccessibleProjectIds,
@@ -179,6 +180,17 @@ export async function POST(request: Request) {
           { error: "Assignee is not a project member" },
           { status: 400 },
         );
+      }
+    }
+
+    // Validate label ownership — labels are user-scoped
+    if (result.data.labels && result.data.labels.length > 0) {
+      const validLabels = await Label.find({
+        _id: { $in: result.data.labels },
+        userId: session.user.id,
+      }).select("_id").lean();
+      if (validLabels.length !== result.data.labels.length) {
+        return NextResponse.json({ error: "Invalid label IDs" }, { status: 400 });
       }
     }
 

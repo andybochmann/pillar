@@ -271,7 +271,10 @@ export function ListView({
         task={selectedTask}
         columns={columns}
         open={sheetOpen}
-        onOpenChange={setSheetOpen}
+        onOpenChange={(open) => {
+          setSheetOpen(open);
+          if (!open) setSelectedTask(null);
+        }}
         onUpdate={handleTaskUpdate}
         onDelete={handleTaskDelete}
         onDuplicate={readOnly ? undefined : handleTaskDuplicate}

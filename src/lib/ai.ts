@@ -23,6 +23,9 @@ export function getAIModel() {
   if (!apiKey) throw new Error("AI_API_KEY is not configured");
 
   const provider = process.env.AI_PROVIDER ?? "openai";
+  if (provider !== "openai" && provider !== "google") {
+    throw new Error(`Unsupported AI_PROVIDER: "${provider}". Supported values: "openai", "google".`);
+  }
   const model = process.env.AI_MODEL ?? DEFAULT_MODELS[provider];
 
   if (provider === "google") {

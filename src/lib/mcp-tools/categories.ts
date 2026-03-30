@@ -8,6 +8,7 @@ import { Project } from "@/models/project";
 import { Task } from "@/models/task";
 import { ProjectMember } from "@/models/project-member";
 import { Note } from "@/models/note";
+import { Notification } from "@/models/notification";
 
 export function registerCategoryTools(server: McpServer) {
   server.tool(
@@ -147,11 +148,15 @@ export function registerCategoryTools(server: McpServer) {
       ).lean();
       const projectIds = projects.map((p) => p._id);
 
+      const taskDocs = await Task.find({ projectId: { $in: projectIds } }, { _id: 1 }).lean();
+      const taskIds = taskDocs.map((t) => t._id);
+
       await Promise.all([
         Task.deleteMany({ projectId: { $in: projectIds } }),
         ProjectMember.deleteMany({ projectId: { $in: projectIds } }),
         Project.deleteMany({ categoryId, userId }),
         Note.deleteMany({ $or: [{ categoryId }, { projectId: { $in: projectIds } }] }),
+        Notification.deleteMany({ taskId: { $in: taskIds } }),
       ]);
 
       emitSyncEvent({

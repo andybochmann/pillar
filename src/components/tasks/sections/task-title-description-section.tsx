@@ -56,14 +56,15 @@ export function TaskTitleDescriptionSection({
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      // Flush unsaved title
+      // Flush unsaved title and description as a single update
       const trimmed = titleRef.current.trim();
-      if (trimmed && trimmed !== initialTitleRef.current) {
-        onUpdateRef.current({ title: trimmed });
-      }
-      // Flush unsaved description
-      if (descriptionRef.current !== initialDescriptionRef.current) {
-        onUpdateRef.current({ description: descriptionRef.current });
+      const titleDirty = !!trimmed && trimmed !== initialTitleRef.current;
+      const descDirty = descriptionRef.current !== initialDescriptionRef.current;
+      if (titleDirty || descDirty) {
+        const update: { title?: string; description?: string } = {};
+        if (titleDirty) update.title = trimmed;
+        if (descDirty) update.description = descriptionRef.current;
+        onUpdateRef.current(update);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

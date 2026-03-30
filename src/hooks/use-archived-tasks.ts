@@ -99,7 +99,8 @@ export function useArchivedTasks(): UseArchivedTasksReturn {
         throw new Error(data.error || "Failed to delete archived tasks");
       }
 
-      const { deletedCount } = await res.json();
+      const data = await res.json();
+      const deletedCount: number = data.deletedCount ?? 0;
 
       // Optimistic state update
       if (taskIds) {

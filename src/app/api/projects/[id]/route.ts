@@ -107,19 +107,8 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       }
     }
 
-    const project = await Project.findByIdAndUpdate(
-      id,
-      result.data,
-      { returnDocument: "after" },
-    );
-
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-
-    const targetUserIds = await getProjectMemberUserIds(id);
-    const sessionId = request.headers.get("X-Session-Id") ?? "";
-
+    // Remap orphaned tasks BEFORE updating the project document so that SSE
+    // subscribers never see tasks referencing columns that no longer exist.
     if (result.data.columns) {
       const newColumnIds = result.data.columns.map((c) => c.id);
       const firstColumnId = result.data.columns.reduce((min, col) =>
@@ -133,6 +122,19 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         { $set: { columnId: firstColumnId } },
       );
     }
+
+    const project = await Project.findByIdAndUpdate(
+      id,
+      result.data,
+      { returnDocument: "after" },
+    );
+
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+
+    const targetUserIds = await getProjectMemberUserIds(id);
+    const sessionId = request.headers.get("X-Session-Id") ?? "";
 
     emitSyncEvent({
       entity: "project",
