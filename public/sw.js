@@ -11,8 +11,8 @@ const PAGE_CACHE_NAME = "pillar-pages-v1";
 const PRECACHE_URLS = [
   "/offline.html",
   "/manifest.json",
-  "/icons/icon-192x192.png",
-  "/icons/icon-512x512.png",
+  "/icons/icon-192.png",
+  "/icons/icon-512.png",
 ];
 
 // Install: precache critical assets
@@ -139,8 +139,8 @@ async function networkFirstNavigation(request) {
 function buildNotificationOptions(data) {
   return {
     body: data.message || data.body || "",
-    icon: data.icon || "/icons/icon-192x192.png",
-    badge: "/icons/icon-192x192.png",
+    icon: data.icon || "/icons/icon-192.png",
+    badge: "/icons/icon-192.png",
     tag: data.tag || data.notificationId || `notification-${Date.now()}`,
     data: {
       taskId: data.taskId,
@@ -320,7 +320,7 @@ function openApp(url) {
 function showConfirmation(title, body) {
   return self.registration.showNotification(title, {
     body,
-    icon: "/icons/icon-192x192.png",
+    icon: "/icons/icon-192.png",
     tag: "pillar-action-confirm",
     requireInteraction: false,
   });

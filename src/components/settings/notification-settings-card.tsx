@@ -511,7 +511,7 @@ export function NotificationSettingsCard() {
                 } else {
                   new Notification("Test Local Notification", {
                     body: "Browser notification display is working!",
-                    icon: "/icons/icon-192x192.png",
+                    icon: "/icons/icon-192.png",
                   });
                 }
                 toast.success("Local notification sent");
