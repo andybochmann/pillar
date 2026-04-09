@@ -33,7 +33,7 @@ A Kanban-based task management app built with Next.js, TypeScript, and MongoDB. 
 
 - **Offline PWA** with background sync via IndexedDB
 - **Data backup** export and import
-- **MCP API** with 27 tools for external integrations
+- **MCP API** for external integrations
 - **Google OAuth + credentials auth** via Auth.js v5
 - **Dark mode** support
 - **Docker Compose** deployment
@@ -64,8 +64,8 @@ cd pillar
 pnpm install
 
 # Set up environment variables
-cp .env.example .env
-# Edit .env and set your MONGODB_URI and AUTH_SECRET
+cp .env.example .env.local
+# Edit .env.local and set your MONGODB_URI and AUTH_SECRET
 # See docs/environment-variables.md for detailed configuration options
 
 # Start the dev server

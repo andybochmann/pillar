@@ -27,6 +27,14 @@
 *.pem
 .auto-claude/
 .claude/settings.local.json
+.claude/napkin.md
+
+# internal dev artifacts
+/plans/
+AUDIT-FIX-PROGRESS.md
+E2E-VERIFICATION.md
+VERIFICATION-REPORT.md
+TEST-REGRESSION-ANALYSIS.md
 
 # debug
 npm-debug.log*

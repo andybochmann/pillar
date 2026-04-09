@@ -24,7 +24,7 @@ Pillar is a Kanban-based task management app built with Next.js 16 (App Router),
 ```bash
 pnpm dev              # Dev server (Turbopack) at localhost:3000
 pnpm build            # Production build (output: standalone)
-pnpm test             # Vitest unit/integration tests (184 files, 2013 tests)
+pnpm test             # Vitest unit/integration tests
 pnpm test:watch       # Tests in watch mode
 pnpm test:coverage    # Tests with coverage report
 pnpm test:e2e         # Playwright E2E tests (requires running dev server)

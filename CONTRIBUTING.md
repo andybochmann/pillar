@@ -6,7 +6,7 @@ Thanks for your interest in contributing! This guide covers how to set up the pr
 
 1. Fork and clone the repository
 2. Install dependencies: `pnpm install`
-3. Copy `.env.example` to `.env` and fill in your values
+3. Copy `.env.example` to `.env.local` and fill in your values
 4. Start MongoDB locally (or use the Docker Compose setup)
 5. Run the dev server: `pnpm dev`
 6. Run tests: `pnpm test`
