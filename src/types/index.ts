@@ -164,7 +164,8 @@ export type NotificationType =
   | "reminder"
   | "overdue"
   | "daily-summary"
-  | "overdue-digest";
+  | "overdue-digest"
+  | "mention";
 
 export interface Notification {
   _id: string;
@@ -179,6 +180,19 @@ export interface Notification {
   sentAt?: string;
   snoozedUntil?: string;
   metadata?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Comment {
+  _id: string;
+  taskId: string;
+  projectId: string;
+  userId: string;
+  body: string;
+  mentions: string[];
+  authorName?: string;
+  authorImage?: string;
   createdAt: string;
   updatedAt: string;
 }

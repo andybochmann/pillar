@@ -22,6 +22,7 @@ const notificationTypeLabels: Record<NotificationType, string> = {
   overdue: "Overdue",
   "daily-summary": "Daily Summary",
   "overdue-digest": "Overdue Digest",
+  mention: "Mention",
 };
 
 const notificationTypeColors: Record<
@@ -32,6 +33,7 @@ const notificationTypeColors: Record<
   overdue: "destructive",
   "daily-summary": "default",
   "overdue-digest": "destructive",
+  mention: "default",
 };
 
 export function NotificationItem({
