@@ -4,8 +4,12 @@ import { CalendarDay } from "./calendar-day";
 import type { Task } from "@/types";
 
 // Mock @dnd-kit hooks
+const { droppableSpy } = vi.hoisted(() => ({ droppableSpy: vi.fn() }));
 vi.mock("@dnd-kit/core", () => ({
-  useDroppable: () => ({ setNodeRef: vi.fn(), isOver: false }),
+  useDroppable: (args: { id: string }) => {
+    droppableSpy(args);
+    return { setNodeRef: vi.fn(), isOver: false };
+  },
   useDraggable: () => ({
     attributes: {},
     listeners: {},
@@ -89,6 +93,14 @@ describe("CalendarDay", () => {
   it("renders the date number", () => {
     render(<CalendarDay {...defaultProps} />);
     expect(screen.getByText("15")).toBeInTheDocument();
+  });
+
+  it("uses the local calendar day for the droppable id (H14)", () => {
+    droppableSpy.mockClear();
+    // A local-midnight Date. toISOString() would shift this to the previous
+    // day for users east of UTC; format(...) keeps the intended calendar day.
+    render(<CalendarDay {...defaultProps} date={new Date(2026, 1, 15)} />);
+    expect(droppableSpy).toHaveBeenCalledWith({ id: "date-2026-02-15" });
   });
 
   it("renders task pills", () => {

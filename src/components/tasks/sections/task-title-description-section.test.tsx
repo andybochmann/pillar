@@ -294,6 +294,88 @@ describe("TaskTitleDescriptionSection", () => {
     expect(titleInput).toHaveClass("text-lg", "font-semibold");
   });
 
+  it("does not overwrite the title while the user is typing (H16)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+
+    const { rerender } = render(
+      <TaskTitleDescriptionSection
+        taskId="task-1"
+        initialTitle="Original"
+        initialDescription=""
+        onUpdate={onUpdate}
+      />,
+    );
+
+    const titleInput = screen.getByLabelText("Title");
+    await user.click(titleInput);
+    await user.clear(titleInput);
+    await user.type(titleInput, "Half typed");
+
+    // An SSE/prop update arrives with a different remote value while the user
+    // is mid-keystroke (field focused + dirty). It must NOT clobber the input.
+    rerender(
+      <TaskTitleDescriptionSection
+        taskId="task-1"
+        initialTitle="Remote change"
+        initialDescription=""
+        onUpdate={onUpdate}
+      />,
+    );
+
+    expect(titleInput).toHaveValue("Half typed");
+  });
+
+  it("adopts external title updates when the field is idle (H16)", () => {
+    const { rerender } = render(
+      <TaskTitleDescriptionSection
+        taskId="task-1"
+        initialTitle="Original"
+        initialDescription=""
+        onUpdate={onUpdate}
+      />,
+    );
+
+    // No focus, no local edits → an incoming prop update should be adopted.
+    rerender(
+      <TaskTitleDescriptionSection
+        taskId="task-1"
+        initialTitle="Server updated"
+        initialDescription=""
+        onUpdate={onUpdate}
+      />,
+    );
+
+    expect(screen.getByLabelText("Title")).toHaveValue("Server updated");
+  });
+
+  it("reports an error status (not saved) when a save fails (L12)", async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
+    const failingUpdate = vi.fn().mockRejectedValue(new Error("boom"));
+    const onSaveStatusChange = vi.fn();
+
+    render(
+      <TaskTitleDescriptionSection
+        taskId="task-1"
+        initialTitle="Old Title"
+        initialDescription=""
+        onUpdate={failingUpdate}
+        onSaveStatusChange={onSaveStatusChange}
+      />,
+    );
+
+    const titleInput = screen.getByLabelText("Title");
+    await user.clear(titleInput);
+    await user.type(titleInput, "New Title");
+    await user.tab();
+
+    vi.advanceTimersByTime(500);
+
+    await waitFor(() => {
+      expect(onSaveStatusChange).toHaveBeenCalledWith("error");
+    });
+    expect(onSaveStatusChange).not.toHaveBeenCalledWith("saved");
+  });
+
   it("flushes unsaved title on unmount without blur", async () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
 

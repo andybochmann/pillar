@@ -116,14 +116,19 @@ function getDueDateStyle(dueDateStr?: string | null) {
   if (isPast(dueDate) && !isToday(dueDate))
     return {
       label: format(dueDate, "MMM d"),
-      className: "text-red-600 bg-red-50",
+      className: "text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950",
     };
   if (isToday(dueDate))
-    return { label: "Today", className: "text-orange-600 bg-orange-50" };
+    return {
+      label: "Today",
+      className:
+        "text-orange-600 bg-orange-50 dark:text-orange-400 dark:bg-orange-950",
+    };
   if (isThisWeek(dueDate))
     return {
       label: format(dueDate, "EEE"),
-      className: "text-yellow-600 bg-yellow-50",
+      className:
+        "text-yellow-600 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950",
     };
   return {
     label: format(dueDate, "MMM d"),
@@ -284,7 +289,7 @@ export function TaskCard({
             />
           ) : (
             <p
-              className="text-sm font-medium leading-snug group/title relative"
+              className="text-sm font-medium leading-snug group/title relative break-words min-w-0"
               onDoubleClick={handleTitleDoubleClick}
             >
               {task.title}
@@ -382,7 +387,14 @@ export function TaskCard({
                   selected={task.dueDate ? toLocalDate(task.dueDate) : undefined}
                   onSelect={(date) => {
                     if (date) {
-                      onDueDateChange(task._id, date.toISOString());
+                      // Normalize to UTC midnight so the stored due date matches
+                      // the picked calendar day regardless of the user's timezone.
+                      onDueDateChange(
+                        task._id,
+                        new Date(
+                          format(date, "yyyy-MM-dd") + "T00:00:00Z",
+                        ).toISOString(),
+                      );
                       setDueDateOpen(false);
                     }
                   }}
@@ -418,7 +430,7 @@ export function TaskCard({
 
           {task.reminderAt && (
             <span
-              className="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium text-violet-600 bg-violet-50"
+              className="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium text-violet-600 bg-violet-50 dark:text-violet-400 dark:bg-violet-950"
               title={`Reminder: ${format(new Date(task.reminderAt), "MMM d, h:mm a")}`}
             >
               <Bell className="h-3 w-3" />
@@ -435,7 +447,7 @@ export function TaskCard({
                 className={cn(
                   "inline-flex flex-col gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-medium",
                   allDone
-                    ? "text-green-600 bg-green-50"
+                    ? "text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950"
                     : "text-muted-foreground bg-muted",
                   onSubtaskToggle && "cursor-pointer",
                 )}

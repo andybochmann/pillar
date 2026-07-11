@@ -53,6 +53,7 @@ export function FilterPresetSelector({
   );
 
   const handleSave = useCallback(async () => {
+    if (saving) return;
     const name = presetName.trim();
     if (!name) return;
     try {
@@ -66,7 +67,7 @@ export function FilterPresetSelector({
     } finally {
       setSaving(false);
     }
-  }, [presetName, currentFilters, createPreset]);
+  }, [saving, presetName, currentFilters, createPreset]);
 
   const handleDelete = useCallback(
     async (id: string) => {
@@ -125,6 +126,7 @@ export function FilterPresetSelector({
                       setDeleteConfirmId(preset._id);
                     }}
                     data-testid={`delete-preset-${preset._id}`}
+                    aria-label={`Delete preset ${preset.name}`}
                   >
                     <Trash2 className="h-3 w-3" />
                   </Button>

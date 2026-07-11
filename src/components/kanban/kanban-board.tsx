@@ -30,7 +30,7 @@ import type { BoardFilters } from "./board-filter-bar";
 import { BulkActionsBar } from "./bulk-actions-bar";
 import { useTasks } from "@/hooks/use-tasks";
 import { toast } from "sonner";
-import { isToday, isBefore, startOfDay, endOfWeek } from "date-fns";
+import { isToday, isBefore, startOfDay, endOfWeek, format } from "date-fns";
 import { toLocalDate } from "@/lib/date-utils";
 import { useTimeTracking } from "@/hooks/use-time-tracking";
 import { useKanbanKeyboardNav } from "@/hooks/use-kanban-keyboard-nav";
@@ -78,11 +78,15 @@ export function KanbanBoard({
     onTasksChange?.(tasks);
   }, [tasks, onTasksChange]);
 
-  // Auto-open task sheet when openTaskId is provided (e.g. from command palette)
+  // Auto-open task sheet when openTaskId is provided (e.g. from command palette).
+  // Track the openTaskId we've already consumed so that later `tasks` changes
+  // (e.g. SSE updates) don't re-open a sheet the user has since closed.
+  const consumedOpenTaskIdRef = useRef<string | null>(null);
   useEffect(() => {
-    if (openTaskId) {
+    if (openTaskId && consumedOpenTaskIdRef.current !== openTaskId) {
       const task = tasks.find((t) => t._id === openTaskId);
       if (task) {
+        consumedOpenTaskIdRef.current = openTaskId;
         setSelectedTask(task);
         setSheetOpen(true);
       }
@@ -321,6 +325,9 @@ export function KanbanBoard({
       }
     }
 
+    const destColumnName =
+      sortedColumns.find((c) => c.id === task.columnId)?.name ?? "column";
+
     if (isCrossColumnMove) {
       // Persist the columnId change (and completedAt if applicable)
       const updateData: Partial<Task> = {
@@ -351,11 +358,19 @@ export function KanbanBoard({
         if (selectedTask?._id === activeId && moved) {
           setSelectedTask(moved);
         }
+        setDndAnnouncement(
+          `Moved ${task.title} to ${destColumnName}, position ${(updateData.order ?? 0) + 1}`,
+        );
       } catch {
         const res = await fetch(`/api/tasks?projectId=${projectId}`);
         if (res.ok) setTasks(await res.json());
       }
-    } else if (!needsReorder) {
+    } else if (needsReorder) {
+      // Reordered within the same column
+      setDndAnnouncement(
+        `Moved ${task.title} to position ${newIndex + 1}`,
+      );
+    } else {
       // Same column, same position — no-op (dropped in place)
       setDndAnnouncement("Task dropped");
     }
@@ -557,7 +572,18 @@ export function KanbanBoard({
       });
       if (!res.ok) throw new Error("Failed to move tasks");
       setTasks((prev) =>
-        prev.map((t) => (ids.includes(t._id) ? { ...t, columnId } : t)),
+        prev.map((t) => {
+          if (!ids.includes(t._id)) return t;
+          // Mirror the server: moving to/from the last column sets/clears completedAt.
+          const completedAt = getCompletionForColumnChange(
+            t.columnId,
+            columnId,
+            columns,
+          );
+          return completedAt !== undefined
+            ? { ...t, columnId, completedAt }
+            : { ...t, columnId };
+        }),
       );
       setSelectedIds(new Set());
       toast.success(`Moved ${ids.length} tasks`);
@@ -644,6 +670,11 @@ export function KanbanBoard({
 
   async function handleBulkSetDueDate(date: Date) {
     const ids = [...selectedIds];
+    // Normalize to UTC midnight so the stored due date matches the picked
+    // calendar day regardless of the user's timezone.
+    const dueDate = new Date(
+      format(date, "yyyy-MM-dd") + "T00:00:00Z",
+    ).toISOString();
     try {
       const res = await offlineFetch("/api/tasks/bulk", {
         method: "PATCH",
@@ -651,14 +682,12 @@ export function KanbanBoard({
         body: JSON.stringify({
           taskIds: ids,
           action: "set-due-date",
-          dueDate: date.toISOString(),
+          dueDate,
         }),
       });
       if (!res.ok) throw new Error("Failed to set due date");
       setTasks((prev) =>
-        prev.map((t) =>
-          ids.includes(t._id) ? { ...t, dueDate: date.toISOString() } : t,
-        ),
+        prev.map((t) => (ids.includes(t._id) ? { ...t, dueDate } : t)),
       );
       setSelectedIds(new Set());
       toast.success(`Set due date on ${ids.length} tasks`);
@@ -992,8 +1021,8 @@ export function KanbanBoard({
         onArchive={readOnly ? undefined : handleArchiveFromSheet}
       />
 
-      {/* Screen reader announcements for DnD */}
-      <div aria-live="assertive" className="sr-only" role="status">
+      {/* Screen reader announcements for DnD (role="status" implies polite) */}
+      <div role="status" aria-live="polite" className="sr-only">
         {dndAnnouncement}
       </div>
     </div>

@@ -76,7 +76,8 @@ describe("DayDetail", () => {
 
   it("renders tasks grouped by project", () => {
     render(<DayDetail {...defaultProps} />);
-    expect(screen.getByText("Frontend")).toBeInTheDocument();
+    // "Frontend" also appears in the project selector, so target the group heading
+    expect(screen.getByRole("heading", { name: "Frontend" })).toBeInTheDocument();
     expect(screen.getByText("Fix CSS")).toBeInTheDocument();
     expect(screen.getByText("Review PR")).toBeInTheDocument();
   });
@@ -123,6 +124,7 @@ describe("DayDetail", () => {
     expect(onCreateTask).toHaveBeenCalledWith(
       "New task",
       expect.stringContaining("2026-02-15"),
+      "proj-1",
     );
   });
 

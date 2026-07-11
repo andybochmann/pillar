@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { toast } from "sonner";
 import type { Column, Priority, ProjectMember, Label } from "@/types";
 
@@ -56,6 +57,7 @@ export function BulkActionsBar({
   const [dateOpen, setDateOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [labelOpen, setLabelOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
   if (selectedCount === 0) return null;
 
@@ -73,6 +75,7 @@ export function BulkActionsBar({
   const hasMembers = members && members.length > 0;
 
   return (
+    <>
     <div
       className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3 shadow-sm"
       data-testid="bulk-actions-bar"
@@ -241,7 +244,7 @@ export function BulkActionsBar({
         variant="destructive"
         size="sm"
         disabled={loading}
-        onClick={() => handleAction(onBulkDelete)}
+        onClick={() => setDeleteConfirmOpen(true)}
       >
         Delete
       </Button>
@@ -250,5 +253,16 @@ export function BulkActionsBar({
         Cancel
       </Button>
     </div>
+
+    <ConfirmDialog
+      open={deleteConfirmOpen}
+      onOpenChange={setDeleteConfirmOpen}
+      title={`Delete ${selectedCount} task${selectedCount === 1 ? "" : "s"}?`}
+      description={`This will permanently delete ${selectedCount} selected task${selectedCount === 1 ? "" : "s"}. This action cannot be undone.`}
+      confirmLabel="Delete tasks"
+      variant="destructive"
+      onConfirm={() => handleAction(onBulkDelete)}
+    />
+    </>
   );
 }

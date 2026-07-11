@@ -182,21 +182,25 @@ export function CalendarPageClient({
     setSelectedTask(null);
   }
 
-  async function handleCreateTaskFromDay(title: string, dueDate: string) {
-    // Use first project's first column as default
-    const defaultProject = projects[0];
-    if (!defaultProject) {
+  async function handleCreateTaskFromDay(
+    title: string,
+    dueDate: string,
+    projectId: string,
+  ) {
+    const targetProject =
+      projects.find((p) => p._id === projectId) ?? projects[0];
+    if (!targetProject) {
       toast.error("Create a project first");
       return;
     }
-    const columnId = defaultProject.columns[0]?.id ?? "todo";
+    const columnId = targetProject.columns[0]?.id ?? "todo";
 
     const res = await offlineFetch("/api/tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         title,
-        projectId: defaultProject._id,
+        projectId: targetProject._id,
         columnId,
         dueDate,
       }),

@@ -79,8 +79,14 @@ export function DatePicker({
           onSelect={(day) => {
             if (day) {
               onChange(formatDateString(day));
+              setOpen(false);
+            } else if (clearable) {
+              // Clicking the already-selected day deselects it (day is
+              // undefined). When clearable, treat that as clearing the value.
+              onChange("");
+              setOpen(false);
             }
-            setOpen(false);
+            // Otherwise keep the popover open so a deselect isn't a silent no-op.
           }}
           defaultMonth={selected}
         />

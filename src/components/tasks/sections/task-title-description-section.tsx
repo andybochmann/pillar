@@ -14,7 +14,7 @@ interface TaskTitleDescriptionSectionProps {
     title?: string;
     description?: string;
   }) => Promise<unknown>;
-  onSaveStatusChange?: (status: "saving" | "saved") => void;
+  onSaveStatusChange?: (status: "saving" | "saved" | "error") => void;
 }
 
 export function TaskTitleDescriptionSection({
@@ -28,18 +28,32 @@ export function TaskTitleDescriptionSection({
   const [description, setDescription] = useState(initialDescription);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync local state from props when not actively editing (SSE updates)
+  // Track focus and the last value we synced from props so an external
+  // (SSE / prop) update never clobbers what the user is actively editing.
+  // The debounce timer only starts on blur, so guarding on it left the field
+  // unprotected mid-keystroke.
+  const titleFocusedRef = useRef(false);
+  const descriptionFocusedRef = useRef(false);
+  const lastSyncedTitleRef = useRef(initialTitle);
+  const lastSyncedDescriptionRef = useRef(initialDescription);
+
+  // Sync local state from props (SSE updates) only when the field is neither
+  // focused nor dirty (has unsaved local edits).
   useEffect(() => {
-    if (!debounceRef.current) {
+    const dirty = title !== lastSyncedTitleRef.current;
+    if (!titleFocusedRef.current && !dirty) {
       setTitle(initialTitle);
     }
-  }, [initialTitle]);
+    lastSyncedTitleRef.current = initialTitle;
+  }, [initialTitle, title]);
 
   useEffect(() => {
-    if (!debounceRef.current) {
+    const dirty = description !== lastSyncedDescriptionRef.current;
+    if (!descriptionFocusedRef.current && !dirty) {
       setDescription(initialDescription);
     }
-  }, [initialDescription]);
+    lastSyncedDescriptionRef.current = initialDescription;
+  }, [initialDescription, description]);
 
   // Refs to track latest values for the cleanup effect
   const titleRef = useRef(title);
@@ -90,10 +104,10 @@ export function TaskTitleDescriptionSection({
       debounceRef.current = null;
       try {
         await onUpdate(data);
+        onSaveStatusChange?.("saved");
       } catch (err) {
         toast.error(err instanceof Error ? err.message : "Failed to save");
-      } finally {
-        onSaveStatusChange?.("saved");
+        onSaveStatusChange?.("error");
       }
     }, 500);
   }
@@ -107,7 +121,12 @@ export function TaskTitleDescriptionSection({
     saveField({ title: title.trim() });
   }
 
+  function handleTitleFocus() {
+    titleFocusedRef.current = true;
+  }
+
   function handleTitleBlur() {
+    titleFocusedRef.current = false;
     saveTitleIfChanged();
   }
 
@@ -118,7 +137,12 @@ export function TaskTitleDescriptionSection({
     }
   }
 
+  function handleDescriptionFocus() {
+    descriptionFocusedRef.current = true;
+  }
+
   function handleDescriptionBlur() {
+    descriptionFocusedRef.current = false;
     if (description === initialDescription) return;
     saveField({ description });
   }
@@ -132,6 +156,7 @@ export function TaskTitleDescriptionSection({
           id="task-title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
+          onFocus={handleTitleFocus}
           onBlur={handleTitleBlur}
           onKeyDown={handleTitleKeyDown}
           className="text-lg font-semibold"
@@ -145,6 +170,7 @@ export function TaskTitleDescriptionSection({
           id="task-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
+          onFocus={handleDescriptionFocus}
           onBlur={handleDescriptionBlur}
           placeholder="Add a description…"
           rows={3}
