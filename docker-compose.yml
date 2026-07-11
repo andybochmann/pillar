@@ -7,7 +7,7 @@ services:
       - "3000:3000"
     environment:
       - MONGODB_URI=mongodb://mongo:27017/pillar
-      - AUTH_SECRET=${AUTH_SECRET:-change-me-in-production}
+      - AUTH_SECRET=${AUTH_SECRET:?Set AUTH_SECRET in your environment or .env file (generate one with: openssl rand -base64 32)}
       - AUTH_URL=${AUTH_URL:-http://localhost:3000}
       - AUTH_TRUST_HOST=true
       - AI_API_KEY=${AI_API_KEY:-}
@@ -49,13 +49,18 @@ services:
       retries: 5
       start_period: 10s
 
+  # mongo-express is a DB admin UI intended for LOCAL DEVELOPMENT ONLY.
+  # It is bound to localhost and gated behind basic auth. NEVER expose this
+  # service on a shared host or in production — remove it or firewall port 8081.
   mongo-express:
     image: mongo-express
     ports:
-      - "8081:8081"
+      - "127.0.0.1:8081:8081"
     environment:
       - ME_CONFIG_MONGODB_URL=mongodb://mongo:27017/
-      - ME_CONFIG_BASICAUTH=false
+      - ME_CONFIG_BASICAUTH=true
+      - ME_CONFIG_BASICAUTH_USERNAME=${ME_CONFIG_BASICAUTH_USERNAME:?Set ME_CONFIG_BASICAUTH_USERNAME to enable mongo-express}
+      - ME_CONFIG_BASICAUTH_PASSWORD=${ME_CONFIG_BASICAUTH_PASSWORD:?Set ME_CONFIG_BASICAUTH_PASSWORD to enable mongo-express}
     depends_on:
       mongo:
         condition: service_healthy

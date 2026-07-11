@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
@@ -39,6 +40,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const categoryId = searchParams.get("categoryId");
   const includeArchived = searchParams.get("includeArchived") === "true";
+
+  // L1: reject a malformed categoryId before it reaches the query (CastError).
+  if (categoryId && !mongoose.Types.ObjectId.isValid(categoryId)) {
+    return NextResponse.json(
+      { error: "Invalid category ID" },
+      { status: 400 },
+    );
+  }
 
   const accessibleIds = await getAccessibleProjectIds(session.user.id);
   const filter: Record<string, unknown> = { _id: { $in: accessibleIds } };

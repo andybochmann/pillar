@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import mongoose from "mongoose";
 import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
@@ -39,6 +40,11 @@ export async function GET(request: Request) {
   const filter: Record<string, unknown> = {};
 
   if (taskId) {
+    // L1: reject malformed ids up front so an invalid ObjectId doesn't throw a
+    // Mongoose CastError (500) further down.
+    if (!mongoose.Types.ObjectId.isValid(taskId)) {
+      return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
+    }
     // Task notes: verify project access via the task's projectId
     const task = await Task.findById(taskId).select("projectId");
     if (!task) {

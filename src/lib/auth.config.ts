@@ -4,6 +4,10 @@ export const authConfig: NextAuthConfig = {
   trustHost: true,
   session: {
     strategy: "jwt",
+    // L20: shorten the JWT session window to bound the exposure of a stolen or
+    // stale token (default was 30 days). Refreshed at most once per day.
+    maxAge: 60 * 60 * 24 * 7,
+    updateAge: 60 * 60 * 24,
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {

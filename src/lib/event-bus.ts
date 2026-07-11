@@ -30,7 +30,10 @@ declare global {
 export const syncEventBus: EventEmitter = (global.syncEventBus ??=
   new EventEmitter());
 
-syncEventBus.setMaxListeners(200);
+// Unlimited listeners (L14): one listener is added per open SSE connection and
+// removed on disconnect (cleanup is correct), so a fixed cap of 200 only served
+// to emit a spurious MaxListenersExceededWarning past ~100 tabs. 0 = unlimited.
+syncEventBus.setMaxListeners(0);
 
 export function emitSyncEvent(event: SyncEvent): void {
   syncEventBus.emit("sync", event);

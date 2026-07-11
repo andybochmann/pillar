@@ -4,11 +4,20 @@ import { NextRequest, NextResponse } from "next/server";
 
 const { auth } = NextAuth(authConfig);
 
+// L21: 'unsafe-eval' is only needed by the dev bundler (HMR/eval source maps);
+// production builds run without it, so scope it to development. 'unsafe-inline'
+// for scripts is still required by Next.js hydration without a nonce — moving to
+// a nonce-based policy is the residual hardening step (documented).
+const scriptSrc =
+  process.env.NODE_ENV === "production"
+    ? "script-src 'self' 'unsafe-inline'"
+    : "script-src 'self' 'unsafe-eval' 'unsafe-inline'";
+
 // Security headers to apply to all responses
 const securityHeaders = {
   "Content-Security-Policy": [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+    scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: blob: *.googleusercontent.com",
     "font-src 'self' data:",

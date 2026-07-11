@@ -111,6 +111,19 @@ describe("PATCH /api/settings/password", () => {
     expect(res.status).toBe(400);
   });
 
+  it("rejects a single-character-class new password (complexity)", async () => {
+    await seedUser();
+    const req = new NextRequest("http://localhost/api/settings/password", {
+      method: "PATCH",
+      body: JSON.stringify({
+        currentPassword: "TestPass123!",
+        newPassword: "aaaaaaaaaaaa",
+      }),
+    });
+    const res = await PATCH(req);
+    expect(res.status).toBe(400);
+  });
+
   describe("set password (OAuth user)", () => {
     async function seedOAuthUser() {
       const user = await User.create({
