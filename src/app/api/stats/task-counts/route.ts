@@ -32,7 +32,7 @@ export async function GET() {
     // Aggregate task counts by project and column
     // projectIds already scoped to user's non-archived projects
     const pipeline = await Task.aggregate([
-      { $match: { projectId: { $in: projectIds } } },
+      { $match: { projectId: { $in: projectIds }, archived: { $ne: true } } },
       {
         $group: {
           _id: { projectId: "$projectId", columnId: "$columnId" },

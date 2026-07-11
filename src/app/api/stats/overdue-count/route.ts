@@ -34,6 +34,7 @@ export async function GET() {
       projectId: { $in: projectIds },
       completedAt: null,
       dueDate: { $lt: now },
+      archived: { $ne: true },
     });
 
     return NextResponse.json({ count });

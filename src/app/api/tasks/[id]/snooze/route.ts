@@ -4,7 +4,8 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/db";
 import { Task } from "@/models/task";
 import { Notification } from "@/models/notification";
-import { requireProjectRole } from "@/lib/project-access";
+import { requireProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
+import { emitSyncEvent } from "@/lib/event-bus";
 
 const SnoozeSchema = z.object({
   notificationId: z.string().optional(),
@@ -57,9 +58,14 @@ export async function POST(request: Request, { params }: RouteParams) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Snooze: set reminderAt to now + 24 hours
+    // Snooze: set reminderAt to now + 24 hours. This is a user action, so mark
+    // the reminder as manually-sourced (see reminder-scheduler recalc guard).
     const snoozedUntil = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    await Task.updateOne({ _id: id }, { reminderAt: snoozedUntil });
+    const updated = await Task.findByIdAndUpdate(
+      id,
+      { $set: { reminderAt: snoozedUntil, reminderSource: "manual" } },
+      { returnDocument: "after" },
+    );
 
     // If notificationId provided, mark it as read and set snoozedUntil
     if (result.data.notificationId) {
@@ -67,6 +73,24 @@ export async function POST(request: Request, { params }: RouteParams) {
         { _id: result.data.notificationId, userId: session.user.id },
         { read: true, snoozedUntil },
       );
+    }
+
+    // Emit a sync event so other tabs/clients see the updated reminder.
+    if (updated) {
+      const targetUserIds = await getProjectMemberUserIds(
+        updated.projectId.toString(),
+      );
+      emitSyncEvent({
+        entity: "task",
+        action: "updated",
+        userId: session.user.id,
+        sessionId: request.headers.get("X-Session-Id") ?? "",
+        entityId: updated._id.toString(),
+        projectId: updated.projectId.toString(),
+        targetUserIds,
+        data: updated.toJSON(),
+        timestamp: Date.now(),
+      });
     }
 
     return NextResponse.json({ success: true, snoozedUntil: snoozedUntil.toISOString() });

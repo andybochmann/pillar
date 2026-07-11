@@ -159,6 +159,20 @@ export function registerProjectTools(server: McpServer) {
       if (updates.archived !== undefined) update.archived = updates.archived;
       if (updates.columns !== undefined) update.columns = updates.columns;
 
+      // Remap tasks orphaned by removed columns BEFORE updating the project, so
+      // SSE subscribers never see tasks referencing columns that no longer
+      // exist (mirrors the REST project update handler).
+      if (updates.columns !== undefined && updates.columns.length > 0) {
+        const newColumnIds = updates.columns.map((c) => c.id);
+        const firstColumnId = updates.columns.reduce((min, col) =>
+          col.order < min.order ? col : min,
+        ).id;
+        await Task.updateMany(
+          { projectId, columnId: { $nin: newColumnIds } },
+          { $set: { columnId: firstColumnId } },
+        );
+      }
+
       const project = await Project.findByIdAndUpdate(
         projectId,
         { $set: update },
