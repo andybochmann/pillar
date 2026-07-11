@@ -19,6 +19,7 @@ import {
 } from "@/models/push-subscription";
 import { Account, type IAccount } from "@/models/account";
 import { Note, type INote, type NoteParentType } from "@/models/note";
+import { Comment, type IComment } from "@/models/comment";
 import {
   FilterPreset,
   type IFilterPreset,
@@ -264,6 +265,26 @@ export async function createTestNote(
     userId: overrides.userId,
     pinned: overrides.pinned ?? false,
     order: overrides.order ?? 0,
+  });
+}
+
+interface CreateCommentInput {
+  taskId: mongoose.Types.ObjectId;
+  projectId: mongoose.Types.ObjectId;
+  userId: mongoose.Types.ObjectId;
+  body?: string;
+  mentions?: mongoose.Types.ObjectId[];
+}
+
+export async function createTestComment(
+  overrides: CreateCommentInput,
+): Promise<IComment> {
+  return Comment.create({
+    taskId: overrides.taskId,
+    projectId: overrides.projectId,
+    userId: overrides.userId,
+    body: overrides.body ?? "Test comment",
+    mentions: overrides.mentions ?? [],
   });
 }
 

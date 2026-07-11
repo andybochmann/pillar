@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
 
 export interface SyncEvent {
-  entity: "task" | "project" | "category" | "label" | "member" | "note" | "filter-preset";
+  entity: "task" | "project" | "category" | "label" | "member" | "note" | "filter-preset" | "comment";
   action: "created" | "updated" | "deleted" | "reordered";
   userId: string;
   sessionId: string;
@@ -13,7 +13,7 @@ export interface SyncEvent {
 }
 
 export interface NotificationEvent {
-  type: "reminder" | "overdue" | "daily-summary" | "overdue-digest";
+  type: "reminder" | "overdue" | "daily-summary" | "overdue-digest" | "mention";
   notificationId: string;
   userId: string;
   taskId?: string;

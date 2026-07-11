@@ -22,6 +22,7 @@ import { TaskDueRecurrenceSection } from "@/components/tasks/sections/task-due-r
 import { TaskReminderSection } from "@/components/tasks/sections/task-reminder-section";
 import { TaskSubtasksSection } from "@/components/tasks/sections/task-subtasks-section";
 import { TaskNotesSection } from "@/components/tasks/sections/task-notes-section";
+import { TaskCommentsSection } from "@/components/tasks/sections/task-comments-section";
 import { TaskTimeTrackingSection } from "@/components/tasks/sections/task-time-tracking-section";
 import { TaskStatusHistorySection } from "@/components/tasks/sections/task-status-history-section";
 import { TaskActionsSection } from "@/components/tasks/sections/task-actions-section";
@@ -524,6 +525,14 @@ function TaskSheetForm({
           <TaskNotesSection
             taskId={task._id}
             projectId={task.projectId}
+          />
+
+          <Separator />
+
+          <TaskCommentsSection
+            taskId={task._id}
+            members={members}
+            currentUserId={currentUserId}
           />
 
           <TaskTimeTrackingSection
