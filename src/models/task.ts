@@ -46,6 +46,7 @@ export interface ITask extends Document {
   recurrence: IRecurrence;
   order: number;
   labels: mongoose.Types.ObjectId[];
+  blockedBy: mongoose.Types.ObjectId[];
   subtasks: ISubtask[];
   timeSessions: ITimeSession[];
   statusHistory: IStatusHistoryEntry[];
@@ -134,6 +135,15 @@ const TaskSchema = new Schema<ITask>(
     },
     order: { type: Number, required: true, default: 0 },
     labels: { type: [Schema.Types.ObjectId], ref: "Label", default: [] },
+    blockedBy: {
+      type: [Schema.Types.ObjectId],
+      ref: "Task",
+      default: [],
+      validate: {
+        validator: (v: mongoose.Types.ObjectId[]) => v.length <= 50,
+        message: "A task cannot have more than 50 blockers",
+      },
+    },
     subtasks: {
       type: [SubtaskSchema],
       default: [],

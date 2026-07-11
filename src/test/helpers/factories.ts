@@ -108,6 +108,7 @@ interface CreateTaskInput {
   };
   order?: number;
   labels?: (mongoose.Types.ObjectId | string)[];
+  blockedBy?: (mongoose.Types.ObjectId | string)[];
   subtasks?: { title: string; completed?: boolean }[];
   timeSessions?: {
     startedAt: Date;
@@ -137,6 +138,7 @@ export async function createTestTask(
     recurrence: overrides.recurrence,
     order: overrides.order ?? 0,
     labels: overrides.labels ?? [],
+    blockedBy: overrides.blockedBy ?? [],
     subtasks: overrides.subtasks ?? [],
     timeSessions: overrides.timeSessions ?? [],
     statusHistory: overrides.statusHistory ?? [],

@@ -8,6 +8,7 @@ import {
   requireProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
+import { getBlockerStatus } from "@/lib/task-dependencies";
 import { getNextDueDate } from "@/lib/date-utils";
 import { scheduleNextReminder } from "@/lib/reminder-scheduler";
 
@@ -51,6 +52,24 @@ export async function POST(request: Request, { params }: RouteParams) {
     // Already completed — return as-is
     if (task.completedAt) {
       return NextResponse.json(task);
+    }
+
+    // Completion guard: cannot complete while any blocker is still open.
+    const blockedBy = (task.blockedBy ?? []).map((b) => b.toString());
+    if (blockedBy.length > 0) {
+      const blockers = await Task.find({ _id: { $in: blockedBy } })
+        .select("_id completedAt archived")
+        .lean();
+      const tasksById = new Map(blockers.map((b) => [b._id.toString(), b]));
+      const { openCount } = getBlockerStatus(blockedBy, tasksById);
+      if (openCount > 0) {
+        return NextResponse.json(
+          {
+            error: `Cannot complete: blocked by ${openCount} open task${openCount === 1 ? "" : "s"}`,
+          },
+          { status: 409 },
+        );
+      }
     }
 
     // Find the project's last column (highest order) as the "done" column

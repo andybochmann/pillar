@@ -11,6 +11,7 @@ import {
   getProjectRole,
   getProjectMemberUserIds,
 } from "@/lib/project-access";
+import { getBlockerStatus } from "@/lib/task-dependencies";
 import {
   serializeDate,
   errorResponse,
@@ -35,6 +36,7 @@ function serializeTask(task: unknown) {
     recurrence: t.recurrence,
     order: t.order,
     labels: Array.isArray(t.labels) ? t.labels.map(String) : [],
+    blockedBy: Array.isArray(t.blockedBy) ? t.blockedBy.map(String) : [],
     subtasks: t.subtasks,
     statusHistory: t.statusHistory,
     completedAt: serializeDate(t.completedAt),
@@ -43,6 +45,22 @@ function serializeTask(task: unknown) {
     createdAt: serializeDate(t.createdAt),
     updatedAt: serializeDate(t.updatedAt),
   };
+}
+
+/**
+ * Number of a task's blockers that are still open (not completed, not archived).
+ * Used to guard completion across the MCP tools.
+ */
+async function countOpenBlockers(existing: {
+  blockedBy?: unknown[];
+}): Promise<number> {
+  const blockedBy = (existing.blockedBy ?? []).map((b) => String(b));
+  if (blockedBy.length === 0) return 0;
+  const blockers = await Task.find({ _id: { $in: blockedBy } })
+    .select("_id completedAt archived")
+    .lean();
+  const tasksById = new Map(blockers.map((b) => [b._id.toString(), b]));
+  return getBlockerStatus(blockedBy, tasksById).openCount;
 }
 
 export function registerTaskTools(server: McpServer) {
@@ -235,6 +253,15 @@ export function registerTaskTools(server: McpServer) {
         update.assigneeId = updates.assigneeId ?? null;
       }
       if (updates.completedAt !== undefined) {
+        // Completion guard: cannot complete while any blocker is still open.
+        if (updates.completedAt && !existing.completedAt) {
+          const openCount = await countOpenBlockers(existing);
+          if (openCount > 0) {
+            return errorResponse(
+              `Cannot complete: blocked by ${openCount} open task${openCount === 1 ? "" : "s"}`,
+            );
+          }
+        }
         update.completedAt = updates.completedAt ? new Date(updates.completedAt) : null;
       }
       if (updates.archived !== undefined) {
@@ -313,6 +340,11 @@ export function registerTaskTools(server: McpServer) {
       await Task.findByIdAndDelete(taskId);
       await Note.deleteMany({ taskId });
       await Notification.deleteMany({ taskId });
+      // Remove this task from any other task's blockedBy to avoid phantom blockers.
+      await Task.updateMany(
+        { blockedBy: taskId },
+        { $pull: { blockedBy: taskId } },
+      );
 
       emitSyncEvent({
         entity: "task",
@@ -405,6 +437,14 @@ export function registerTaskTools(server: McpServer) {
       if (existing.completedAt) {
         return mcpTextResponse(
           serializeTask(existing.toObject() as unknown as Record<string, unknown>),
+        );
+      }
+
+      // Completion guard: cannot complete while any blocker is still open.
+      const openCount = await countOpenBlockers(existing);
+      if (openCount > 0) {
+        return errorResponse(
+          `Cannot complete: blocked by ${openCount} open task${openCount === 1 ? "" : "s"}`,
         );
       }
 

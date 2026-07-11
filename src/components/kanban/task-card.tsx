@@ -44,6 +44,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   Archive,
   Bell,
+  Ban,
   CalendarIcon,
   Check,
   CheckCircle2,
@@ -53,6 +54,7 @@ import {
   Trash2,
   ArrowRight,
 } from "lucide-react";
+import { getBlockerStatus } from "@/lib/task-dependencies";
 import { isToday, isPast, isThisWeek, format } from "date-fns";
 import { toLocalDate } from "@/lib/date-utils";
 import { TimeTrackingButton } from "@/components/tasks/time-tracking-button";
@@ -90,6 +92,8 @@ interface TaskCardProps {
   isLastColumn?: boolean;
   onArchive?: (taskId: string) => void;
   focused?: boolean;
+  /** Lookup of loaded tasks (by id) used to resolve the open/closed state of blockers. */
+  tasksById?: Map<string, { completedAt?: string | null; archived?: boolean }>;
 }
 
 const priorities: Priority[] = ["urgent", "high", "medium", "low"];
@@ -158,6 +162,7 @@ export function TaskCard({
   isLastColumn,
   onArchive,
   focused,
+  tasksById,
 }: TaskCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(task.title);
@@ -197,6 +202,23 @@ export function TaskCard({
 
   const priority = priorityConfig[task.priority];
   const dueDateStyle = getDueDateStyle(task.dueDate);
+
+  const blockedBy = task.blockedBy ?? [];
+  const { openCount: openBlockerCount } = getBlockerStatus(
+    blockedBy,
+    tasksById ?? new Map(),
+  );
+  // When the board supplies a task lookup, a blocker that isn't in it is resolved
+  // (completed-and-archived away, or deleted) — so only known-open blockers count.
+  // Without a lookup we can't resolve statuses, so show a generic indicator.
+  const canResolveBlockers = tasksById !== undefined;
+  const showBlockedBadge = canResolveBlockers
+    ? openBlockerCount > 0
+    : blockedBy.length > 0;
+  const blockedLabel =
+    openBlockerCount > 0
+      ? `Blocked by ${openBlockerCount} open task${openBlockerCount === 1 ? "" : "s"}`
+      : "Blocked by other tasks";
 
   const currentUserSession = task.timeSessions?.find(
     (s) => !s.endedAt && s.userId === currentUserId,
@@ -434,6 +456,18 @@ export function TaskCard({
               title={`Reminder: ${format(new Date(task.reminderAt), "MMM d, h:mm a")}`}
             >
               <Bell className="h-3 w-3" />
+            </span>
+          )}
+          {showBlockedBadge && (
+            <span
+              data-testid="blocked-badge"
+              role="status"
+              aria-label={blockedLabel}
+              title={blockedLabel}
+              className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs font-medium text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950"
+            >
+              <Ban className="h-3 w-3" />
+              {openBlockerCount > 0 ? openBlockerCount : "Blocked"}
             </span>
           )}
           {task.subtasks?.length > 0 && (() => {

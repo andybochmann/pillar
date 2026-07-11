@@ -171,6 +171,27 @@ describe("useTasks", () => {
     expect(result.current.tasks[0]._id).toBe("task-2");
   });
 
+  it("prunes a deleted task's id from other tasks' blockedBy", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ success: true }),
+    } as Response);
+
+    const tasksWithBlocker = [
+      mockTasks[0],
+      { ...mockTasks[1], blockedBy: ["task-1"] },
+    ];
+    const { result } = renderHook(() => useTasks(tasksWithBlocker));
+
+    await act(async () => {
+      await result.current.deleteTask("task-1");
+    });
+
+    expect(result.current.tasks).toHaveLength(1);
+    expect(result.current.tasks[0]._id).toBe("task-2");
+    expect(result.current.tasks[0].blockedBy).toEqual([]);
+  });
+
   it("throws on create failure", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,

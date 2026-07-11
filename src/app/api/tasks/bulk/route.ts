@@ -10,6 +10,7 @@ import { ProjectMember } from "@/models/project-member";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
 import { Label } from "@/models/label";
 import { emitSyncEvent } from "@/lib/event-bus";
+import { getBlockerStatus } from "@/lib/task-dependencies";
 
 const BulkUpdateSchema = z.object({
   taskIds: z.array(z.string().min(1)).min(1, "At least one task ID required").max(500),
@@ -124,24 +125,64 @@ export async function PATCH(request: Request) {
         tasksByProject.get(pid)!.push(t._id.toString());
       }
 
+      // Tasks that still have open blockers must not be auto-completed on a
+      // move to the last column (mirrors the single-task completion guard).
+      const movingTasks = await Task.find({ _id: { $in: accessibleTaskIds } })
+        .select("_id blockedBy")
+        .lean();
+      const blockerIds = [
+        ...new Set(
+          movingTasks.flatMap((t) => (t.blockedBy ?? []).map(String)),
+        ),
+      ];
+      const blockerDocs = blockerIds.length
+        ? await Task.find({ _id: { $in: blockerIds } })
+            .select("_id completedAt archived")
+            .lean()
+        : [];
+      const blockersById = new Map(
+        blockerDocs.map((b) => [b._id.toString(), b]),
+      );
+      const blockedTaskIds = new Set(
+        movingTasks
+          .filter(
+            (t) =>
+              getBlockerStatus((t.blockedBy ?? []).map(String), blockersById)
+                .openCount > 0,
+          )
+          .map((t) => t._id.toString()),
+      );
+
       for (const [pid, tIds] of tasksByProject) {
         const lastCol = lastColumnByProject.get(pid);
         const isMovingToLastColumn = columnId === lastCol;
+        const statusPush = {
+          $push: { statusHistory: { columnId, timestamp: new Date() } },
+        };
 
-        const updateSet: Record<string, unknown> = { columnId };
-        if (isMovingToLastColumn) {
-          updateSet.completedAt = new Date();
-        } else {
-          updateSet.completedAt = null;
+        if (!isMovingToLastColumn) {
+          await Task.updateMany(
+            { _id: { $in: tIds }, columnId: { $ne: columnId } },
+            { $set: { columnId, completedAt: null }, ...statusPush },
+          );
+          continue;
         }
 
-        await Task.updateMany(
-          { _id: { $in: tIds }, columnId: { $ne: columnId } },
-          {
-            $set: updateSet,
-            $push: { statusHistory: { columnId, timestamp: new Date() } },
-          },
-        );
+        // Moving to the done column: complete only the unblocked tasks.
+        const completable = tIds.filter((id) => !blockedTaskIds.has(id));
+        const blocked = tIds.filter((id) => blockedTaskIds.has(id));
+        if (completable.length > 0) {
+          await Task.updateMany(
+            { _id: { $in: completable }, columnId: { $ne: columnId } },
+            { $set: { columnId, completedAt: new Date() }, ...statusPush },
+          );
+        }
+        if (blocked.length > 0) {
+          await Task.updateMany(
+            { _id: { $in: blocked }, columnId: { $ne: columnId } },
+            { $set: { columnId, completedAt: null }, ...statusPush },
+          );
+        }
       }
     } else if (action === "priority") {
       if (!priority) {
@@ -165,6 +206,11 @@ export async function PATCH(request: Request) {
       await Note.deleteMany({ taskId: { $in: accessibleTaskIds } });
       await Notification.deleteMany({ taskId: { $in: accessibleTaskIds } });
       await Task.deleteMany(filter);
+      // Remove deleted tasks from any remaining task's blockedBy.
+      await Task.updateMany(
+        { blockedBy: { $in: accessibleTaskIds } },
+        { $pull: { blockedBy: { $in: accessibleTaskIds } } },
+      );
     } else if (action === "archive") {
       const activeTimerTask = await Task.findOne({
         _id: { $in: accessibleTaskIds },
@@ -313,6 +359,11 @@ export async function DELETE(request: Request) {
       await Note.deleteMany({ taskId: { $in: matchingIds } });
       await Notification.deleteMany({ taskId: { $in: matchingIds } });
       await Task.deleteMany({ _id: { $in: matchingIds } });
+      // Remove deleted tasks from any remaining task's blockedBy.
+      await Task.updateMany(
+        { blockedBy: { $in: matchingIds } },
+        { $pull: { blockedBy: { $in: matchingIds } } },
+      );
 
       const targetUserIds = await getProjectMemberUserIds(projectId);
       emitSyncEvent({
