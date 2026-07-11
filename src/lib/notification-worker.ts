@@ -847,6 +847,18 @@ export function startNotificationWorker(): void {
     clearInterval(global.notificationWorkerInterval);
   }
 
+  // Reconcile indexes on boot so the dedup index definition in the schema is
+  // actually applied on existing deployments. Mongoose's default autoIndex only
+  // CREATES missing indexes; it never drops/replaces one whose options changed
+  // (e.g. the old sparse unique index → the new partial unique index), which
+  // would otherwise throw IndexOptionsConflict and silently keep the buggy index.
+  // syncIndexes() drops the stale index and builds the current one.
+  connectDB()
+    .then(() => Notification.syncIndexes())
+    .catch((err) => {
+      console.error("[notification-worker] Failed to sync indexes:", err);
+    });
+
   // Initial run after a short delay to let the server finish booting
   setTimeout(() => {
     runWorkerTick();

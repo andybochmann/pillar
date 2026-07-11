@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { Task } from "@/types";
@@ -27,6 +27,12 @@ export function useArchivedTasks(): UseArchivedTasksReturn {
   const [error, setError] = useState<string | null>(null);
   // Remember the last project fetched so we can refetch it after reconnect.
   const lastProjectIdRef = useRef<string | null>(null);
+  // Mirror the latest archived tasks so callbacks can read the current list
+  // synchronously (a setState updater runs during render, too late to capture).
+  const archivedTasksRef = useRef<Task[]>([]);
+  useEffect(() => {
+    archivedTasksRef.current = archivedTasks;
+  }, [archivedTasks]);
 
   const fetchArchived = useCallback(async (projectId: string) => {
     lastProjectIdRef.current = projectId;
@@ -63,11 +69,8 @@ export function useArchivedTasks(): UseArchivedTasksReturn {
     // dispatched sync event would carry projectId=undefined and the board would
     // fail to add the task back.
     const serverResult: Partial<Task> = await res.json();
-    let existing: Task | undefined;
-    setArchivedTasks((prev) => {
-      existing = prev.find((t) => t._id === id);
-      return prev.filter((t) => t._id !== id);
-    });
+    const existing = archivedTasksRef.current.find((t) => t._id === id);
+    setArchivedTasks((prev) => prev.filter((t) => t._id !== id));
     const restored = {
       ...(existing ?? {}),
       ...serverResult,

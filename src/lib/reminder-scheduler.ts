@@ -7,9 +7,10 @@ import type { IDueDateReminder } from "@/models/notification-preference";
 const GRACE_MS = 30 * 60_000; // 30 minutes
 
 /**
- * Projection shape used by recalculateRemindersForUser. `reminderSource` is a
- * planned Task-model field (see report cross-file note); typed as optional so
- * the predicate degrades gracefully until the field exists.
+ * Projection shape used by recalculateRemindersForUser. `reminderSource`
+ * distinguishes auto-scheduled reminders (safe to recompute) from manual ones
+ * (must be preserved); it is optional to tolerate legacy rows written before the
+ * field existed.
  */
 interface ReminderTaskRow {
   _id: Types.ObjectId;
@@ -155,9 +156,6 @@ export async function scheduleNextReminder(taskId: string): Promise<void> {
   futureReminderTimes.sort((a, b) => a.getTime() - b.getTime());
   // Stamp reminderSource so recalculateRemindersForUser can tell this auto-set
   // reminder apart from a user's manually-set one.
-  // NOTE: `reminderSource` is not yet a field on the Task model (owned by
-  // another agent); until it is added this key is stripped by Mongoose strict
-  // mode and behaves as a no-op. See the cross-file note in the report.
   await Task.updateOne(
     { _id: taskId },
     { $set: { reminderAt: futureReminderTimes[0], reminderSource: "auto" } },

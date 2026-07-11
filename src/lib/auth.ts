@@ -108,30 +108,36 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
 
       if (token.id) {
-        await connectDB();
-        const dbUser = await User.findById(token.id)
-          .select("passwordHash passwordChangedAt")
-          .lean();
-
         // L20: void tokens whose user was deleted, or that were issued before
         // the user last changed their password (session invalidation).
-        // NOTE: `passwordChangedAt` is not yet on the User model — this check is
-        // dormant until that field is added (see report / cross-file deps).
-        if (!dbUser) {
-          return null;
-        }
-        const changedAt = (dbUser as { passwordChangedAt?: Date })
-          .passwordChangedAt;
-        if (
-          changedAt &&
-          typeof token.iat === "number" &&
-          token.iat * 1000 < changedAt.getTime()
-        ) {
-          return null;
-        }
+        // This runs on every session read, so it must FAIL OPEN: a transient DB
+        // error must not throw here — @auth/core clears the session cookie on any
+        // thrown error, which would force-log-out every user during a DB blip.
+        try {
+          await connectDB();
+          const dbUser = await User.findById(token.id)
+            .select("passwordHash passwordChangedAt")
+            .lean();
 
-        if (user || trigger === "update") {
-          token.hasPassword = !!dbUser.passwordHash;
+          if (!dbUser) {
+            return null;
+          }
+          const changedAt = (dbUser as { passwordChangedAt?: Date })
+            .passwordChangedAt;
+          if (
+            changedAt &&
+            typeof token.iat === "number" &&
+            token.iat * 1000 < changedAt.getTime()
+          ) {
+            return null;
+          }
+
+          if (user || trigger === "update") {
+            token.hasPassword = !!dbUser.passwordHash;
+          }
+        } catch (err) {
+          // Fail open — keep the existing token rather than logging the user out.
+          console.error("[auth.jwt] session revocation check failed:", err);
         }
       }
 
