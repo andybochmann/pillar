@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   ListTodo,
   CalendarDays,
+  BarChart3,
   Settings,
   Search,
   ChevronLeft,
@@ -51,6 +52,7 @@ const navItems = [
   { href: "/home", label: "Dashboard", icon: LayoutDashboard },
   { href: "/overview", label: "Overview", icon: ListTodo },
   { href: "/calendar", label: "Calendar", icon: CalendarDays },
+  { href: "/reports", label: "Reports", icon: BarChart3 },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
