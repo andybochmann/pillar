@@ -306,7 +306,7 @@ describe("Notification Model", () => {
       expect(hasScheduledIndex).toBe(true);
     });
 
-    it("should have unique compound index on taskId+userId+type+scheduledFor", async () => {
+    it("should have partial unique compound index on taskId+userId+type+scheduledFor", async () => {
       const indexes = Notification.schema.indexes();
       const hasDedupIndex = indexes.some(
         (idx) =>
@@ -314,9 +314,60 @@ describe("Notification Model", () => {
             JSON.stringify({ taskId: 1, userId: 1, type: 1, scheduledFor: 1 }) &&
           idx[1] &&
           (idx[1] as Record<string, unknown>).unique === true &&
-          (idx[1] as Record<string, unknown>).sparse === true,
+          // Partial (not sparse) so only docs carrying the dedup keys are constrained
+          (idx[1] as Record<string, unknown>).sparse === undefined &&
+          JSON.stringify(
+            (idx[1] as Record<string, unknown>).partialFilterExpression,
+          ) ===
+            JSON.stringify({
+              taskId: { $exists: true },
+              scheduledFor: { $exists: true },
+            }),
       );
       expect(hasDedupIndex).toBe(true);
+    });
+
+    it("should allow multiple daily-summary notifications (no taskId/scheduledFor)", async () => {
+      // Daily-summary/overdue-digest carry neither taskId nor scheduledFor, so the
+      // partial unique index must not constrain them — multiple can coexist.
+      await Notification.create({
+        userId: testUserId,
+        type: "daily-summary",
+        title: "Summary 1",
+        message: "Message 1",
+      });
+
+      const second = await Notification.create({
+        userId: testUserId,
+        type: "daily-summary",
+        title: "Summary 2",
+        message: "Message 2",
+      });
+
+      expect(second).toBeDefined();
+    });
+
+    it("should allow re-creating an overdue notification after dismissal", async () => {
+      // Overdue notifications have a taskId but no scheduledFor, so they fall
+      // outside the partial unique index and can be re-created once dismissed.
+      const first = await Notification.create({
+        userId: testUserId,
+        taskId: testTaskId,
+        type: "overdue",
+        title: "Overdue",
+        message: "Message",
+      });
+      await Notification.findByIdAndUpdate(first._id, { dismissed: true });
+
+      const second = await Notification.create({
+        userId: testUserId,
+        taskId: testTaskId,
+        type: "overdue",
+        title: "Overdue again",
+        message: "Message",
+      });
+
+      expect(second).toBeDefined();
     });
 
     it("should enforce unique constraint on taskId+userId+type+scheduledFor", async () => {

@@ -82,10 +82,22 @@ NotificationSchema.index({ userId: 1, read: 1 });
 NotificationSchema.index({ userId: 1, scheduledFor: 1 });
 NotificationSchema.index({ userId: 1, type: 1, createdAt: 1 });
 
-// Prevent duplicate reminder/overdue notifications for the same task+user+type+scheduledFor
+// Prevent duplicate reminder notifications for the same task+user+type+scheduledFor.
+// Uses a PARTIAL (not sparse) unique index so only docs that actually carry the
+// dedup keys are constrained. A sparse *compound* index still indexes every doc
+// (userId+type are always present), which caused daily-summary/overdue-digest
+// notifications (no taskId/scheduledFor) to collide across days and overdue
+// per-task notifications to collide after dismissal. The partial filter scopes
+// uniqueness to reminder-style docs that have both taskId and scheduledFor.
 NotificationSchema.index(
   { taskId: 1, userId: 1, type: 1, scheduledFor: 1 },
-  { unique: true, sparse: true },
+  {
+    unique: true,
+    partialFilterExpression: {
+      taskId: { $exists: true },
+      scheduledFor: { $exists: true },
+    },
+  },
 );
 
 export const Notification: Model<INotification> =

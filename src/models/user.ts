@@ -6,6 +6,7 @@ export interface IUser extends Document {
   email: string;
   passwordHash?: string;
   image?: string;
+  passwordChangedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,6 +23,7 @@ const UserSchema = new Schema<IUser>(
     },
     passwordHash: { type: String },
     image: { type: String },
+    passwordChangedAt: { type: Date },
   },
   { timestamps: true },
 );

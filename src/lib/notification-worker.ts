@@ -91,6 +91,18 @@ const TASK_PUSH_ACTIONS = [
 ];
 
 /**
+ * True when a Mongoose error is a duplicate-key (E11000) violation.
+ */
+function isDuplicateKeyError(err: unknown): boolean {
+  return (
+    !!err &&
+    typeof err === "object" &&
+    "code" in err &&
+    (err as { code?: number }).code === 11000
+  );
+}
+
+/**
  * Emit a notification SSE event and optionally send a web push notification.
  */
 function emitNotification(
@@ -100,20 +112,25 @@ function emitNotification(
   pushEnabled?: boolean,
   projectId?: string,
   notificationType?: string,
+  inAppEnabled: boolean = true,
 ): void {
   const notificationId = notification._id.toString();
   const tag = `pillar-${notificationId}`;
 
-  emitNotificationEvent({
-    type: notification.type,
-    notificationId,
-    userId,
-    taskId,
-    title: notification.title,
-    message: notification.message,
-    metadata: notification.metadata as Record<string, unknown>,
-    timestamp: Date.now(),
-  });
+  // Only deliver the live in-app (SSE) notification when the user has in-app
+  // notifications enabled. Push is gated separately below.
+  if (inAppEnabled) {
+    emitNotificationEvent({
+      type: notification.type,
+      notificationId,
+      userId,
+      taskId,
+      title: notification.title,
+      message: notification.message,
+      metadata: notification.metadata as Record<string, unknown>,
+      timestamp: Date.now(),
+    });
+  }
 
   if (pushEnabled) {
     // Include action buttons for single-task notifications (reminder/overdue)
@@ -261,7 +278,6 @@ async function processReminders(
   for (const task of tasks) {
     const taskId = task._id.toString();
     const usersToNotify = getUsersToNotify(task);
-    let notifiedAny = false;
     let skippedDueToQuietHours = false;
 
     for (const userId of usersToNotify) {
@@ -276,27 +292,35 @@ async function processReminders(
       const dedupKey = `${taskId}_${userId}_${task.reminderAt?.toISOString()}`;
       if (existingSet.has(dedupKey)) continue;
 
+      const inAppEnabled = !!prefs?.enableInAppNotifications;
+      const fields = {
+        userId,
+        taskId: task._id,
+        type: "reminder" as const,
+        title: "Task reminder",
+        message: `"${task.title}" needs your attention.`,
+        scheduledFor: task.reminderAt,
+        metadata: {
+          priority: task.priority,
+          dueDate: task.dueDate?.toISOString(),
+          projectId: task.projectId.toString(),
+        },
+      };
+
+      // Only persist an in-app record (surfaced in the bell) when in-app
+      // notifications are enabled. Push-only users get a transient, unsaved
+      // instance purely to drive the push payload.
       let notification: InstanceType<typeof Notification>;
-      try {
-        notification = await Notification.create({
-          userId,
-          taskId: task._id,
-          type: "reminder",
-          title: "Task reminder",
-          message: `"${task.title}" needs your attention.`,
-          scheduledFor: task.reminderAt,
-          metadata: {
-            priority: task.priority,
-            dueDate: task.dueDate?.toISOString(),
-            projectId: task.projectId.toString(),
-          },
-        });
-      } catch (err: unknown) {
-        if (err && typeof err === "object" && "code" in err && (err as { code: number }).code === 11000) {
+      if (inAppEnabled) {
+        try {
+          notification = await Notification.create(fields);
+        } catch (err: unknown) {
           // Duplicate — another concurrent process already created this notification
-          continue;
+          if (isDuplicateKeyError(err)) continue;
+          throw err;
         }
-        throw err;
+      } else {
+        notification = new Notification(fields);
       }
 
       emitNotification(
@@ -306,15 +330,17 @@ async function processReminders(
         prefs?.enableBrowserPush,
         task.projectId.toString(),
         "reminder",
+        inAppEnabled,
       );
       created++;
-      notifiedAny = true;
     }
 
-    // Only clear reminderAt and advance to next reminder when at least one user was notified
-    // AND no users were skipped due to quiet hours. If some users still need to be notified
-    // after their quiet hours end, leave reminderAt so the next tick retries for them.
-    if (notifiedAny && !skippedDueToQuietHours) {
+    // Clear reminderAt and advance to the next reminder unless a user was
+    // deferred specifically because of quiet hours (those need a retry once
+    // their quiet hours end). If no user was notifiable for any OTHER reason
+    // (notifications disabled, already deduped), still clear reminderAt so the
+    // task isn't reprocessed every tick and doesn't fire a stale reminder later.
+    if (!skippedDueToQuietHours) {
       await Task.updateOne({ _id: task._id }, { $unset: { reminderAt: 1 } });
       try {
         await scheduleNextReminder(taskId);
@@ -368,16 +394,21 @@ async function processOverdue(
   const userIds = collectUserIds(tasks);
   const prefsMap = await loadPreferencesMap(userIds);
 
-  // Batch-load existing overdue notifications for dedup
+  // Batch-load existing overdue notifications for dedup. The generation marker
+  // is the dueDate stored in metadata: a prior notification (even dismissed)
+  // for the same dueDate suppresses re-notifying, but a new overdue period
+  // (changed dueDate) re-notifies. Dismissed docs are intentionally included.
   const taskIds = tasks.map((t) => t._id);
   const existingOverdue = await Notification.find({
     taskId: { $in: taskIds },
     type: "overdue",
-    dismissed: false,
   });
   const existingSet = new Set(
     existingOverdue.map(
-      (n) => `${n.taskId?.toString()}_${n.userId.toString()}`,
+      (n) =>
+        `${n.taskId?.toString()}_${n.userId.toString()}_${
+          (n.metadata as Record<string, unknown> | undefined)?.dueDate ?? ""
+        }`,
     ),
   );
 
@@ -389,28 +420,45 @@ async function processOverdue(
       const prefs = prefsMap.get(userId);
       if (shouldSkipUser(prefs, now, { requireOverdueEnabled: true })) continue;
 
-      const dedupKey = `${taskId}_${userId}`;
+      // A task is only overdue once its due day has fully passed in the user's
+      // timezone. Due dates are stored at midnight UTC, so comparing against the
+      // user's local start-of-today (mirrors processOverdueDigest) avoids flagging
+      // a task overdue the evening before for users west of UTC.
+      const timezone = prefs?.timezone || "UTC";
+      const todayStart = new Date(
+        getDateStringInTimezone(now, timezone) + "T00:00:00.000Z",
+      );
+      if (!task.dueDate || task.dueDate >= todayStart) continue;
+
+      const dedupKey = `${taskId}_${userId}_${task.dueDate.toISOString()}`;
       if (existingSet.has(dedupKey)) continue;
 
+      const inAppEnabled = !!prefs?.enableInAppNotifications;
+      const fields = {
+        userId,
+        taskId: task._id,
+        type: "overdue" as const,
+        title: "Task is overdue",
+        message: `"${task.title}" is overdue and needs your attention.`,
+        metadata: {
+          priority: task.priority,
+          dueDate: task.dueDate.toISOString(),
+          projectId: task.projectId.toString(),
+        },
+      };
+
+      // Persist a record either way so the generation-based dedup set suppresses
+      // re-pushing on every 2-minute tick. Push-only users (in-app disabled) get a
+      // record marked read+dismissed so it never surfaces in the bell but still
+      // serves as the dedup marker for this overdue period.
       let notification: InstanceType<typeof Notification>;
       try {
-        notification = await Notification.create({
-          userId,
-          taskId: task._id,
-          type: "overdue",
-          title: "Task is overdue",
-          message: `"${task.title}" is overdue and needs your attention.`,
-          metadata: {
-            priority: task.priority,
-            dueDate: task.dueDate!.toISOString(),
-            projectId: task.projectId.toString(),
-          },
-        });
+        notification = await Notification.create(
+          inAppEnabled ? fields : { ...fields, read: true, dismissed: true },
+        );
       } catch (err: unknown) {
-        if (err && typeof err === "object" && "code" in err && (err as { code: number }).code === 11000) {
-          // Duplicate — another concurrent process already created this notification
-          continue;
-        }
+        // Duplicate — another concurrent process already created this notification
+        if (isDuplicateKeyError(err)) continue;
         throw err;
       }
 
@@ -421,6 +469,7 @@ async function processOverdue(
         prefs?.enableBrowserPush,
         task.projectId.toString(),
         "overdue",
+        inAppEnabled,
       );
       created++;
     }
@@ -539,32 +588,47 @@ export async function processDailySummary(
       );
     }
 
-    const notification = await Notification.create({
-      userId: pref.userId,
-      type: "daily-summary",
-      title: "Daily Summary",
-      message: `You have ${parts.join(" and ")}.`,
-      metadata: {
-        summaryDate: todayStr,
-        dueTodayCount,
-        overdueCount,
-        totalCount,
-        dueTodayTasks: dueTodayTasks.slice(0, 5).map((t) => ({
-          id: t._id.toString(),
-          title: t.title,
-          priority: t.priority,
-          projectId: t.projectId.toString(),
-        })),
-        overdueTasks: overdueTasks.slice(0, 5).map((t) => ({
-          id: t._id.toString(),
-          title: t.title,
-          priority: t.priority,
-          projectId: t.projectId.toString(),
-        })),
-      },
-    });
+    let notification: InstanceType<typeof Notification>;
+    try {
+      notification = await Notification.create({
+        userId: pref.userId,
+        type: "daily-summary",
+        title: "Daily Summary",
+        message: `You have ${parts.join(" and ")}.`,
+        metadata: {
+          summaryDate: todayStr,
+          dueTodayCount,
+          overdueCount,
+          totalCount,
+          dueTodayTasks: dueTodayTasks.slice(0, 5).map((t) => ({
+            id: t._id.toString(),
+            title: t.title,
+            priority: t.priority,
+            projectId: t.projectId.toString(),
+          })),
+          overdueTasks: overdueTasks.slice(0, 5).map((t) => ({
+            id: t._id.toString(),
+            title: t.title,
+            priority: t.priority,
+            projectId: t.projectId.toString(),
+          })),
+        },
+      });
+    } catch (err: unknown) {
+      // Duplicate — a concurrent tick already created today's summary
+      if (isDuplicateKeyError(err)) continue;
+      throw err;
+    }
 
-    emitNotification(notification, userId, undefined, pref.enableBrowserPush);
+    emitNotification(
+      notification,
+      userId,
+      undefined,
+      pref.enableBrowserPush,
+      undefined,
+      undefined,
+      pref.enableInAppNotifications,
+    );
     created++;
   }
 
@@ -680,19 +744,34 @@ export async function processOverdueDigest(
         ? `You have ${overdueCount} overdue task${overdueCount === 1 ? "" : "s"}: ${taskList}`
         : `You have ${overdueCount} overdue tasks: ${taskList}, and ${overdueCount - 5} more`;
 
-    const notification = await Notification.create({
-      userId: pref.userId,
-      type: "overdue-digest",
-      title: "Overdue Tasks Summary",
-      message,
-      metadata: {
-        overdueSummaryDate: todayStr,
-        overdueCount,
-        tasks: taskPreviews,
-      },
-    });
+    let notification: InstanceType<typeof Notification>;
+    try {
+      notification = await Notification.create({
+        userId: pref.userId,
+        type: "overdue-digest",
+        title: "Overdue Tasks Summary",
+        message,
+        metadata: {
+          overdueSummaryDate: todayStr,
+          overdueCount,
+          tasks: taskPreviews,
+        },
+      });
+    } catch (err: unknown) {
+      // Duplicate — a concurrent tick already created today's digest
+      if (isDuplicateKeyError(err)) continue;
+      throw err;
+    }
 
-    emitNotification(notification, userId, undefined, pref.enableBrowserPush);
+    emitNotification(
+      notification,
+      userId,
+      undefined,
+      pref.enableBrowserPush,
+      undefined,
+      undefined,
+      pref.enableInAppNotifications,
+    );
     created++;
   }
 
@@ -732,6 +811,29 @@ export async function processNotifications(scopeUserId?: string): Promise<{
 }
 
 /**
+ * Overlap guard: ensures a slow tick finishes before the next one starts,
+ * so concurrent ticks can't race each other (e.g. on duplicate digest inserts).
+ */
+let workerTickRunning = false;
+
+async function runWorkerTick(): Promise<void> {
+  if (workerTickRunning) {
+    console.warn(
+      "[notification-worker] Previous tick still running — skipping this tick",
+    );
+    return;
+  }
+  workerTickRunning = true;
+  try {
+    await processNotifications();
+  } catch (err) {
+    console.error("[notification-worker] Tick failed:", err);
+  } finally {
+    workerTickRunning = false;
+  }
+}
+
+/**
  * Start the background notification worker.
  * Uses a global guard to prevent multiple intervals in HMR.
  */
@@ -747,10 +849,10 @@ export function startNotificationWorker(): void {
 
   // Initial run after a short delay to let the server finish booting
   setTimeout(() => {
-    processNotifications().catch(console.error);
+    runWorkerTick();
   }, 10_000);
 
   global.notificationWorkerInterval = setInterval(() => {
-    processNotifications().catch(console.error);
+    runWorkerTick();
   }, WORKER_INTERVAL_MS);
 }
