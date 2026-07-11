@@ -21,6 +21,7 @@ const UpdateProjectSchema = z.object({
         id: z.string().min(1),
         name: z.string().min(1).max(50),
         order: z.number().int().min(0),
+        wipLimit: z.number().int().positive().optional(),
       }),
     )
     .optional(),

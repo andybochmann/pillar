@@ -20,6 +20,7 @@ export interface Column {
   id: string;
   name: string;
   order: number;
+  wipLimit?: number;
 }
 
 export interface Category {

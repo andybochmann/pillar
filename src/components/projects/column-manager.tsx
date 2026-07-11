@@ -31,6 +31,7 @@ interface ColumnManagerProps {
 interface SortableColumnItemProps {
   column: Column;
   onRename: (id: string, name: string) => void;
+  onWipLimitChange: (id: string, wipLimit: number | undefined) => void;
   onDelete: (id: string) => void;
   canDelete: boolean;
   hasTasksInColumn: boolean;
@@ -39,6 +40,7 @@ interface SortableColumnItemProps {
 function SortableColumnItem({
   column,
   onRename,
+  onWipLimitChange,
   onDelete,
   canDelete,
   hasTasksInColumn,
@@ -112,6 +114,26 @@ function SortableColumnItem({
         </span>
       )}
 
+      <Input
+        type="number"
+        min={1}
+        value={column.wipLimit ?? ""}
+        onChange={(e) => {
+          const raw = e.target.value.trim();
+          const parsed = Number.parseInt(raw, 10);
+          onWipLimitChange(
+            column.id,
+            raw === "" || Number.isNaN(parsed) || parsed < 1
+              ? undefined
+              : parsed,
+          );
+        }}
+        placeholder="WIP"
+        className="h-7 w-16 text-sm"
+        aria-label={`WIP limit for ${column.name}`}
+        title="Work-in-progress limit (empty = no limit)"
+      />
+
       {canDelete && (
         <Button
           variant="ghost"
@@ -167,6 +189,13 @@ export function ColumnManager({
 
   function handleRename(id: string, name: string) {
     setColumns((prev) => prev.map((c) => (c.id === id ? { ...c, name } : c)));
+    setDirty(true);
+  }
+
+  function handleWipLimitChange(id: string, wipLimit: number | undefined) {
+    setColumns((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, wipLimit } : c)),
+    );
     setDirty(true);
   }
 
@@ -228,6 +257,7 @@ export function ColumnManager({
                 key={column.id}
                 column={column}
                 onRename={handleRename}
+                onWipLimitChange={handleWipLimitChange}
                 onDelete={handleDelete}
                 canDelete={columns.length > 1}
                 hasTasksInColumn={
