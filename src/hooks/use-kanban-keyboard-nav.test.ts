@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { StrictMode } from "react";
 import { renderHook, act } from "@testing-library/react";
 import { useKanbanKeyboardNav } from "./use-kanban-keyboard-nav";
 import type { Task, Column } from "@/types";
@@ -234,6 +235,22 @@ describe("useKanbanKeyboardNav", () => {
       act(() => fireKey("d"));
 
       expect(handlers.onOpenDatePicker).toHaveBeenCalledWith("t1");
+    });
+
+    it("invokes an action callback exactly once under StrictMode (M1)", () => {
+      // StrictMode double-invokes state updaters in dev. The old code called
+      // side effects INSIDE the setFocusedTaskId updater, so a single keypress
+      // fired the callback twice (double PATCH, priority skipping two steps).
+      renderHook(
+        () => useKanbanKeyboardNav({ tasks, columns, ...handlers }),
+        { wrapper: StrictMode },
+      );
+
+      act(() => fireKey("j")); // focus t1
+      act(() => fireKey("p")); // cycle priority once
+
+      expect(handlers.onCyclePriority).toHaveBeenCalledTimes(1);
+      expect(handlers.onCyclePriority).toHaveBeenCalledWith("t1");
     });
   });
 

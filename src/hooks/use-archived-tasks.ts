@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
+import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { Task } from "@/types";
 
 interface BulkDeleteOptions {
@@ -24,8 +25,11 @@ export function useArchivedTasks(): UseArchivedTasksReturn {
   const [archivedTasks, setArchivedTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Remember the last project fetched so we can refetch it after reconnect.
+  const lastProjectIdRef = useRef<string | null>(null);
 
   const fetchArchived = useCallback(async (projectId: string) => {
+    lastProjectIdRef.current = projectId;
     try {
       setLoading(true);
       setError(null);
@@ -54,8 +58,22 @@ export function useArchivedTasks(): UseArchivedTasksReturn {
       const body = await res.json();
       throw new Error(body.error || "Failed to unarchive task");
     }
-    const restored: Task = await res.json();
-    setArchivedTasks((prev) => prev.filter((t) => t._id !== id));
+    // An offline PATCH echoes only the patched fields (no projectId), so merge
+    // over the known archived task to keep a complete entity — otherwise the
+    // dispatched sync event would carry projectId=undefined and the board would
+    // fail to add the task back.
+    const serverResult: Partial<Task> = await res.json();
+    let existing: Task | undefined;
+    setArchivedTasks((prev) => {
+      existing = prev.find((t) => t._id === id);
+      return prev.filter((t) => t._id !== id);
+    });
+    const restored = {
+      ...(existing ?? {}),
+      ...serverResult,
+      _id: id,
+      archived: false,
+    } as Task;
 
     // Dispatch local sync event so the board adds the task back instantly
     // (SSE skips events from the same tab, so the board won't get it otherwise)
@@ -121,6 +139,13 @@ export function useArchivedTasks(): UseArchivedTasksReturn {
       return deletedCount as number;
     },
     [],
+  );
+
+  // Catch up after a disconnect / offline-queue sync.
+  useRefetchOnReconnect(
+    useCallback(() => {
+      if (lastProjectIdRef.current) fetchArchived(lastProjectIdRef.current);
+    }, [fetchArchived]),
   );
 
   return {

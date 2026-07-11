@@ -148,7 +148,8 @@ export function useCategories(): UseCategoriesReturn {
         throw new Error(body.error || "Failed to update category");
       }
       const updated: Category = await res.json();
-      setCategories((prev) => prev.map((c) => (c._id === id ? updated : c)));
+      // Merge (not replace): an offline PATCH echoes only the patched fields.
+      setCategories((prev) => prev.map((c) => (c._id === id ? { ...c, ...updated } : c)));
       return updated;
     },
     [],

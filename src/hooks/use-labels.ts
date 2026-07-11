@@ -143,9 +143,10 @@ export function useLabels(): UseLabelsReturn {
         throw new Error(body.error || "Failed to update label");
       }
       const updated: Label = await res.json();
+      // Merge (not replace): an offline PATCH echoes only the patched fields.
       setLabels((prev) =>
         prev
-          .map((l) => (l._id === id ? updated : l))
+          .map((l) => (l._id === id ? { ...l, ...updated } : l))
           .sort(sortByName),
       );
       return updated;

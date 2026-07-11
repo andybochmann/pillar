@@ -79,6 +79,9 @@ export function useUserSearch(): UseUserSearchReturn {
   const [results, setResults] = useState<SearchUser[]>([]);
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  // Sequence token so only the latest query's response applies (guards against
+  // out-of-order responses clobbering newer results).
+  const seqRef = useRef(0);
 
   useEffect(() => {
     return () => {
@@ -90,30 +93,37 @@ export function useUserSearch(): UseUserSearchReturn {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
     if (query.length < 2) {
+      seqRef.current++;
       setResults([]);
       setLoading(false);
       return;
     }
 
     setLoading(true);
+    const seq = ++seqRef.current;
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch(
           `/api/users/search?email=${encodeURIComponent(query)}`,
         );
+        if (seq !== seqRef.current) return;
         if (res.ok) {
           setResults(await res.json());
         }
       } catch {
         // Silently fail on search errors
       } finally {
-        setLoading(false);
+        if (seq === seqRef.current) setLoading(false);
       }
     }, 300);
   }, []);
 
   const clear = useCallback(() => {
+    // Invalidate any in-flight request and reset loading so the spinner
+    // doesn't get stuck after cancelling a pending debounced search.
+    seqRef.current++;
     setResults([]);
+    setLoading(false);
     if (debounceRef.current) clearTimeout(debounceRef.current);
   }, []);
 

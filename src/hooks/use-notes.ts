@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import { useSyncSubscription } from "./use-sync-subscription";
+import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { Note, NoteParentType } from "@/types";
 import type { SyncEvent } from "@/lib/event-bus";
 
@@ -28,6 +29,8 @@ export function useNotes({ parentType, categoryId, projectId, taskId }: UseNotes
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Monotonic token so an out-of-order (stale) fetch can't clobber newer state.
+  const fetchGenRef = useRef(0);
 
   const fetchNotes = useCallback(async () => {
     const params = new URLSearchParams();
@@ -42,6 +45,7 @@ export function useNotes({ parentType, categoryId, projectId, taskId }: UseNotes
     const qs = params.toString();
     if (!qs) return;
 
+    const gen = ++fetchGenRef.current;
     try {
       setLoading(true);
       setError(null);
@@ -50,11 +54,13 @@ export function useNotes({ parentType, categoryId, projectId, taskId }: UseNotes
         const data = await res.json();
         throw new Error(data.error || "Failed to fetch notes");
       }
-      setNotes(await res.json());
+      const data = await res.json();
+      if (gen !== fetchGenRef.current) return;
+      setNotes(data);
     } catch (err) {
-      setError((err as Error).message);
+      if (gen === fetchGenRef.current) setError((err as Error).message);
     } finally {
-      setLoading(false);
+      if (gen === fetchGenRef.current) setLoading(false);
     }
   }, [parentType, categoryId, projectId, taskId]);
 
@@ -96,7 +102,8 @@ export function useNotes({ parentType, categoryId, projectId, taskId }: UseNotes
         throw new Error(body.error || "Failed to update note");
       }
       const updated: Note = await res.json();
-      setNotes((prev) => prev.map((n) => (n._id === id ? updated : n)));
+      // Merge (not replace): an offline PATCH echoes only the patched fields.
+      setNotes((prev) => prev.map((n) => (n._id === id ? { ...n, ...updated } : n)));
       return updated;
     },
     [],
@@ -148,6 +155,13 @@ export function useNotes({ parentType, categoryId, projectId, taskId }: UseNotes
       },
       [parentType, categoryId, projectId, taskId],
     ),
+  );
+
+  // Catch up after a disconnect / offline-queue sync.
+  useRefetchOnReconnect(
+    useCallback(() => {
+      fetchNotes();
+    }, [fetchNotes]),
   );
 
   return {

@@ -153,6 +153,30 @@ describe("useRealtimeSync", () => {
     dispatchSpy.mockRestore();
   });
 
+  it("does not open a duplicate EventSource from the reconnect timer (M9)", async () => {
+    renderHook(() => useRealtimeSync());
+    expect(MockEventSource.instances).toHaveLength(1);
+    const es0 = MockEventSource.instances[0];
+
+    // Error closes es0 and schedules a backoff reconnect.
+    await act(async () => {
+      es0.onerror?.();
+    });
+
+    // A manual reconnect (online) re-establishes a live connection first.
+    await act(async () => {
+      window.dispatchEvent(new Event("online"));
+    });
+    expect(MockEventSource.instances).toHaveLength(2);
+
+    // When the scheduled backoff timer finally fires, it must bail because a
+    // connection already exists — otherwise it leaks a second live EventSource.
+    await act(async () => {
+      vi.advanceTimersByTime(5000);
+    });
+    expect(MockEventSource.instances).toHaveLength(2);
+  });
+
   it("dispatches pillar:reconnected on reconnection after error", async () => {
     const dispatchSpy = vi.spyOn(window, "dispatchEvent");
     renderHook(() => useRealtimeSync());

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { Notification } from "@/types";
@@ -146,6 +146,8 @@ export function useNotifications(
     useState<Notification[]>(initialNotifications);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Monotonic token so an out-of-order (stale) fetch can't clobber newer state.
+  const fetchGenRef = useRef(0);
 
   const fetchNotifications = useCallback(
     async (params?: {
@@ -155,6 +157,7 @@ export function useNotifications(
       taskId?: string;
       limit?: number;
     }) => {
+      const gen = ++fetchGenRef.current;
       try {
         setLoading(true);
         setError(null);
@@ -186,11 +189,13 @@ export function useNotifications(
           const data = await res.json();
           throw new Error(data.error || "Failed to fetch notifications");
         }
-        setNotifications(await res.json());
+        const data = await res.json();
+        if (gen !== fetchGenRef.current) return;
+        setNotifications(data);
       } catch (err) {
-        setError((err as Error).message);
+        if (gen === fetchGenRef.current) setError((err as Error).message);
       } finally {
-        setLoading(false);
+        if (gen === fetchGenRef.current) setLoading(false);
       }
     },
     [],
@@ -207,7 +212,8 @@ export function useNotifications(
       throw new Error(body.error || "Failed to mark notification as read");
     }
     const updated: Notification = await res.json();
-    setNotifications((prev) => prev.map((n) => (n._id === id ? updated : n)));
+    // Merge (not replace): an offline PATCH echoes only the patched fields.
+    setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, ...updated } : n)));
     return updated;
   }, []);
 
@@ -222,7 +228,8 @@ export function useNotifications(
       throw new Error(body.error || "Failed to dismiss notification");
     }
     const updated: Notification = await res.json();
-    setNotifications((prev) => prev.map((n) => (n._id === id ? updated : n)));
+    // Merge (not replace): an offline PATCH echoes only the patched fields.
+    setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, ...updated } : n)));
     return updated;
   }, []);
 
@@ -238,7 +245,8 @@ export function useNotifications(
         throw new Error(body.error || "Failed to snooze notification");
       }
       const updated: Notification = await res.json();
-      setNotifications((prev) => prev.map((n) => (n._id === id ? updated : n)));
+      // Merge (not replace): an offline PATCH echoes only the patched fields.
+      setNotifications((prev) => prev.map((n) => (n._id === id ? { ...n, ...updated } : n)));
       return updated;
     },
     [],
@@ -256,15 +264,24 @@ export function useNotifications(
   }, []);
 
   const dismissAll = useCallback(async () => {
-    // Optimistic update
-    setNotifications((prev) => prev.map((n) => ({ ...n, dismissed: true })));
-    const res = await offlineFetch("/api/notifications", {
-      method: "DELETE",
+    // Snapshot for rollback, then apply the optimistic update.
+    let prevNotifications: Notification[] = [];
+    setNotifications((prev) => {
+      prevNotifications = prev;
+      return prev.map((n) => ({ ...n, dismissed: true }));
     });
-    if (!res.ok) {
-      const body = await res.json();
-      // Revert on failure would need original state; for now just throw
-      throw new Error(body.error || "Failed to dismiss all notifications");
+    try {
+      const res = await offlineFetch("/api/notifications", {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || "Failed to dismiss all notifications");
+      }
+    } catch (err) {
+      // Roll back to the pre-optimistic state on failure.
+      setNotifications(prevNotifications);
+      throw err;
     }
   }, []);
 

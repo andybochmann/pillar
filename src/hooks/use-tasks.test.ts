@@ -133,6 +133,28 @@ describe("useTasks", () => {
     expect(result.current.tasks[0].title).toBe("Updated title");
   });
 
+  it("merges (not replaces) a PATCH result so unrelated fields survive (C2)", async () => {
+    // Simulates an offline PATCH: offlineFetch echoes only the patched fields
+    // plus the real _id, so the hook must merge to avoid wiping other props.
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ _id: "task-1", columnId: "done" }),
+    } as Response);
+
+    const { result } = renderHook(() => useTasks(mockTasks));
+
+    await act(async () => {
+      await result.current.updateTask("task-1", { columnId: "done" });
+    });
+
+    const patched = result.current.tasks.find((t) => t._id === "task-1")!;
+    expect(patched.columnId).toBe("done");
+    // Title/priority/order must NOT be lost by the partial echo.
+    expect(patched.title).toBe("Fix login bug");
+    expect(patched.priority).toBe("high");
+    expect(patched.order).toBe(0);
+  });
+
   it("deletes a task from the list", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: true,

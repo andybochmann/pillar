@@ -63,6 +63,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // SSE stream: never intercept/cache — networkFirst would buffer the
+  // never-ending /api/events response forever. Let it pass through to the network.
+  if (
+    url.pathname.startsWith("/api/events") ||
+    request.headers.get("accept") === "text/event-stream"
+  ) {
+    return;
+  }
+
   // API GET requests: network-first with cache fallback
   if (
     url.pathname.startsWith("/api/") &&
@@ -106,7 +115,9 @@ async function cacheFirst(request, cacheName) {
 async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    // Never cache a redirected response (e.g. auth 302 → login): caching it
+    // poisons the cache and throws on navigation replay.
+    if (response.ok && !response.redirected) {
       const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
     }
@@ -124,7 +135,9 @@ async function networkFirst(request, cacheName) {
 async function networkFirstNavigation(request) {
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    // Never cache a redirected response (e.g. auth 302 → login): a cached
+    // redirect throws (TypeError) when replayed for a navigation request.
+    if (response.ok && !response.redirected) {
       const cache = await caches.open(PAGE_CACHE_NAME);
       cache.put(request, response.clone());
     }
@@ -179,7 +192,14 @@ self.addEventListener("message", (event) => {
   }
 
   if (event.data?.type === "CLEAR_AUTH_CACHE") {
-    event.waitUntil(caches.delete(API_CACHE_NAME));
+    // Clear both the API cache and the authenticated page/RSC cache so a
+    // different user on a shared device can't see the previous user's pages.
+    event.waitUntil(
+      Promise.all([
+        caches.delete(API_CACHE_NAME),
+        caches.delete(PAGE_CACHE_NAME),
+      ]),
+    );
   }
 });
 
@@ -237,16 +257,38 @@ async function replayOfflineQueue() {
 
   let hadTransientFailure = false;
   let permanentFailureCount = 0;
+  let authRequired = false;
+  // Maps an offline temp id (offline-<uuid>) to the real server id once the
+  // queued POST that created it has replayed successfully.
+  const idMap = new Map();
 
   for (const mutation of mutations) {
     const sessionId = mutation.sessionId || crypto.randomUUID();
-    const result = await replayOneMutation(mutation, sessionId, 3, 1000);
-    if (result === "success") {
+
+    // Rewrite any offline temp ids that have since been resolved to real ids.
+    let url = mutation.url;
+    let body = mutation.body;
+    for (const [tempId, realId] of idMap) {
+      if (url.includes(tempId)) url = url.split(tempId).join(realId);
+      body = rewriteRefs(body, tempId, realId);
+    }
+    const effectiveMutation = { ...mutation, url, body };
+
+    const result = await replayOneMutation(effectiveMutation, sessionId, 3, 1000);
+    if (result.status === "success") {
+      if (mutation.tempId && result.createdId) {
+        idMap.set(mutation.tempId, result.createdId);
+      }
       await deleteMutation(db, mutation.id);
-    } else if (result === "permanent") {
+    } else if (result.status === "permanent") {
       // 4xx — not retryable; remove from queue so it doesn't replay forever
       await deleteMutation(db, mutation.id);
       permanentFailureCount++;
+    } else if (result.status === "auth") {
+      // Session expired — keep queued and stop; nothing else will succeed.
+      authRequired = true;
+      hadTransientFailure = true;
+      break;
     } else {
       // "transient" — leave in queue for next sync attempt
       hadTransientFailure = true;
@@ -260,12 +302,23 @@ async function replayOfflineQueue() {
     client.postMessage({
       type: "SYNC_COMPLETE",
       permanentFailures: permanentFailureCount,
+      authRequired,
     }),
   );
 
   if (hadTransientFailure) {
     throw new Error("Some offline mutations had transient failures — will retry");
   }
+}
+
+/**
+ * Rewrites references to an offline temp id (in a URL string or JSON body) to
+ * the real server id once it becomes known.
+ */
+function rewriteRefs(value, tempId, realId) {
+  const str = JSON.stringify(value);
+  if (str === undefined || !str.includes(tempId)) return value;
+  return JSON.parse(str.split(tempId).join(realId));
 }
 
 async function replayOneMutation(mutation, sessionId, maxRetries, baseDelay) {
@@ -276,13 +329,35 @@ async function replayOneMutation(mutation, sessionId, maxRetries, baseDelay) {
         headers: {
           "Content-Type": "application/json",
           "X-Session-Id": sessionId,
+          // Stable idempotency key (the queue entry id) so a mutation whose
+          // response was lost isn't double-applied on replay.
+          "Idempotency-Key": mutation.id,
         },
       };
       if (mutation.body !== undefined) init.body = JSON.stringify(mutation.body);
 
       const res = await fetch(mutation.url, init);
-      if (res.ok) return "success";
-      if (res.status >= 400 && res.status < 500) return "permanent";
+
+      // Detect an auth redirect (middleware 302 → browser follows to the login
+      // page). Treat it as an auth failure so the mutation stays queued instead
+      // of being silently discarded when the session expired.
+      if (res.redirected || !res.url.includes("/api/")) {
+        return { status: "auth" };
+      }
+
+      if (res.ok) {
+        let createdId;
+        if (mutation.method === "POST") {
+          try {
+            const data = await res.clone().json();
+            if (data && typeof data._id === "string") createdId = data._id;
+          } catch {
+            // Non-JSON success body — no id to capture
+          }
+        }
+        return { status: "success", createdId };
+      }
+      if (res.status >= 400 && res.status < 500) return { status: "permanent" };
       // 5xx — fall through to retry
     } catch {
       // Network error — retry
@@ -291,7 +366,7 @@ async function replayOneMutation(mutation, sessionId, maxRetries, baseDelay) {
       await new Promise((r) => setTimeout(r, baseDelay * 2 ** attempt));
     }
   }
-  return "transient";
+  return { status: "transient" };
 }
 
 /**

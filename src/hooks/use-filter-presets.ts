@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import { useSyncSubscription } from "./use-sync-subscription";
+import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { FilterPreset, FilterPresetContext } from "@/types";
 import type { SyncEvent } from "@/lib/event-bus";
 
@@ -123,6 +124,13 @@ export function useFilterPresets(
       },
       [context],
     ),
+  );
+
+  // Catch up after a disconnect / offline-queue sync.
+  useRefetchOnReconnect(
+    useCallback(() => {
+      fetchPresets();
+    }, [fetchPresets]),
   );
 
   return {

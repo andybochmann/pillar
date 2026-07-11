@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { offlineFetch } from "@/lib/offline-fetch";
 import { useSyncSubscription } from "./use-sync-subscription";
+import { useRefetchOnReconnect } from "./use-refetch-on-reconnect";
 import type { ProjectMember, ProjectRole } from "@/types";
 import type { SyncEvent } from "@/lib/event-bus";
 
@@ -102,8 +103,14 @@ export function useProjectMembers(projectId?: string): UseProjectMembersReturn {
   const [members, setMembers] = useState<ProjectMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Remember the last project fetched so we can refetch it after reconnect.
+  const lastProjectIdRef = useRef<string | null>(null);
+  // Monotonic token so an out-of-order (stale) fetch can't clobber newer state.
+  const fetchGenRef = useRef(0);
 
   const fetchMembers = useCallback(async (pid: string) => {
+    lastProjectIdRef.current = pid;
+    const gen = ++fetchGenRef.current;
     try {
       setLoading(true);
       setError(null);
@@ -112,11 +119,13 @@ export function useProjectMembers(projectId?: string): UseProjectMembersReturn {
         const data = await res.json();
         throw new Error(data.error || "Failed to fetch members");
       }
-      setMembers(await res.json());
+      const data = await res.json();
+      if (gen !== fetchGenRef.current) return;
+      setMembers(data);
     } catch (err) {
-      setError((err as Error).message);
+      if (gen === fetchGenRef.current) setError((err as Error).message);
     } finally {
-      setLoading(false);
+      if (gen === fetchGenRef.current) setLoading(false);
     }
   }, []);
 
@@ -209,6 +218,13 @@ export function useProjectMembers(projectId?: string): UseProjectMembersReturn {
       },
       [projectId],
     ),
+  );
+
+  // Catch up after a disconnect / offline-queue sync.
+  useRefetchOnReconnect(
+    useCallback(() => {
+      if (lastProjectIdRef.current) fetchMembers(lastProjectIdRef.current);
+    }, [fetchMembers]),
   );
 
   return {

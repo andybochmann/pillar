@@ -52,9 +52,12 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const hasData = useRef(initialTasks.length > 0);
+  // Monotonic token so an out-of-order (stale) fetch can't clobber newer state.
+  const fetchGenRef = useRef(0);
 
   const fetchTasks = useCallback(async (pid: string) => {
     if (!navigator.onLine && hasData.current) return;
+    const gen = ++fetchGenRef.current;
     try {
       setLoading(true);
       setError(null);
@@ -63,14 +66,16 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
         const data = await res.json();
         throw new Error(data.error || "Failed to fetch tasks");
       }
-      setTasks(await res.json());
+      const data = await res.json();
+      if (gen !== fetchGenRef.current) return;
+      setTasks(data);
       hasData.current = true;
     } catch (err) {
-      if (!hasData.current) {
+      if (gen === fetchGenRef.current && !hasData.current) {
         setError((err as Error).message);
       }
     } finally {
-      setLoading(false);
+      if (gen === fetchGenRef.current) setLoading(false);
     }
   }, []);
 
@@ -114,7 +119,9 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
         throw new Error(body.error || "Failed to update task");
       }
       const updated: Task = await res.json();
-      setTasks((prev) => prev.map((t) => (t._id === id ? updated : t)));
+      // Merge (not replace): an offline PATCH echoes only the patched fields,
+      // so replacing the whole task would wipe unrelated properties.
+      setTasks((prev) => prev.map((t) => (t._id === id ? { ...t, ...updated } : t)));
       return updated;
     },
     [],

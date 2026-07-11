@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { Task, Column } from "@/types";
 
 interface UseKanbanKeyboardNavOptions {
@@ -38,6 +38,13 @@ export function useKanbanKeyboardNav({
   disabled,
 }: UseKanbanKeyboardNavOptions) {
   const [focusedTaskId, setFocusedTaskId] = useState<string | null>(null);
+  // Mirror focus in a ref so key handlers can read the current value without
+  // running side effects inside the setState updater (which React's StrictMode
+  // and the React Compiler may double-invoke, causing double PATCHes).
+  const focusedTaskIdRef = useRef<string | null>(focusedTaskId);
+  useEffect(() => {
+    focusedTaskIdRef.current = focusedTaskId;
+  }, [focusedTaskId]);
 
   // Build a flat ordered list of task IDs following column order
   const orderedTaskIds = useMemo(() => {
@@ -95,40 +102,33 @@ export function useKanbanKeyboardNav({
         case "Escape":
           setFocusedTaskId(null);
           break;
+        // Action shortcuts read the focused id from the ref and invoke callbacks
+        // OUTSIDE any state updater, so a double-invoked updater can't fire them
+        // twice (double PATCH / priority skipping two steps).
         case "Enter":
         case "e": {
-          setFocusedTaskId((current) => {
-            if (current) onOpenTask(current);
-            return current;
-          });
+          const current = focusedTaskIdRef.current;
+          if (current) onOpenTask(current);
           break;
         }
         case "p": {
-          setFocusedTaskId((current) => {
-            if (current) onCyclePriority(current);
-            return current;
-          });
+          const current = focusedTaskIdRef.current;
+          if (current) onCyclePriority(current);
           break;
         }
         case "c": {
-          setFocusedTaskId((current) => {
-            if (current) onToggleComplete(current);
-            return current;
-          });
+          const current = focusedTaskIdRef.current;
+          if (current) onToggleComplete(current);
           break;
         }
         case "x": {
-          setFocusedTaskId((current) => {
-            if (current) onToggleSelect(current);
-            return current;
-          });
+          const current = focusedTaskIdRef.current;
+          if (current) onToggleSelect(current);
           break;
         }
         case "d": {
-          setFocusedTaskId((current) => {
-            if (current) onOpenDatePicker(current);
-            return current;
-          });
+          const current = focusedTaskIdRef.current;
+          if (current) onOpenDatePicker(current);
           break;
         }
       }
