@@ -58,11 +58,14 @@ export const config = {
     /*
      * Match all request paths except:
      * - api/auth (Auth.js routes)
+     * - api/mcp (bearer-token MCP endpoint)
+     * - api/calendar (public token-authed iCal feed — external calendar
+     *   clients can't send session cookies, so it must not be redirected)
      * - _next/static (static files)
      * - _next/image (image optimization)
      * - favicon.ico
      * - public files
      */
-    "/((?!api/auth|api/mcp|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons|images).*)",
+    "/((?!api/auth|api/mcp|api/calendar/|_next/static|_next/image|favicon.ico|manifest.json|sw.js|icons|images).*)",
   ],
 };
