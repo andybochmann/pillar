@@ -77,6 +77,23 @@ export interface TimeSession {
   userId: string;
 }
 
+export interface TimeReportProject {
+  projectId: string;
+  projectName: string;
+  totalMs: number;
+}
+
+export interface TimeReportWeek {
+  weekStart: string;
+  totalMs: number;
+}
+
+export interface TimeReport {
+  totalMs: number;
+  byProject: TimeReportProject[];
+  byWeek: TimeReportWeek[];
+}
+
 export interface ProjectMember {
   _id: string;
   projectId: string;
