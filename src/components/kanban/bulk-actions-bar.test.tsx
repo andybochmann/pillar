@@ -4,6 +4,16 @@ import userEvent from "@testing-library/user-event";
 import { BulkActionsBar } from "./bulk-actions-bar";
 import type { Column, Label, ProjectMember } from "@/types";
 
+// jsdom lacks these APIs that Radix Select/Popover rely on for pointer handling.
+if (!Element.prototype.hasPointerCapture) {
+  Element.prototype.hasPointerCapture = () => false;
+  Element.prototype.setPointerCapture = () => {};
+  Element.prototype.releasePointerCapture = () => {};
+}
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+
 const mockColumns: Column[] = [
   { id: "todo", name: "To Do", order: 0 },
   { id: "done", name: "Done", order: 1 },
@@ -170,5 +180,59 @@ describe("BulkActionsBar", () => {
     expect(
       screen.getByRole("button", { name: "Archive" }),
     ).toBeInTheDocument();
+  });
+
+  it("calls onBulkArchive when archive clicked", async () => {
+    const user = userEvent.setup();
+    renderBar();
+    await user.click(screen.getByRole("button", { name: "Archive" }));
+    expect(onBulkArchive).toHaveBeenCalled();
+  });
+
+  it("calls onBulkAssign with the member id when a member is picked", async () => {
+    const user = userEvent.setup();
+    renderBar();
+    await user.click(screen.getByRole("button", { name: /assign/i }));
+    await user.click(await screen.findByText("Editor User"));
+    expect(onBulkAssign).toHaveBeenCalledWith("user-2");
+  });
+
+  it("calls onBulkAssign with null when Unassign is picked", async () => {
+    const user = userEvent.setup();
+    renderBar();
+    await user.click(screen.getByRole("button", { name: /assign/i }));
+    await user.click(await screen.findByText("Unassign"));
+    expect(onBulkAssign).toHaveBeenCalledWith(null);
+  });
+
+  it("calls onBulkAddLabel with the label id when a label is picked", async () => {
+    const user = userEvent.setup();
+    renderBar();
+    await user.click(screen.getByRole("button", { name: /add label/i }));
+    await user.click(await screen.findByText("Bug"));
+    expect(onBulkAddLabel).toHaveBeenCalledWith("label-1");
+  });
+
+  it("shows 'No labels' when the label list is empty", async () => {
+    const user = userEvent.setup();
+    renderBar({ labels: [] });
+    await user.click(screen.getByRole("button", { name: /add label/i }));
+    expect(await screen.findByText("No labels")).toBeInTheDocument();
+  });
+
+  it("calls onBulkPriority with the chosen priority when a priority is selected", async () => {
+    const user = userEvent.setup();
+    renderBar();
+    await user.click(screen.getByLabelText("Set priority"));
+    await user.click(await screen.findByRole("option", { name: "Urgent" }));
+    expect(onBulkPriority).toHaveBeenCalledWith("urgent");
+  });
+
+  it("calls onBulkMove with the chosen column when a column is selected", async () => {
+    const user = userEvent.setup();
+    renderBar();
+    await user.click(screen.getByLabelText("Move to column"));
+    await user.click(await screen.findByRole("option", { name: "Done" }));
+    expect(onBulkMove).toHaveBeenCalledWith("done");
   });
 });
