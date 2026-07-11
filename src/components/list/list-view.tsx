@@ -44,6 +44,7 @@ export function ListView({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [completedExpanded, setCompletedExpanded] = useState(false);
   const [showDeleteAllConfirm, setShowDeleteAllConfirm] = useState(false);
+  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
 
   const sortedColumns = useMemo(
     () => [...columns].sort((a, b) => a.order - b.order),
@@ -126,16 +127,19 @@ export function ListView({
     [tasks],
   );
 
-  const handleDelete = useCallback(
-    async (taskId: string) => {
-      try {
-        await deleteTask(taskId);
-      } catch {
-        toast.error("Failed to delete item");
-      }
-    },
-    [deleteTask],
-  );
+  const requestDelete = useCallback((taskId: string) => {
+    setDeleteTaskId(taskId);
+  }, []);
+
+  const handleDelete = useCallback(async () => {
+    if (!deleteTaskId) return;
+    try {
+      await deleteTask(deleteTaskId);
+    } catch {
+      toast.error("Failed to delete item");
+    }
+    setDeleteTaskId(null);
+  }, [deleteTaskId, deleteTask]);
 
   const handleDeleteAllCompleted = useCallback(async () => {
     if (completedTasks.length === 0) return;
@@ -213,7 +217,7 @@ export function ListView({
             completed={false}
             onToggle={readOnly ? undefined : handleToggle}
             onClick={handleClick}
-            onDelete={readOnly ? undefined : handleDelete}
+            onDelete={readOnly ? undefined : requestDelete}
             memberNames={memberNames}
           />
         ))}
@@ -257,7 +261,7 @@ export function ListView({
                   completed={true}
                   onToggle={readOnly ? undefined : handleToggle}
                   onClick={handleClick}
-                  onDelete={readOnly ? undefined : handleDelete}
+                  onDelete={readOnly ? undefined : requestDelete}
                   memberNames={memberNames}
                 />
               ))}
@@ -292,6 +296,19 @@ export function ListView({
         confirmLabel="Delete"
         variant="destructive"
         onConfirm={handleDeleteAllCompleted}
+      />
+
+      {/* Single-item delete confirmation */}
+      <ConfirmDialog
+        open={deleteTaskId !== null}
+        onOpenChange={(v) => !v && setDeleteTaskId(null)}
+        title="Delete item?"
+        description={`This will permanently delete "${
+          tasks.find((t) => t._id === deleteTaskId)?.title ?? "this item"
+        }". This action cannot be undone.`}
+        confirmLabel="Delete"
+        variant="destructive"
+        onConfirm={handleDelete}
       />
     </div>
   );

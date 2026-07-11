@@ -169,7 +169,8 @@ export function useProjects(): UseProjectsReturn {
         throw new Error(body.error || "Failed to update project");
       }
       const updated: Project = await res.json();
-      setProjects((prev) => prev.map((p) => (p._id === id ? updated : p)));
+      // Merge (not replace): an offline PATCH echoes only the patched fields.
+      setProjects((prev) => prev.map((p) => (p._id === id ? { ...p, ...updated } : p)));
       return updated;
     },
     [],
@@ -206,7 +207,14 @@ export function useProjects(): UseProjectsReturn {
     }
   }, []));
 
-  useRefetchOnReconnect(fetchProjects);
+  // Wrap in a parameterless callback: passing fetchProjects directly as an
+  // event listener would forward the CustomEvent as the `includeArchived` arg,
+  // causing archived projects to reappear after reconnect.
+  useRefetchOnReconnect(
+    useCallback(() => {
+      fetchProjects();
+    }, [fetchProjects]),
+  );
 
   return {
     projects,

@@ -87,9 +87,17 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json(serialized);
   } catch (err) {
     const error = err as Error & { status?: number };
+    // Only surface deliberately-set messages (they carry a status); otherwise
+    // return a generic 500 so internal error details don't leak (M21).
+    if (typeof error.status === "number") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: error.status ?? 500 },
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }
@@ -160,9 +168,17 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     return NextResponse.json({ success: true });
   } catch (err) {
     const error = err as Error & { status?: number };
+    // Only surface deliberately-set messages (they carry a status); otherwise
+    // return a generic 500 so internal error details don't leak (M21).
+    if (typeof error.status === "number") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: error.status ?? 500 },
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

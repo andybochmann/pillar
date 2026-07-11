@@ -6,7 +6,6 @@ import { connectDB } from "@/lib/db";
 import { emitSyncEvent } from "@/lib/event-bus";
 import { Task } from "@/models/task";
 import { Project } from "@/models/project";
-import { ProjectMember } from "@/models/project-member";
 import { Label } from "@/models/label";
 import { startOfDayUTC, endOfDayUTC } from "@/lib/date-utils";
 import {
@@ -64,6 +63,21 @@ export async function GET(request: Request) {
   const assigneeId = searchParams.get("assigneeId");
   const sortBy = searchParams.get("sortBy");
   const sortOrder = searchParams.get("sortOrder") === "desc" ? -1 : 1;
+
+  // Validate ObjectId-shaped query params up front so malformed values return
+  // 400 instead of throwing a CastError (unhandled 500) deeper in the query.
+  if (projectId && !mongoose.Types.ObjectId.isValid(projectId)) {
+    return NextResponse.json({ error: "Invalid projectId" }, { status: 400 });
+  }
+  if (assigneeId && !mongoose.Types.ObjectId.isValid(assigneeId)) {
+    return NextResponse.json({ error: "Invalid assigneeId" }, { status: 400 });
+  }
+  if (
+    labels &&
+    labels.split(",").some((id) => !mongoose.Types.ObjectId.isValid(id))
+  ) {
+    return NextResponse.json({ error: "Invalid label IDs" }, { status: 400 });
+  }
 
   const filter: Record<string, unknown> = {};
 
@@ -169,6 +183,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate columnId belongs to the project (mirrors MCP tools)
+    const project = await Project.findById(result.data.projectId)
+      .select("columns")
+      .lean();
+    const validColumnIds =
+      project?.columns?.map((c: { id: string }) => c.id) ?? [];
+    if (!validColumnIds.includes(result.data.columnId)) {
+      return NextResponse.json(
+        {
+          error: `Column '${result.data.columnId}' does not exist in this project`,
+        },
+        { status: 400 },
+      );
+    }
+
     // Validate assigneeId is a project member
     if (result.data.assigneeId) {
       const assigneeRole = await getProjectRole(
@@ -213,7 +242,10 @@ export async function POST(request: Request) {
     }
 
     if (result.data.reminderAt) {
+      // Explicit user-set reminder — mark manual so preference recalculation
+      // never overwrites it.
       taskData.reminderAt = new Date(result.data.reminderAt);
+      taskData.reminderSource = "manual";
     }
 
     if (result.data.recurrence?.endDate) {

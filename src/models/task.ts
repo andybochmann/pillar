@@ -1,6 +1,7 @@
 import mongoose, { Schema, type Document, type Model } from "mongoose";
 
 export type Priority = "urgent" | "high" | "medium" | "low";
+export type ReminderSource = "auto" | "manual";
 export type RecurrenceFrequency =
   | "daily"
   | "weekly"
@@ -49,6 +50,7 @@ export interface ITask extends Document {
   timeSessions: ITimeSession[];
   statusHistory: IStatusHistoryEntry[];
   reminderAt?: Date;
+  reminderSource?: ReminderSource;
   completedAt?: Date;
   archived: boolean;
   archivedAt?: Date;
@@ -150,6 +152,7 @@ const TaskSchema = new Schema<ITask>(
     },
     statusHistory: { type: [StatusHistoryEntrySchema], default: [] },
     reminderAt: { type: Date },
+    reminderSource: { type: String, enum: ["auto", "manual"] },
     completedAt: { type: Date },
     archived: { type: Boolean, default: false },
     archivedAt: { type: Date },

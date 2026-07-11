@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { Users } from "lucide-react";
 import { ViewTypeSelector } from "@/components/shared/view-type-selector";
 import { useBackButton } from "@/hooks/use-back-button";
+import { useArchivedTasks } from "@/hooks/use-archived-tasks";
 import type { Project, Column, Task } from "@/types";
 
 interface ProjectSettingsProps {
@@ -50,38 +51,77 @@ export function ProjectSettings({
   const [showShareDialog, setShowShareDialog] = useState(false);
   const isOwner = project.currentUserRole === "owner";
 
+  // Archived tasks keep their columnId, so deleting a column that only holds
+  // archived tasks would strand them. Fetch archived tasks while the settings
+  // sheet is open so the delete guard can account for them too.
+  const { archivedTasks, fetchArchived } = useArchivedTasks();
+  useEffect(() => {
+    if (open) fetchArchived(project._id);
+  }, [open, project._id, fetchArchived]);
+
   function hasTasksInColumn(columnId: string) {
-    return tasks.some((t) => t.columnId === columnId);
+    return (
+      tasks.some((t) => t.columnId === columnId) ||
+      archivedTasks.some((t) => t.columnId === columnId)
+    );
   }
 
   async function handleSaveName() {
     const trimmed = name.trim();
     if (trimmed && trimmed !== project.name) {
-      await onUpdate({ name: trimmed });
-      toast.success("Project name updated");
+      try {
+        await onUpdate({ name: trimmed });
+        toast.success("Project name updated");
+      } catch (err) {
+        setName(project.name);
+        toast.error(
+          err instanceof Error ? err.message : "Failed to update name",
+        );
+      }
     }
   }
 
   async function handleSaveDescription() {
     if (description !== (project.description ?? "")) {
-      await onUpdate({ description });
-      toast.success("Description updated");
+      try {
+        await onUpdate({ description });
+        toast.success("Description updated");
+      } catch (err) {
+        setDescription(project.description ?? "");
+        toast.error(
+          err instanceof Error ? err.message : "Failed to update description",
+        );
+      }
     }
   }
 
   async function handleViewTypeChange(viewType: "board" | "list") {
-    await onUpdate({ viewType });
-    toast.success(`Switched to ${viewType} view`);
+    try {
+      await onUpdate({ viewType });
+      toast.success(`Switched to ${viewType} view`);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to change view type",
+      );
+    }
   }
 
   async function handleColumnsSave(columns: Column[]) {
+    // Let errors propagate so ColumnManager can surface them and keep its
+    // unsaved state; it shows the toast on failure.
     await onUpdate({ columns });
     toast.success("Columns updated");
   }
 
   async function handleArchiveToggle(archived: boolean) {
-    await onUpdate({ archived });
-    toast.success(archived ? "Project archived" : "Project unarchived");
+    try {
+      await onUpdate({ archived });
+      toast.success(archived ? "Project archived" : "Project unarchived");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update project",
+      );
+    }
   }
 
   return (

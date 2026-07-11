@@ -5,7 +5,6 @@ import { getSessionId } from "@/lib/session-id";
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const BASE_RECONNECT_DELAY_MS = 1_000;
-const MAX_CONSECUTIVE_FAILURES = 10;
 
 export function useRealtimeSync(): void {
   const esRef = useRef<EventSource | null>(null);
@@ -16,6 +15,9 @@ export function useRealtimeSync(): void {
 
   const connect = useCallback(() => {
     if (!navigator.onLine || !mountedRef.current) return;
+    // Never open a second EventSource while one is already live — that would
+    // leak an orphaned connection and double every event.
+    if (esRef.current) return;
 
     const sessionId = getSessionId();
     const es = new EventSource(`/api/events?sessionId=${sessionId}`);
@@ -49,16 +51,18 @@ export function useRealtimeSync(): void {
       if (!mountedRef.current) return;
 
       retriesRef.current++;
-      if (retriesRef.current > MAX_CONSECUTIVE_FAILURES) return;
 
-      // Exponential backoff with jitter
+      // Exponential backoff with jitter, capped at MAX_RECONNECT_DELAY_MS.
+      // Retry indefinitely (capped) so the tab recovers realtime sync even
+      // after a long server outage — giving up permanently would strand it.
       const delay = Math.min(
         BASE_RECONNECT_DELAY_MS * Math.pow(2, retriesRef.current - 1),
         MAX_RECONNECT_DELAY_MS,
       );
       const jitter = delay * 0.1 * Math.random();
       setTimeout(() => {
-        if (mountedRef.current && connectRef.current) {
+        // Bail if a connection was re-established in the meantime (M9).
+        if (mountedRef.current && !esRef.current && connectRef.current) {
           connectRef.current();
         }
       }, delay + jitter);
@@ -84,8 +88,19 @@ export function useRealtimeSync(): void {
       esRef.current = null;
     };
 
+    // When the tab regains focus / visibility, reset the backoff and reconnect
+    // immediately if the connection has dropped — recovers quickly after a long
+    // background outage instead of waiting out a capped 30s backoff.
+    const handleResume = () => {
+      if (document.visibilityState === "hidden") return;
+      retriesRef.current = 0;
+      if (!esRef.current) connect();
+    };
+
     window.addEventListener("online", handleOnline);
     window.addEventListener("offline", handleOffline);
+    window.addEventListener("focus", handleResume);
+    document.addEventListener("visibilitychange", handleResume);
 
     return () => {
       mountedRef.current = false;
@@ -93,6 +108,8 @@ export function useRealtimeSync(): void {
       esRef.current = null;
       window.removeEventListener("online", handleOnline);
       window.removeEventListener("offline", handleOffline);
+      window.removeEventListener("focus", handleResume);
+      document.removeEventListener("visibilitychange", handleResume);
     };
   }, [connect]);
 }

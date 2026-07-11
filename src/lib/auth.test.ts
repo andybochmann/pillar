@@ -79,8 +79,12 @@ describe("handleOAuthSignIn", () => {
     expect(user?.name).toBe("noname");
   });
 
-  it("links OAuth to existing user found by email", async () => {
-    const existingUser = await createTestUser({ email: "existing@example.com" });
+  it("links OAuth to existing OAuth-only user found by email", async () => {
+    // OAuth-only user has no passwordHash — safe to auto-link.
+    const existingUser = await User.create({
+      email: "existing@example.com",
+      name: "Existing",
+    });
 
     const result = await handleOAuthSignIn(
       { email: "existing@example.com", name: "Existing", image: null, email_verified: true },
@@ -91,6 +95,22 @@ describe("handleOAuthSignIn", () => {
 
     const account = await Account.findOne({ userId: existingUser._id, provider: "google" });
     expect(account).not.toBeNull();
+  });
+
+  it("refuses to auto-link OAuth to a pre-existing credentials account (H11 pre-hijacking guard)", async () => {
+    // createTestUser sets a passwordHash → this is a credentials account whose
+    // email ownership was never proven. Auto-linking must be refused.
+    const existingUser = await createTestUser({ email: "creds@example.com" });
+
+    const result = await handleOAuthSignIn(
+      { email: "creds@example.com", name: "Creds", image: null, email_verified: true },
+      { provider: "google", providerAccountId: "google-creds" },
+    );
+
+    expect(result).toBeNull();
+
+    const account = await Account.findOne({ userId: existingUser._id, provider: "google" });
+    expect(account).toBeNull();
   });
 
   it("returns existing user when Account link already exists", async () => {
@@ -113,7 +133,8 @@ describe("handleOAuthSignIn", () => {
   });
 
   it("updates user image from OAuth if missing", async () => {
-    const user = await createTestUser({ email: "nopic@example.com" });
+    // OAuth-only user (no passwordHash) so auto-link path runs.
+    const user = await User.create({ email: "nopic@example.com", name: "No Pic" });
 
     await handleOAuthSignIn(
       { email: "nopic@example.com", name: "No Pic", image: "https://example.com/avatar.jpg", email_verified: true },
@@ -125,7 +146,11 @@ describe("handleOAuthSignIn", () => {
   });
 
   it("does not overwrite existing user image", async () => {
-    const user = await createTestUser({ email: "haspic@example.com", image: "https://existing.com/pic.jpg" });
+    const user = await User.create({
+      email: "haspic@example.com",
+      name: "Has Pic",
+      image: "https://existing.com/pic.jpg",
+    });
 
     await handleOAuthSignIn(
       { email: "haspic@example.com", name: "Has Pic", image: "https://new.com/pic.jpg", email_verified: true },

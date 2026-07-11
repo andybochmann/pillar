@@ -12,8 +12,16 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { toast } from "sonner";
 import { useBackButton } from "@/hooks/use-back-button";
 import type { Task, Project } from "@/types";
 
@@ -40,7 +48,11 @@ interface DayDetailProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onTaskClick: (task: Task) => void;
-  onCreateTask: (title: string, dueDate: string) => Promise<void>;
+  onCreateTask: (
+    title: string,
+    dueDate: string,
+    projectId: string,
+  ) => Promise<void>;
 }
 
 export function DayDetail({
@@ -81,7 +93,11 @@ interface DayDetailContentProps {
   tasks: Task[];
   projects: Project[];
   onTaskClick: (task: Task) => void;
-  onCreateTask: (title: string, dueDate: string) => Promise<void>;
+  onCreateTask: (
+    title: string,
+    dueDate: string,
+    projectId: string,
+  ) => Promise<void>;
 }
 
 function DayDetailContent({
@@ -93,6 +109,9 @@ function DayDetailContent({
 }: DayDetailContentProps) {
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [targetProjectId, setTargetProjectId] = useState(
+    projects[0]?._id ?? "",
+  );
 
   const projectMap = new Map(projects.map((p) => [p._id, p]));
 
@@ -113,15 +132,19 @@ function DayDetailContent({
   async function handleCreateTask(e: React.FormEvent) {
     e.preventDefault();
     const title = newTaskTitle.trim();
-    if (!title) return;
+    if (!title || !targetProjectId) return;
 
     setCreating(true);
     try {
       const dueDate = new Date(
         Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
       ).toISOString();
-      await onCreateTask(title, dueDate);
+      await onCreateTask(title, dueDate, targetProjectId);
       setNewTaskTitle("");
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to create task",
+      );
     } finally {
       setCreating(false);
     }
@@ -187,21 +210,41 @@ function DayDetailContent({
       <Separator />
 
       {/* Quick create */}
-      <form onSubmit={handleCreateTask} className="flex gap-2">
-        <Input
-          value={newTaskTitle}
-          onChange={(e) => setNewTaskTitle(e.target.value)}
-          placeholder="Add a task for this day…"
-          disabled={creating}
-          aria-label="New task title"
-        />
-        <Button
-          type="submit"
-          size="sm"
-          disabled={creating || !newTaskTitle.trim()}
-        >
-          Add
-        </Button>
+      <form onSubmit={handleCreateTask} className="space-y-2">
+        {projects.length > 0 && (
+          <Select
+            value={targetProjectId}
+            onValueChange={setTargetProjectId}
+            disabled={creating}
+          >
+            <SelectTrigger aria-label="Project for new task" className="w-full">
+              <SelectValue placeholder="Select a project" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((p) => (
+                <SelectItem key={p._id} value={p._id}>
+                  {p.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        <div className="flex gap-2">
+          <Input
+            value={newTaskTitle}
+            onChange={(e) => setNewTaskTitle(e.target.value)}
+            placeholder="Add a task for this day…"
+            disabled={creating}
+            aria-label="New task title"
+          />
+          <Button
+            type="submit"
+            size="sm"
+            disabled={creating || !newTaskTitle.trim() || !targetProjectId}
+          >
+            Add
+          </Button>
+        </div>
       </form>
     </div>
   );

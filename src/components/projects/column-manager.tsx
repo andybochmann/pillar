@@ -19,6 +19,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import type { Column } from "@/types";
 
 interface ColumnManagerProps {
@@ -192,6 +193,10 @@ export function ColumnManager({
     try {
       await onSave(columns);
       setDirty(false);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to save columns",
+      );
     } finally {
       setSaving(false);
     }

@@ -6,7 +6,11 @@ import { connectDB } from "@/lib/db";
 import { User } from "@/models/user";
 import { authConfig } from "./auth.config";
 import { handleOAuthSignIn } from "./oauth-linking";
+import { rateLimit, getClientIp } from "./rate-limit";
 import type { Provider } from "next-auth/providers";
+
+const LOGIN_RATE_LIMIT = 10;
+const LOGIN_RATE_WINDOW_MS = 15 * 60 * 1000;
 
 const providers: Provider[] = [
   Credentials({
@@ -15,15 +19,29 @@ const providers: Provider[] = [
       email: { label: "Email", type: "email" },
       password: { label: "Password", type: "password" },
     },
-    async authorize(credentials) {
+    async authorize(credentials, request) {
       if (!credentials?.email || !credentials?.password) {
         return null;
       }
 
+      const email = (credentials.email as string).toLowerCase();
+
+      // M19: throttle credential login attempts per IP + identifier.
+      const ip =
+        request && typeof (request as Request).headers?.get === "function"
+          ? getClientIp(request as Request)
+          : "unknown";
+      const limit = rateLimit(
+        `login:${ip}:${email}`,
+        LOGIN_RATE_LIMIT,
+        LOGIN_RATE_WINDOW_MS,
+      );
+      if (!limit.allowed) {
+        return null;
+      }
+
       await connectDB();
-      const user = await User.findOne({
-        email: (credentials.email as string).toLowerCase(),
-      });
+      const user = await User.findOne({ email });
 
       if (!user || !user.passwordHash) {
         return null;
@@ -89,10 +107,38 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
       }
 
-      if (user || trigger === "update") {
-        await connectDB();
-        const dbUser = await User.findById(token.id).select("passwordHash").lean();
-        token.hasPassword = !!dbUser?.passwordHash;
+      if (token.id) {
+        // L20: void tokens whose user was deleted, or that were issued before
+        // the user last changed their password (session invalidation).
+        // This runs on every session read, so it must FAIL OPEN: a transient DB
+        // error must not throw here — @auth/core clears the session cookie on any
+        // thrown error, which would force-log-out every user during a DB blip.
+        try {
+          await connectDB();
+          const dbUser = await User.findById(token.id)
+            .select("passwordHash passwordChangedAt")
+            .lean();
+
+          if (!dbUser) {
+            return null;
+          }
+          const changedAt = (dbUser as { passwordChangedAt?: Date })
+            .passwordChangedAt;
+          if (
+            changedAt &&
+            typeof token.iat === "number" &&
+            token.iat * 1000 < changedAt.getTime()
+          ) {
+            return null;
+          }
+
+          if (user || trigger === "update") {
+            token.hasPassword = !!dbUser.passwordHash;
+          }
+        } catch (err) {
+          // Fail open — keep the existing token rather than logging the user out.
+          console.error("[auth.jwt] session revocation check failed:", err);
+        }
       }
 
       return token;

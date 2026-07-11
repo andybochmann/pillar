@@ -17,6 +17,7 @@ import {
   mcpTextResponse,
 } from "@/lib/mcp-helpers";
 import { scheduleNextReminder } from "@/lib/reminder-scheduler";
+import { getNextDueDate } from "@/lib/date-utils";
 
 function serializeTask(task: unknown) {
   const t = task as Record<string, unknown>;
@@ -399,6 +400,14 @@ export function registerTaskTools(server: McpServer) {
         return errorResponse("Task not found");
       }
 
+      // Already completed — return as-is without spawning a duplicate occurrence
+      // (mirrors the REST complete handler's guard).
+      if (existing.completedAt) {
+        return mcpTextResponse(
+          serializeTask(existing.toObject() as unknown as Record<string, unknown>),
+        );
+      }
+
       const now = new Date();
 
       // Derive done column (last by order) and first column (for recurring tasks)
@@ -409,8 +418,10 @@ export function registerTaskTools(server: McpServer) {
       const firstCol = sortedCols[0];
       const firstColId = firstCol?.id ?? "todo";
 
-      const task = await Task.findByIdAndUpdate(
-        taskId,
+      // Atomically claim the completion so concurrent completes don't each
+      // spawn a next occurrence.
+      const task = await Task.findOneAndUpdate(
+        { _id: taskId, completedAt: null },
         {
           $set: { completedAt: now, columnId: doneColumnId },
           $push: {
@@ -420,7 +431,12 @@ export function registerTaskTools(server: McpServer) {
         { returnDocument: "after" },
       ).lean();
 
-      if (!task) return errorResponse("Task not found");
+      if (!task) {
+        // Lost the race — already completed. Return current state.
+        const current = await Task.findById(taskId).lean();
+        if (!current) return errorResponse("Task not found");
+        return mcpTextResponse(serializeTask(current));
+      }
 
       const targetUserIds = await getProjectMemberUserIds(
         existing.projectId.toString(),
@@ -444,16 +460,26 @@ export function registerTaskTools(server: McpServer) {
         existing.recurrence.frequency !== "none" &&
         existing.dueDate
       ) {
-        const nextDue = computeNextDueDate(
+        const nextDue = getNextDueDate(
           existing.dueDate,
           existing.recurrence.frequency,
-          existing.recurrence.interval,
+          existing.recurrence.interval ?? 1,
         );
 
         if (
           !existing.recurrence.endDate ||
           nextDue <= existing.recurrence.endDate
         ) {
+          // Place the new occurrence at the end of the first column.
+          const maxOrderTask = await Task.findOne({
+            projectId: existing.projectId,
+            columnId: firstColId,
+          })
+            .sort({ order: -1 })
+            .select("order")
+            .lean();
+          const newOrder = (maxOrderTask?.order ?? -1) + 1;
+
           const nextTask = await Task.create({
             title: existing.title,
             description: existing.description,
@@ -463,7 +489,7 @@ export function registerTaskTools(server: McpServer) {
             priority: existing.priority,
             dueDate: nextDue,
             recurrence: existing.recurrence,
-            order: 0,
+            order: newOrder,
             labels: existing.labels,
             subtasks: existing.subtasks.map((s) => ({
               title: s.title,
@@ -472,11 +498,15 @@ export function registerTaskTools(server: McpServer) {
             statusHistory: [{ columnId: firstColId, timestamp: now }],
           });
 
+          // Schedule the auto-reminder for the newly-created occurrence.
+          scheduleNextReminder(nextTask._id.toString()).catch(() => {});
+
+          // Empty sessionId so the event is not suppressed for the originator.
           emitSyncEvent({
             entity: "task",
             action: "created",
             userId,
-            sessionId: "mcp",
+            sessionId: "",
             entityId: nextTask._id.toString(),
             projectId: existing.projectId.toString(),
             targetUserIds,
@@ -489,27 +519,4 @@ export function registerTaskTools(server: McpServer) {
       return mcpTextResponse(serializeTask(task));
     },
   );
-}
-
-function computeNextDueDate(
-  current: Date,
-  frequency: string,
-  interval: number,
-): Date {
-  const next = new Date(current);
-  switch (frequency) {
-    case "daily":
-      next.setDate(next.getDate() + interval);
-      break;
-    case "weekly":
-      next.setDate(next.getDate() + interval * 7);
-      break;
-    case "monthly":
-      next.setMonth(next.getMonth() + interval);
-      break;
-    case "yearly":
-      next.setFullYear(next.getFullYear() + interval);
-      break;
-  }
-  return next;
 }

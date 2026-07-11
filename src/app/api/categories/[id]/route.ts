@@ -128,6 +128,21 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       { _id: 1 },
     ).lean();
     const taskIds = categoryTaskIds.map((t) => t._id);
+
+    // Collect member userIds per project BEFORE deleting memberships so we can
+    // notify collaborators to drop these now-deleted (shared) projects (M2).
+    const memberships = await ProjectMember.find(
+      { projectId: { $in: projectIds } },
+      { projectId: 1, userId: 1 },
+    ).lean();
+    const membersByProject = new Map<string, string[]>();
+    for (const m of memberships) {
+      const pid = m.projectId.toString();
+      const list = membersByProject.get(pid) ?? [];
+      list.push(m.userId.toString());
+      membersByProject.set(pid, list);
+    }
+
     await Task.deleteMany({ projectId: { $in: projectIds } });
     await Notification.deleteMany({ taskId: { $in: taskIds } });
     await ProjectMember.deleteMany({ projectId: { $in: projectIds } });
@@ -140,13 +155,32 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     await Project.deleteMany({ categoryId: id, userId: session.user.id });
 
     const sessionId = request.headers.get("X-Session-Id") ?? "";
+    const timestamp = Date.now();
+
+    // Emit a targeted project/deleted event for each shared project so members'
+    // boards sync (the category/deleted event below only reaches the owner).
+    for (const [projectId, memberIds] of membersByProject) {
+      const targetUserIds = memberIds.filter((uid) => uid !== session.user.id);
+      if (targetUserIds.length === 0) continue;
+      emitSyncEvent({
+        entity: "project",
+        action: "deleted",
+        userId: session.user.id,
+        sessionId,
+        entityId: projectId,
+        projectId,
+        targetUserIds,
+        timestamp,
+      });
+    }
+
     emitSyncEvent({
       entity: "category",
       action: "deleted",
       userId: session.user.id,
       sessionId,
       entityId: id,
-      timestamp: Date.now(),
+      timestamp,
     });
 
     return NextResponse.json({ success: true });

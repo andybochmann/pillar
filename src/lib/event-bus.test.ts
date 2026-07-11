@@ -108,8 +108,9 @@ describe("event-bus", () => {
     expect(listener).toHaveBeenCalledTimes(4);
   });
 
-  it("has high max listeners to support many SSE connections", () => {
-    expect(syncEventBus.getMaxListeners()).toBeGreaterThanOrEqual(200);
+  it("has unlimited max listeners to support many SSE connections", () => {
+    // 0 = unlimited (L14): avoids MaxListenersExceededWarning at high tab counts.
+    expect(syncEventBus.getMaxListeners()).toBe(0);
   });
 
   describe("notification events", () => {

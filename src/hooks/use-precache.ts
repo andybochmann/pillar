@@ -30,7 +30,10 @@ function cancelIdle(id: number): void {
   }
 }
 
-async function precacheAllProjects(router: ReturnType<typeof useRouter>): Promise<void> {
+async function precacheAllProjects(
+  router: ReturnType<typeof useRouter>,
+  signal?: AbortSignal,
+): Promise<void> {
   // Fetch global endpoints in parallel — SW caches the responses
   const [projectsRes] = await Promise.all([
     fetch("/api/projects"),
@@ -43,9 +46,12 @@ async function precacheAllProjects(router: ReturnType<typeof useRouter>): Promis
 
   // Fetch tasks for each project sequentially with gaps
   for (const project of projects) {
-    if (!navigator.onLine) break;
+    // Stop looping once the component unmounts / precache is cancelled, so we
+    // don't keep firing fetches after teardown.
+    if (signal?.aborted || !navigator.onLine) break;
 
     await sleep(PROJECT_GAP_MS);
+    if (signal?.aborted) break;
     await fetch(`/api/tasks?projectId=${project._id}`);
     router.prefetch(`/projects/${project._id}`);
   }
@@ -75,12 +81,13 @@ export function usePrecache(): void {
 
     let cancelled = false;
     let idleId: number | undefined;
+    const controller = new AbortController();
 
     const timerId = setTimeout(() => {
       if (cancelled) return;
       idleId = scheduleIdle(() => {
         if (cancelled) return;
-        precacheAllProjects(router)
+        precacheAllProjects(router, controller.signal)
           .then(() => {
             if (!cancelled) {
               sessionStorage.setItem(PRECACHE_KEY, "1");
@@ -94,6 +101,7 @@ export function usePrecache(): void {
 
     return () => {
       cancelled = true;
+      controller.abort();
       clearTimeout(timerId);
       if (idleId !== undefined) {
         cancelIdle(idleId);

@@ -15,6 +15,7 @@ import {
   createTestUser,
 } from "@/test/helpers";
 import { Account } from "@/models/account";
+import { resetRateLimits } from "@/lib/rate-limit";
 import { POST } from "./route";
 
 // Mock connectDB — test already has an active mongodb-memory-server connection
@@ -33,12 +34,19 @@ describe("POST /api/auth/register", () => {
 
   afterEach(async () => {
     await clearTestDB();
+    resetRateLimits();
   });
 
+  let ipCounter = 0;
   function createRequest(body: Record<string, unknown>) {
+    // Unique IP per request so rate limiting never interferes with functional
+    // assertions (the limiter itself is exercised in its own test below).
     return new NextRequest("http://localhost:3000/api/auth/register", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": `10.0.0.${ipCounter++ % 255}`,
+      },
       body: JSON.stringify(body),
     });
   }
@@ -100,6 +108,46 @@ describe("POST /api/auth/register", () => {
     );
 
     expect(res.status).toBe(400);
+  });
+
+  it("returns 400 for a single-character-class password (complexity)", async () => {
+    const res = await POST(
+      createRequest({
+        name: "Test",
+        email: "weak@example.com",
+        password: "aaaaaaaaaaaa",
+      }),
+    );
+
+    expect(res.status).toBe(400);
+  });
+
+  it("rate limits repeated attempts from the same IP (M19)", async () => {
+    const attempt = (i: number) =>
+      POST(
+        new NextRequest("http://localhost:3000/api/auth/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-forwarded-for": "203.0.113.7",
+          },
+          body: JSON.stringify({
+            name: "Test",
+            email: `rl${i}@example.com`,
+            password: "SecurePass123!",
+          }),
+        }),
+      );
+
+    let sawLimit = false;
+    for (let i = 0; i < 12; i++) {
+      const res = await attempt(i);
+      if (res.status === 429) {
+        sawLimit = true;
+        break;
+      }
+    }
+    expect(sawLimit).toBe(true);
   });
 
   it("returns 400 for duplicate email with generic error", async () => {

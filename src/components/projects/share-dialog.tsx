@@ -144,7 +144,9 @@ export function ShareDialog({
                       onClick={() => handleAddMember(user.email)}
                     >
                       <div className="min-w-0">
-                        <p className="font-medium truncate">{user.name}</p>
+                        <p className="font-medium truncate">
+                          {user.name ?? user.email}
+                        </p>
                         <p className="text-xs text-muted-foreground truncate">
                           {user.email}
                         </p>

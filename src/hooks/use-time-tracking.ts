@@ -109,9 +109,19 @@ export function useTimeTracking(
   );
 
   const updateTaskInList = useCallback(
-    (updated: Task) => {
+    (taskId: string, updated: Task) => {
       setTasks((prev) =>
-        prev.map((t) => (t._id === updated._id ? updated : t)),
+        prev.map((t) => {
+          if (t._id !== taskId) return t;
+          // Reconcile by updatedAt so a slower, out-of-order response can't
+          // overwrite a newer one (last-writer-wins guard).
+          if (t.updatedAt && updated.updatedAt && updated.updatedAt < t.updatedAt) {
+            return t;
+          }
+          // Merge and preserve the real id: an offline response carries a
+          // synthetic `offline-<uuid>` _id that matches no task.
+          return { ...t, ...updated, _id: t._id };
+        }),
       );
     },
     [setTasks],
@@ -131,7 +141,7 @@ export function useTimeTracking(
       }
 
       const updated: Task = await res.json();
-      updateTaskInList(updated);
+      updateTaskInList(taskId, updated);
       return updated;
     },
     [updateTaskInList],
@@ -151,7 +161,7 @@ export function useTimeTracking(
       }
 
       const updated: Task = await res.json();
-      updateTaskInList(updated);
+      updateTaskInList(taskId, updated);
       return updated;
     },
     [updateTaskInList],
@@ -170,7 +180,7 @@ export function useTimeTracking(
       }
 
       const updated: Task = await res.json();
-      updateTaskInList(updated);
+      updateTaskInList(taskId, updated);
       return updated;
     },
     [updateTaskInList],

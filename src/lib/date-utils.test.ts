@@ -272,6 +272,43 @@ describe("getNextDueDate", () => {
     });
   });
 
+  describe("anchoring to original day-of-month", () => {
+    it("recovers to the anchor day after a clamped month (monthly)", () => {
+      // Previous occurrence was clamped to Feb 28, but the series started on
+      // the 31st — the next occurrence should return to Mar 31, not Mar 28.
+      const currentDate = new Date(2026, 1, 28); // Feb 28, 2026
+      const nextDate = getNextDueDate(currentDate, "monthly", 1, 31);
+      expect(nextDate.getDate()).toBe(31);
+      expect(nextDate.getMonth()).toBe(2); // March
+      expect(nextDate.getFullYear()).toBe(2026);
+    });
+
+    it("clamps the anchor day when the target month is shorter (monthly)", () => {
+      const currentDate = new Date(2026, 0, 15); // Jan 15, 2026
+      const nextDate = getNextDueDate(currentDate, "monthly", 1, 31);
+      // February 2026 has only 28 days
+      expect(nextDate.getDate()).toBe(28);
+      expect(nextDate.getMonth()).toBe(1); // February
+      expect(nextDate.getFullYear()).toBe(2026);
+    });
+
+    it("recovers to Feb 29 in a leap year when anchored to 29 (yearly)", () => {
+      const currentDate = new Date(2025, 1, 28); // Feb 28, 2025 (clamped)
+      const nextDate = getNextDueDate(currentDate, "yearly", 3, 29);
+      expect(nextDate.getDate()).toBe(29);
+      expect(nextDate.getMonth()).toBe(1); // February
+      expect(nextDate.getFullYear()).toBe(2028); // leap year
+    });
+
+    it("falls back to the current date's day when no anchor is given", () => {
+      const currentDate = new Date(2026, 1, 28); // Feb 28, 2026
+      const nextDate = getNextDueDate(currentDate, "monthly", 1);
+      // Without an anchor, day stays 28
+      expect(nextDate.getDate()).toBe(28);
+      expect(nextDate.getMonth()).toBe(2); // March
+    });
+  });
+
   describe("invalid or none frequency", () => {
     it("returns current date for 'none' frequency", () => {
       const currentDate = new Date(2026, 1, 15); // Feb 15, 2026

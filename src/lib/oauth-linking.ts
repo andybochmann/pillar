@@ -48,6 +48,17 @@ export async function handleOAuthSignIn(
   });
 
   if (existingUser) {
+    // Account pre-hijacking guard (H11): never silently link an OAuth identity
+    // to a pre-existing *credentials* account whose email ownership was never
+    // proven. Auto-linking is only safe when the existing account is OAuth-only
+    // (no passwordHash) — in that case there is no local password to hijack.
+    // A credentials user who genuinely owns this Google address must link it
+    // explicitly while authenticated (residual work: real email-verification
+    // flow + emailVerified flag on the User model).
+    if (existingUser.passwordHash) {
+      return null;
+    }
+
     await Account.create({
       userId: existingUser._id,
       provider: account.provider,

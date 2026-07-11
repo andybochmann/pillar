@@ -13,12 +13,17 @@ import { useCallback, useSyncExternalStore } from "react";
  * @param callback - Function to call when visibility changes (potential permission change)
  * @returns Cleanup function that removes event listeners
  */
+const PERMISSION_CHANGED_EVENT = "pillar:permission-changed";
+
 function subscribe(callback: () => void) {
   // There's no standard event for permission changes, but we can listen
   // to visibility changes to check if permission was changed in browser settings
   document.addEventListener("visibilitychange", callback);
+  // Also react to in-app permission requests, which don't fire visibilitychange.
+  window.addEventListener(PERMISSION_CHANGED_EVENT, callback);
   return () => {
     document.removeEventListener("visibilitychange", callback);
+    window.removeEventListener(PERMISSION_CHANGED_EVENT, callback);
   };
 }
 
@@ -137,6 +142,9 @@ export function useNotificationPermission() {
     }
 
     const result = await Notification.requestPermission();
+    // Notify the useSyncExternalStore subscription so the toggle updates
+    // immediately instead of staying "default" until the next visibilitychange.
+    window.dispatchEvent(new CustomEvent(PERMISSION_CHANGED_EVENT));
     return result;
   }, []);
 

@@ -6,6 +6,12 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const HEARTBEAT_INTERVAL_MS = 30_000;
+// L23: SSE auth was only checked at connect, so a stream survived logout / JWT
+// expiry. Re-validate every few heartbeats and enforce a hard max lifetime so a
+// stream cannot outlive the session; the client's EventSource reconnects and
+// re-authenticates at connect time.
+const REVALIDATE_EVERY_N_HEARTBEATS = 4; // ~every 2 minutes
+const MAX_STREAM_LIFETIME_MS = 60 * 60 * 1000; // 1 hour
 
 export async function GET(request: Request): Promise<Response> {
   const session = await auth();
@@ -39,6 +45,7 @@ export async function GET(request: Request): Promise<Response> {
         syncEventBus.off("sync", onSync);
         syncEventBus.off("notification", onNotification);
         clearInterval(heartbeat);
+        clearTimeout(maxLifetime);
         try {
           controller.close();
         } catch {
@@ -46,6 +53,10 @@ export async function GET(request: Request): Promise<Response> {
         }
       }
       cleanupRef = cleanup;
+
+      // Hard cap: force reconnect (and thus a fresh connect-time auth) so a
+      // stream can never outlive the session window.
+      const maxLifetime = setTimeout(cleanup, MAX_STREAM_LIFETIME_MS);
 
       function onSync(event: SyncEvent) {
         // Skip events from the same browser tab
@@ -66,8 +77,27 @@ export async function GET(request: Request): Promise<Response> {
       syncEventBus.on("sync", onSync);
       syncEventBus.on("notification", onNotification);
 
+      let heartbeats = 0;
       const heartbeat = setInterval(() => {
-        if (!send(": heartbeat\n\n")) cleanup();
+        if (!send(": heartbeat\n\n")) {
+          cleanup();
+          return;
+        }
+        heartbeats += 1;
+        if (heartbeats % REVALIDATE_EVERY_N_HEARTBEATS === 0) {
+          // Best-effort revalidation: close on a definitively invalid/changed
+          // session. Swallow transient errors (fail open) to avoid dropping a
+          // still-valid connection.
+          auth()
+            .then((current) => {
+              if (!current?.user?.id || current.user.id !== userId) {
+                cleanup();
+              }
+            })
+            .catch(() => {
+              // ignore transient auth errors
+            });
+        }
       }, HEARTBEAT_INTERVAL_MS);
 
       request.signal.addEventListener("abort", cleanup);

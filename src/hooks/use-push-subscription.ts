@@ -88,11 +88,17 @@ export function usePushSubscription() {
         await subscription.unsubscribe();
 
         // Remove from server
-        await fetch("/api/push/subscribe", {
+        const res = await fetch("/api/push/subscribe", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ endpoint }),
         });
+
+        // Don't report success if the server failed to remove the subscription.
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body.error || "Failed to remove push subscription");
+        }
       }
 
       return true;

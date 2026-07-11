@@ -349,9 +349,9 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                             )}
                           >
                             <ViewIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                            {project.name}
+                            <span className="truncate">{project.name}</span>
                             {project.archived && (
-                              <span className="ml-auto text-xs text-muted-foreground">
+                              <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                                 archived
                               </span>
                             )}
@@ -508,6 +508,7 @@ export function Sidebar({ onNavigate }: SidebarProps) {
                   size="icon"
                   className="mx-auto flex h-9 w-9 cursor-pointer text-muted-foreground hover:text-foreground"
                   onClick={handleSignOut}
+                  aria-label="Sign out"
                 >
                   <LogOut className="h-4 w-4" />
                 </Button>

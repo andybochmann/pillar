@@ -110,10 +110,24 @@ describe("BulkActionsBar", () => {
     expect(onClearSelection).toHaveBeenCalled();
   });
 
-  it("calls onBulkDelete when delete clicked", async () => {
+  it("does not call onBulkDelete until deletion is confirmed", async () => {
     const user = userEvent.setup();
     renderBar();
     await user.click(screen.getByRole("button", { name: "Delete" }));
+    // A confirmation dialog appears; onBulkDelete must not fire yet
+    expect(onBulkDelete).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("alertdialog", { name: /delete 3 tasks/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("calls onBulkDelete after confirming in the dialog", async () => {
+    const user = userEvent.setup();
+    renderBar();
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(
+      screen.getByRole("button", { name: "Delete tasks" }),
+    );
     expect(onBulkDelete).toHaveBeenCalled();
   });
 

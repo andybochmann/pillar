@@ -385,7 +385,7 @@ describe("notification-worker missing preferences", () => {
 });
 
 describe("notification-worker preference gating", () => {
-  it("creates reminder notifications when in-app is disabled but browser push is enabled", async () => {
+  it("pushes reminders but persists no in-app record when in-app is disabled", async () => {
     const user = await createTestUser();
     const category = await createTestCategory({ userId: user._id });
     const project = await createTestProject({
@@ -409,9 +409,9 @@ describe("notification-worker preference gating", () => {
 
     await processNotifications(user._id.toString());
 
+    // In-app disabled: no bell record is persisted, but the push still fires.
     const created = await Notification.find({ userId: user._id });
-    expect(created).toHaveLength(1);
-    expect(created[0].type).toBe("reminder");
+    expect(created).toHaveLength(0);
     expect(pushPayloads).toHaveLength(1);
   });
 
@@ -743,6 +743,94 @@ describe("notification-worker duplicate key handling (Bug #6)", () => {
       type: "reminder",
     });
     expect(notifications).toHaveLength(1);
+  });
+});
+
+describe("notification-worker reminderAt clearing (Bug M7)", () => {
+  it("clears reminderAt when the only user has notifications fully disabled", async () => {
+    const { Task } = await import("@/models/task");
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    const reminderAt = new Date(Date.now() - 60_000);
+    const task = await createTestTask({
+      title: "Disabled reminder",
+      userId: user._id,
+      projectId: project._id,
+      reminderAt,
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: false,
+      enableBrowserPush: false,
+      quietHoursEnabled: false,
+    });
+
+    await processNotifications(user._id.toString());
+
+    // No user was notifiable, but reminderAt must still be cleared so the task
+    // isn't reprocessed every tick and doesn't fire a stale reminder later.
+    const updated = await Task.findById(task._id);
+    expect(updated?.reminderAt).toBeUndefined();
+    const created = await Notification.find({ userId: user._id });
+    expect(created).toHaveLength(0);
+  });
+});
+
+describe("notification-worker overdue re-notification (Bug C3)", () => {
+  it("re-notifies overdue only after the due date changes, not after mere dismissal", async () => {
+    const { Task } = await import("@/models/task");
+    const user = await createTestUser();
+    const category = await createTestCategory({ userId: user._id });
+    const project = await createTestProject({
+      userId: user._id,
+      categoryId: category._id,
+    });
+
+    const firstDue = new Date(Date.now() - 3 * 24 * 60 * 60_000);
+    const task = await createTestTask({
+      title: "Overdue task",
+      userId: user._id,
+      projectId: project._id,
+      dueDate: firstDue,
+    });
+
+    await NotificationPreference.create({
+      userId: user._id,
+      enableInAppNotifications: true,
+      enableBrowserPush: false,
+      enableOverdueSummary: true,
+      enableDailySummary: false,
+      quietHoursEnabled: false,
+    });
+
+    // First tick creates one overdue notification
+    await processNotifications(user._id.toString());
+    let overdue = await Notification.find({ userId: user._id, type: "overdue" });
+    expect(overdue).toHaveLength(1);
+
+    // Dismissing it must NOT immediately re-notify for the same due period
+    await Notification.updateOne(
+      { _id: overdue[0]._id },
+      { $set: { dismissed: true } },
+    );
+    await processNotifications(user._id.toString());
+    overdue = await Notification.find({ userId: user._id, type: "overdue" });
+    expect(overdue).toHaveLength(1);
+
+    // A new overdue period (changed due date) re-notifies
+    await Task.updateOne(
+      { _id: task._id },
+      { $set: { dueDate: new Date(Date.now() - 5 * 24 * 60 * 60_000) } },
+    );
+    await processNotifications(user._id.toString());
+    overdue = await Notification.find({ userId: user._id, type: "overdue" });
+    expect(overdue).toHaveLength(2);
   });
 });
 

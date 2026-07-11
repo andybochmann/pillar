@@ -213,6 +213,25 @@ describe("useNotifications", () => {
     );
   });
 
+  it("rolls back the optimistic dismissAll update on failure (M13)", async () => {
+    vi.spyOn(global, "fetch").mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ error: "Server error" }),
+    } as Response);
+
+    const { result } = renderHook(() => useNotifications(mockNotifications));
+
+    // Pre-condition: at least one notification starts undismissed.
+    expect(result.current.notifications.some((n) => !n.dismissed)).toBe(true);
+
+    await act(async () => {
+      await result.current.dismissAll().catch(() => {});
+    });
+
+    // After a failed dismissAll, state must be restored (not left all-dismissed).
+    expect(result.current.notifications).toEqual(mockNotifications);
+  });
+
   it("throws on markAsDismissed failure", async () => {
     vi.spyOn(global, "fetch").mockResolvedValueOnce({
       ok: false,

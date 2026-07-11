@@ -186,10 +186,27 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     return NextResponse.json(serialized, { status: 201 });
   } catch (err) {
-    const error = err as Error & { status?: number };
+    const error = err as Error & { status?: number; code?: number };
+    // Concurrent add-member race (M22): the compound unique index rejects the
+    // second insert → surface a clean 409 rather than a 500.
+    if (error.code === 11000) {
+      return NextResponse.json(
+        { error: "User is already a member" },
+        { status: 409 },
+      );
+    }
+    // Only surface messages we set deliberately (they carry a status, e.g.
+    // requireProjectRole's "Project not found"/"Forbidden"); everything else is
+    // an internal error and must not leak details (M21).
+    if (typeof error.status === "number") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: error.status },
+      );
+    }
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
-      { status: error.status ?? 500 },
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 }

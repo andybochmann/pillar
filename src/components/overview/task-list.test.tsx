@@ -78,6 +78,20 @@ describe("TaskList", () => {
     expect(mockPush).toHaveBeenCalledWith("/projects/proj-2?taskId=t2");
   });
 
+  it("opens a task via keyboard (Enter) on the focused row", async () => {
+    const user = userEvent.setup();
+    const task = makeTask({ _id: "t1", projectId: "proj-9" });
+    const project = makeProject({ _id: "proj-9", name: "Kbd Project" });
+
+    render(<TaskList tasks={[task]} projects={[project]} />);
+
+    const row = screen.getByRole("button", { name: /open task test task/i });
+    row.focus();
+    await user.keyboard("{Enter}");
+
+    expect(mockPush).toHaveBeenCalledWith("/projects/proj-9?taskId=t1");
+  });
+
   it("applies cursor-pointer class to task items", () => {
     const task = makeTask();
     const project = makeProject();

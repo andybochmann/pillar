@@ -87,8 +87,20 @@ export function useOfflineQueue() {
           toast.success(`${result.succeeded} change${result.succeeded === 1 ? "" : "s"} synced`);
           window.dispatchEvent(new CustomEvent("pillar:sync-complete"));
         }
-        if (result.failed > 0) {
-          toast.error(`${result.failed} change${result.failed === 1 ? "" : "s"} failed to sync`);
+        // Surface permanently-rejected (4xx) mutations that were discarded so
+        // the user knows they were dropped, not silently retried.
+        if (result.permanentFailures > 0) {
+          toast.error(
+            `${result.permanentFailures} change${result.permanentFailures === 1 ? " was" : "s were"} rejected and discarded`,
+          );
+        }
+        // Remaining transient failures (network/5xx) stay queued for retry.
+        // Auth failures are surfaced via the "pillar:auth-required" listener.
+        const transient = result.failed - result.permanentFailures;
+        if (transient > 0 && !result.authRequired) {
+          toast.error(
+            `${transient} change${transient === 1 ? "" : "s"} failed to sync — will retry`,
+          );
         }
         await refreshCount();
       } finally {
@@ -124,12 +136,45 @@ export function useOfflineQueue() {
     refreshCount();
   }, [isOnline, refreshCount]);
 
+  // Keep the count fresh whenever the queue changes (a mutation was enqueued or
+  // removed). Without this, queueCount stays stale and auto-sync never fires on
+  // flaky networks where mutations queue while navigator.onLine stays true.
+  useEffect(() => {
+    function onQueueChanged() {
+      refreshCount();
+    }
+    window.addEventListener("pillar:queue-changed", onQueueChanged);
+    return () => {
+      window.removeEventListener("pillar:queue-changed", onQueueChanged);
+    };
+  }, [refreshCount]);
+
+  // Prompt re-login when the offline replayer hit an auth redirect.
+  useEffect(() => {
+    function onAuthRequired() {
+      toast.error("Your session expired. Sign in again to sync offline changes.");
+    }
+    window.addEventListener("pillar:auth-required", onAuthRequired);
+    return () => {
+      window.removeEventListener("pillar:auth-required", onAuthRequired);
+    };
+  }, []);
+
   // Listen for Background Sync completion from service worker
   useEffect(() => {
     function onSwMessage(event: MessageEvent) {
       if (event.data?.type === "SYNC_COMPLETE") {
         refreshCount();
         window.dispatchEvent(new CustomEvent("pillar:sync-complete"));
+        const permanentFailures: number = event.data.permanentFailures ?? 0;
+        if (permanentFailures > 0) {
+          toast.error(
+            `${permanentFailures} change${permanentFailures === 1 ? " was" : "s were"} rejected and discarded`,
+          );
+        }
+        if (event.data.authRequired) {
+          window.dispatchEvent(new CustomEvent("pillar:auth-required"));
+        }
       }
     }
     navigator.serviceWorker?.addEventListener("message", onSwMessage);

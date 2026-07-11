@@ -121,7 +121,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     if (result.data.reminderAt !== undefined) {
+      // Explicit user-set reminder — mark manual so preference recalculation
+      // never overwrites it. Clearing it resets the source too.
       updateData.reminderAt = result.data.reminderAt ? new Date(result.data.reminderAt) : null;
+      updateData.reminderSource = result.data.reminderAt ? "manual" : null;
     }
 
     // Handle archiving
@@ -174,6 +177,23 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       }
     }
 
+    // Validate columnId belongs to the task's project (mirrors MCP tools)
+    if (result.data.columnId !== undefined) {
+      const project = await Project.findById(existingTask.projectId)
+        .select("columns")
+        .lean();
+      const validColumnIds =
+        project?.columns?.map((c: { id: string }) => c.id) ?? [];
+      if (!validColumnIds.includes(result.data.columnId)) {
+        return NextResponse.json(
+          {
+            error: `Column '${result.data.columnId}' does not exist in this project`,
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const shouldPushHistory =
       result.data.columnId && existingTask.columnId !== result.data.columnId;
 
@@ -188,9 +208,29 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       delete updateData.reminderAt;
     }
 
-    const updateOp: Record<string, unknown> = {
-      $set: updateData,
-    };
+    // Atomically claim the completion transition so concurrent completes
+    // (double-click / offline replay) don't each spawn a next occurrence.
+    const isBeingCompleted = !!result.data.completedAt;
+    let didTransitionToComplete = false;
+    if (isBeingCompleted) {
+      const claimed = await Task.findOneAndUpdate(
+        { _id: id, completedAt: null },
+        { $set: { completedAt: updateData.completedAt } },
+        { returnDocument: "after" },
+      );
+      didTransitionToComplete = !!claimed;
+      // completedAt is now persisted (or the task was already complete);
+      // drop it from the general update so it isn't re-applied unconditionally.
+      delete updateData.completedAt;
+    }
+
+    const updateOp: Record<string, unknown> = {};
+    // Only include $set when there are fields left to set — completing a task
+    // with no other edits leaves updateData empty (completedAt was applied
+    // atomically above), and MongoDB rejects an empty $set.
+    if (Object.keys(updateData).length > 0) {
+      updateOp.$set = updateData;
+    }
 
     if (shouldPushHistory) {
       updateOp.$push = {
@@ -205,11 +245,12 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       updateOp.$unset = { reminderAt: 1 };
     }
 
-    const task = await Task.findByIdAndUpdate(
-      id,
-      updateOp,
-      { returnDocument: "after" },
-    );
+    // If nothing is left to update (e.g. a completion-only request already
+    // handled above), just re-fetch the current document.
+    const task =
+      Object.keys(updateOp).length > 0
+        ? await Task.findByIdAndUpdate(id, updateOp, { returnDocument: "after" })
+        : await Task.findById(id);
 
     if (!task) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
@@ -246,13 +287,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       timestamp: Date.now(),
     });
 
-    // If task is transitioning from incomplete to complete and has recurrence, create the next occurrence
-    const wasAlreadyCompleted = !!existingTask.completedAt;
-    const isBeingCompleted = !!result.data.completedAt;
-
+    // If this request transitioned the task to complete and it has recurrence,
+    // create the next occurrence (guarded atomically above).
     if (
-      isBeingCompleted &&
-      !wasAlreadyCompleted &&
+      didTransitionToComplete &&
       task.recurrence?.frequency !== "none" &&
       task.dueDate
     ) {
@@ -301,11 +339,23 @@ export async function PATCH(request: Request, { params }: RouteParams) {
             ],
           });
 
+          // Schedule the auto-reminder for the newly-created occurrence.
+          scheduleNextReminder(newTask._id.toString()).catch((err) => {
+            console.error(
+              `[tasks/PATCH] Failed to schedule reminder for task ${newTask._id}:`,
+              err,
+            );
+          });
+
+          // Emit the side-effect "created" event with an empty sessionId so it
+          // is NOT suppressed for the originating tab (the SSE endpoint skips
+          // events whose sessionId matches the connected tab). Other tabs still
+          // receive it because their sessionId never equals "".
           emitSyncEvent({
             entity: "task",
             action: "created",
             userId: session.user.id,
-            sessionId,
+            sessionId: "",
             entityId: newTask._id.toString(),
             projectId: task.projectId.toString(),
             targetUserIds,

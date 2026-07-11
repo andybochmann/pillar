@@ -9,6 +9,7 @@ import {
   getProjectMemberUserIds,
 } from "@/lib/project-access";
 import { getNextDueDate } from "@/lib/date-utils";
+import { scheduleNextReminder } from "@/lib/reminder-scheduler";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -85,14 +86,24 @@ export async function POST(request: Request, { params }: RouteParams) {
       };
     }
 
-    const updatedTask = await Task.findByIdAndUpdate(
-      id,
+    // Atomically claim the completion: only the request that transitions the
+    // task from incomplete → complete spawns the next occurrence. Concurrent
+    // completes (double-click / offline replay) will not match and therefore
+    // won't create duplicate occurrences.
+    const updatedTask = await Task.findOneAndUpdate(
+      { _id: id, completedAt: null },
       updateDoc,
       { returnDocument: "after" },
     );
 
     if (!updatedTask) {
-      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      // Either the task was deleted, or it was already completed by a
+      // concurrent request — return its current state without spawning.
+      const current = await Task.findById(id);
+      if (!current) {
+        return NextResponse.json({ error: "Task not found" }, { status: 404 });
+      }
+      return NextResponse.json(current);
     }
 
     const sessionId = request.headers.get("X-Session-Id") ?? "";
@@ -161,11 +172,23 @@ export async function POST(request: Request, { params }: RouteParams) {
             ],
           });
 
+          // Schedule the auto-reminder for the newly-created occurrence.
+          scheduleNextReminder(newTask._id.toString()).catch((err) => {
+            console.error(
+              `[tasks/complete] Failed to schedule reminder for task ${newTask._id}:`,
+              err,
+            );
+          });
+
+          // Emit the side-effect "created" event with an empty sessionId so it
+          // is NOT suppressed for the originating tab (the SSE endpoint skips
+          // events whose sessionId matches the connected tab). Other tabs still
+          // receive it because their sessionId never equals "".
           emitSyncEvent({
             entity: "task",
             action: "created",
             userId: session.user.id,
-            sessionId,
+            sessionId: "",
             entityId: newTask._id.toString(),
             projectId: task.projectId.toString(),
             targetUserIds,

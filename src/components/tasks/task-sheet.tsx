@@ -287,12 +287,17 @@ function TaskSheetForm({
     [task._id, onUpdate, markSaved],
   );
 
-  function handleTitleDescriptionSaveStatus(status: "saving" | "saved") {
+  function handleTitleDescriptionSaveStatus(
+    status: "saving" | "saved" | "error",
+  ) {
     if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     if (status === "saving") {
       setSaveStatus("saving");
-    } else {
+    } else if (status === "saved") {
       markSaved();
+    } else {
+      // Save failed — the section already surfaced a toast; just reset status.
+      setSaveStatus("idle");
     }
   }
 
@@ -403,11 +408,14 @@ function TaskSheetForm({
       if (result && typeof result === "object" && "subtasks" in result) {
         setSubtasks((result as Task).subtasks ?? updated);
       }
-    } catch {
+      toast.success(`Added ${newSubtasks.length} subtasks`);
+    } catch (err) {
       // Revert optimistic update on failure
       setSubtasks(subtasks);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to add subtasks",
+      );
     }
-    toast.success(`Added ${newSubtasks.length} subtasks`);
   }
 
   async function handleTaskUpdate(data: { completedAt: string | null }) {

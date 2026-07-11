@@ -54,10 +54,15 @@ export async function POST(request: Request) {
   try {
     await requireProjectRole(userId, projectId, "editor");
   } catch (err) {
-    const status = (err as Error & { status?: number }).status ?? 500;
+    const status = (err as Error & { status?: number }).status;
+    // Only surface the underlying message for known (status-tagged) auth
+    // errors; unexpected failures return a generic 500.
+    if (status) {
+      return NextResponse.json({ error: (err as Error).message }, { status });
+    }
     return NextResponse.json(
-      { error: (err as Error).message },
-      { status },
+      { error: "Internal server error" },
+      { status: 500 },
     );
   }
 
@@ -108,7 +113,14 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ tasks: created }, { status: 201 });
-  } catch {
+  } catch (err) {
+    // Map duplicate-key violations to 409 Conflict.
+    if ((err as { code?: number }).code === 11000) {
+      return NextResponse.json(
+        { error: "Duplicate task" },
+        { status: 409 },
+      );
+    }
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

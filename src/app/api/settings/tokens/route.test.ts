@@ -144,6 +144,52 @@ describe("/api/settings/tokens", () => {
       expect(stored!.tokenHash).toBe(hashToken(body.token));
     });
 
+    it("defaults new tokens to a ~90 day expiry (M18)", async () => {
+      await seedUser();
+      const before = Date.now();
+      const req = new NextRequest("http://localhost/api/settings/tokens", {
+        method: "POST",
+        body: JSON.stringify({ name: "Default Expiry" }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.expiresAt).not.toBeNull();
+
+      const stored = await AccessToken.findById(body._id);
+      expect(stored!.expiresAt).not.toBeNull();
+      const ms = stored!.expiresAt!.getTime() - before;
+      const days = ms / (24 * 60 * 60 * 1000);
+      expect(days).toBeGreaterThan(89);
+      expect(days).toBeLessThan(91);
+    });
+
+    it("honours a custom expiresInDays within the cap", async () => {
+      await seedUser();
+      const before = Date.now();
+      const req = new NextRequest("http://localhost/api/settings/tokens", {
+        method: "POST",
+        body: JSON.stringify({ name: "Short", expiresInDays: 7 }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      const stored = await AccessToken.findById(body._id);
+      const days = (stored!.expiresAt!.getTime() - before) / (24 * 60 * 60 * 1000);
+      expect(days).toBeGreaterThan(6);
+      expect(days).toBeLessThan(8);
+    });
+
+    it("rejects expiresInDays over the 365 day cap", async () => {
+      await seedUser();
+      const req = new NextRequest("http://localhost/api/settings/tokens", {
+        method: "POST",
+        body: JSON.stringify({ name: "Too Long", expiresInDays: 400 }),
+      });
+      const res = await POST(req);
+      expect(res.status).toBe(400);
+    });
+
     it("returns 400 for empty name", async () => {
       await seedUser();
       const req = new NextRequest("http://localhost/api/settings/tokens", {

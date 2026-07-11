@@ -12,7 +12,6 @@ import { FilterPreset } from "@/models/filter-preset";
 import { ProjectMember } from "@/models/project-member";
 import { Notification } from "@/models/notification";
 import { NotificationPreference } from "@/models/notification-preference";
-import { getAccessibleProjectIds } from "@/lib/project-access";
 
 const MetadataSchema = z.object({
   version: z.literal(1),
@@ -276,16 +275,29 @@ export async function POST(request: Request) {
   const userId = new mongoose.Types.ObjectId(session.user.id);
   const data = result.data;
 
-  // Collect existing document IDs before insertion (read-only — no data modified)
-  const [oldLabels, oldCategories, oldProjects, oldTasks, oldNotes, oldFilterPresets] =
-    await Promise.all([
-      Label.find({ userId }, { _id: 1 }).lean(),
-      Category.find({ userId }, { _id: 1 }).lean(),
-      Project.find({ userId }, { _id: 1 }).lean(),
-      Task.find({ projectId: { $in: await getAccessibleProjectIds(userId.toString()) } }, { _id: 1 }).lean(),
-      Note.find({ userId }, { _id: 1 }).lean(),
-      FilterPreset.find({ userId }, { _id: 1 }).lean(),
-    ]);
+  // Collect existing document IDs before insertion (read-only — no data modified).
+  // Old tasks are scoped to projects the user OWNS (not shared/viewer projects),
+  // mirroring the export path, so a restore never deletes another owner's tasks
+  // (or their notifications). Also capture the existing notification preference so
+  // it can be restored if the insert phase fails after we've cleared it.
+  const oldProjects = await Project.find({ userId }, { _id: 1 }).lean();
+  const ownedProjectIds = oldProjects.map((p) => p._id);
+
+  const [
+    oldLabels,
+    oldCategories,
+    oldTasks,
+    oldNotes,
+    oldFilterPresets,
+    oldNotifPref,
+  ] = await Promise.all([
+    Label.find({ userId }, { _id: 1 }).lean(),
+    Category.find({ userId }, { _id: 1 }).lean(),
+    Task.find({ projectId: { $in: ownedProjectIds } }, { _id: 1 }).lean(),
+    Note.find({ userId }, { _id: 1 }).lean(),
+    FilterPreset.find({ userId }, { _id: 1 }).lean(),
+    NotificationPreference.findOne({ userId }).lean(),
+  ]);
 
   // Insert new data with fresh ObjectIds (no conflicts with existing data)
   // Labels have a unique compound index on {userId, name} — insert with a
@@ -459,6 +471,7 @@ export async function POST(request: Request) {
   let tasksInserted = false;
   let notesInserted = false;
   let filterPresetsInserted = false;
+  let notifPrefDeleted = false;
 
   try {
     if (labelsToInsert.length > 0) {
@@ -501,6 +514,7 @@ export async function POST(request: Request) {
 
     // Handle NotificationPreference (unique index on userId — delete before re-create)
     await NotificationPreference.deleteMany({ userId });
+    notifPrefDeleted = true;
     if (data.notificationPreference) {
       const np = data.notificationPreference;
       await NotificationPreference.create({
@@ -536,6 +550,16 @@ export async function POST(request: Request) {
       rollback.push(Note.deleteMany({ _id: { $in: mappedNotes.map((n) => n._id as mongoose.Types.ObjectId) } }));
     if (filterPresetsInserted)
       rollback.push(FilterPreset.deleteMany({ _id: { $in: filterPresetsToInsert.map((fp) => fp._id) } }));
+    // Restore the previous notification preference if we cleared it before failing
+    if (notifPrefDeleted && oldNotifPref) {
+      rollback.push(
+        NotificationPreference.create(
+          stripFields(oldNotifPref as unknown as Record<string, unknown>, [
+            "__v",
+          ]),
+        ),
+      );
+    }
     await Promise.all(rollback);
     console.error("[backup/POST] Insert failed, rollback complete:", insertErr);
     return NextResponse.json({ error: "Restore failed" }, { status: 500 });

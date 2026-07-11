@@ -34,9 +34,9 @@ function getDueDateDisplay(dueDateStr?: string | null) {
   return {
     label: isToday(dueDate) ? "Today" : format(dueDate, "MMM d, yyyy"),
     className: overdue
-      ? "text-red-600"
+      ? "text-red-600 dark:text-red-400"
       : isToday(dueDate)
-        ? "text-orange-600"
+        ? "text-orange-600 dark:text-orange-400"
         : "text-muted-foreground",
   };
 }
@@ -80,8 +80,17 @@ export function TaskList({ tasks, projects, labels = [] }: TaskListProps) {
             <div
               key={task._id}
               data-testid={`task-${task._id}`}
-              className="cursor-pointer rounded-md border p-3 hover:bg-accent/50 md:rounded-none md:border-x-0 md:border-t-0 md:border-b md:p-0 md:last:border-b-0"
+              role="button"
+              tabIndex={0}
+              aria-label={`Open task ${task.title}`}
+              className="cursor-pointer rounded-md border p-3 hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:rounded-none md:border-x-0 md:border-t-0 md:border-b md:p-0 md:last:border-b-0"
               onClick={() => router.push(`/projects/${task.projectId}?taskId=${task._id}`)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  router.push(`/projects/${task.projectId}?taskId=${task._id}`);
+                }
+              }}
             >
               {/* Mobile layout */}
               <div className="md:hidden">

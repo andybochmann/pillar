@@ -32,9 +32,16 @@ export async function connectDB(): Promise<typeof mongoose> {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(getMongoURI(), {
-      bufferCommands: false,
-    });
+    cached.promise = mongoose
+      .connect(getMongoURI(), {
+        bufferCommands: false,
+      })
+      .catch((err) => {
+        // Don't cache a rejected promise — a transient outage would otherwise
+        // poison every future connectDB() call. Reset so the next call retries.
+        cached.promise = null;
+        throw err;
+      });
   }
 
   cached.conn = await cached.promise;

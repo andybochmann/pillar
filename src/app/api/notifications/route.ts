@@ -30,6 +30,11 @@ export async function GET(request: Request) {
   const taskId = searchParams.get("taskId");
   const limit = searchParams.get("limit");
 
+  // L1: reject a malformed taskId before it reaches the query (avoids CastError).
+  if (taskId && !mongoose.Types.ObjectId.isValid(taskId)) {
+    return NextResponse.json({ error: "Invalid task ID" }, { status: 400 });
+  }
+
   const filter: Record<string, unknown> = {
     userId: session.user.id,
     ...(read === "true" && { read: true }),

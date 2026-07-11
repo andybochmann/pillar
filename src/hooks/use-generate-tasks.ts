@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
+import { getSessionId } from "@/lib/session-id";
 import type { Task, TaskDraft } from "@/types";
 
 interface UseGenerateTasksReturn {
@@ -171,7 +172,12 @@ export function useGenerateTasks(): UseGenerateTasksReturn {
         setAdding(true);
         const res = await fetch("/api/tasks/bulk-create", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          // Attach the per-tab session id so SSE echoes are de-duplicated and
+          // this tab doesn't re-add tasks it already inserted optimistically.
+          headers: {
+            "Content-Type": "application/json",
+            "X-Session-Id": getSessionId(),
+          },
           body: JSON.stringify({
             projectId,
             tasks: selected.map((d) => ({

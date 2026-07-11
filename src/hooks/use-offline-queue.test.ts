@@ -11,6 +11,20 @@ vi.mock("sonner", () => ({
   },
 }));
 
+/**
+ * Build a Response whose `url` is set (real fetch populates this; the Response
+ * constructor leaves it empty). The replayer inspects `res.url` to detect auth
+ * redirects, so successful replays must present a same-origin /api/ url.
+ */
+function apiResponse(body: unknown = {}): Response {
+  const res = new Response(JSON.stringify(body), { status: 200 });
+  Object.defineProperty(res, "url", {
+    value: "http://localhost/api/tasks",
+    configurable: true,
+  });
+  return res;
+}
+
 describe("useOfflineQueue", () => {
   beforeEach(async () => {
     await clearQueue();
@@ -73,7 +87,7 @@ describe("useOfflineQueue", () => {
 
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
-      .mockResolvedValue(new Response(JSON.stringify({}), { status: 200 }));
+      .mockResolvedValue(apiResponse());
 
     const { result } = renderHook(() => useOfflineQueue());
 
@@ -176,7 +190,7 @@ describe("useOfflineQueue", () => {
     });
 
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({}), { status: 200 }),
+      apiResponse(),
     );
 
     const { result } = renderHook(() => useOfflineQueue());
@@ -224,7 +238,7 @@ describe("useOfflineQueue", () => {
     });
 
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({}), { status: 200 }),
+      apiResponse(),
     );
 
     const { result } = renderHook(() => useOfflineQueue());
@@ -264,7 +278,7 @@ describe("useOfflineQueue", () => {
     });
 
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({}), { status: 200 }),
+      apiResponse(),
     );
 
     const dispatchSpy = vi.spyOn(window, "dispatchEvent");

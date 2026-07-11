@@ -91,7 +91,21 @@ vi.mock("./kanban-column", () => ({
 }));
 
 vi.mock("@/components/tasks/task-sheet", () => ({
-  TaskSheet: () => null,
+  TaskSheet: ({
+    task,
+    open,
+    onOpenChange,
+  }: {
+    task: Task | null;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+  }) =>
+    open && task ? (
+      <div data-testid="task-sheet">
+        <span>{task.title}</span>
+        <button onClick={() => onOpenChange(false)}>close-sheet</button>
+      </div>
+    ) : null,
 }));
 
 vi.mock("./bulk-actions-bar", () => ({
@@ -244,5 +258,52 @@ describe("KanbanBoard — auto-move on timer start", () => {
         "Moved to Work In Progress",
       );
     });
+  });
+});
+
+describe("KanbanBoard — openTaskId sheet lifecycle (H15)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("does not reopen the sheet after the user closes it when tasks update", async () => {
+    const task = makeTask({ _id: "t1", title: "Original", columnId: "todo" });
+
+    const { rerender } = render(
+      <KanbanBoard
+        projectId="proj-1"
+        columns={defaultColumns}
+        initialTasks={[task]}
+        filters={defaultFilters}
+        allLabels={[]}
+        onCreateLabel={vi.fn()}
+        currentUserId="user-1"
+        openTaskId="t1"
+      />,
+    );
+
+    // Sheet auto-opens for the requested task
+    expect(await screen.findByTestId("task-sheet")).toBeInTheDocument();
+
+    // User closes the sheet
+    await userEvent.click(screen.getByText("close-sheet"));
+    expect(screen.queryByTestId("task-sheet")).not.toBeInTheDocument();
+
+    // An SSE-driven task change arrives (new array reference / same openTaskId)
+    rerender(
+      <KanbanBoard
+        projectId="proj-1"
+        columns={defaultColumns}
+        initialTasks={[{ ...task, title: "Updated" }]}
+        filters={defaultFilters}
+        allLabels={[]}
+        onCreateLabel={vi.fn()}
+        currentUserId="user-1"
+        openTaskId="t1"
+      />,
+    );
+
+    // The sheet must stay closed — it should not reopen from the tasks change
+    expect(screen.queryByTestId("task-sheet")).not.toBeInTheDocument();
   });
 });

@@ -79,10 +79,13 @@ export function CommandPalette() {
     archivedTasks: [],
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const [includeArchived, setIncludeArchived] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const router = useRouter();
   const debounceRef = useRef<ReturnType<typeof setTimeout>>(null);
+  // Monotonic counter so only the latest in-flight request applies its result.
+  const searchSeqRef = useRef(0);
 
   useBackButton("command-palette", open, () => setOpen(false));
 
@@ -99,7 +102,8 @@ export function CommandPalette() {
     }
   }, [open]);
 
-  // Keyboard shortcut: / opens the palette (only when not in an input)
+  // Keyboard shortcuts: Cmd/Ctrl+K opens the palette from anywhere;
+  // "/" opens it only when not typing in an input.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       const target = e.target as HTMLElement;
@@ -107,6 +111,12 @@ export function CommandPalette() {
         target.tagName === "INPUT" ||
         target.tagName === "TEXTAREA" ||
         target.isContentEditable;
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setOpen(true);
+        return;
+      }
 
       if (e.key === "/" && !isEditable) {
         e.preventDefault();
@@ -121,20 +131,31 @@ export function CommandPalette() {
   const search = useCallback(
     async (q: string, archived: boolean) => {
       if (!q.trim()) {
+        searchSeqRef.current++;
         setResults({ tasks: [], notes: [], archivedTasks: [] });
+        setError(false);
+        setLoading(false);
         return;
       }
+      const seq = ++searchSeqRef.current;
       setLoading(true);
+      setError(false);
       try {
         const params = new URLSearchParams({ q: q.trim() });
         if (archived) params.set("includeArchived", "true");
         const res = await fetch(`/api/search?${params.toString()}`);
+        // Ignore results from a superseded (stale) request.
+        if (seq !== searchSeqRef.current) return;
         if (res.ok) {
           const data: SearchResults = await res.json();
           setResults(data);
+        } else {
+          setError(true);
         }
+      } catch {
+        if (seq === searchSeqRef.current) setError(true);
       } finally {
-        setLoading(false);
+        if (seq === searchSeqRef.current) setLoading(false);
       }
     },
     [],
@@ -200,6 +221,7 @@ export function CommandPalette() {
     if (!isOpen) {
       setQuery("");
       setResults({ tasks: [], notes: [], archivedTasks: [] });
+      setError(false);
     }
   }
 
@@ -240,7 +262,18 @@ export function CommandPalette() {
             </label>
           </div>
           <CommandList>
-            {hasQuery && !loading && !hasResults && (
+            {hasQuery && !loading && error && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <SearchX className="h-12 w-12 text-destructive/50 mb-4" />
+                <p className="text-sm font-medium text-destructive">
+                  Search failed
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Something went wrong. Please try again.
+                </p>
+              </div>
+            )}
+            {hasQuery && !loading && !error && !hasResults && (
               <CommandEmpty>
                 <div className="flex flex-col items-center justify-center py-12">
                   <SearchX className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -290,7 +323,7 @@ export function CommandPalette() {
             )}
 
             {/* Tasks */}
-            {results.tasks.length > 0 && (
+            {!loading && results.tasks.length > 0 && (
               <CommandGroup
                 heading={`Tasks (${results.tasks.length})`}
               >
@@ -327,7 +360,7 @@ export function CommandPalette() {
             )}
 
             {/* Notes */}
-            {results.notes.length > 0 && (
+            {!loading && results.notes.length > 0 && (
               <>
                 {results.tasks.length > 0 && <CommandSeparator />}
                 <CommandGroup
@@ -355,7 +388,7 @@ export function CommandPalette() {
             )}
 
             {/* Archived Tasks */}
-            {results.archivedTasks.length > 0 && (
+            {!loading && results.archivedTasks.length > 0 && (
               <>
                 {(results.tasks.length > 0 || results.notes.length > 0) && (
                   <CommandSeparator />

@@ -2,7 +2,7 @@
 
 import { useDroppable, useDraggable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
-import { isToday } from "date-fns";
+import { isToday, format } from "date-fns";
 import { TaskHoverCard } from "./task-hover-card";
 import type { Task, Label } from "@/types";
 
@@ -34,7 +34,9 @@ export function CalendarDay({
   onDateClick,
   onTaskClick,
 }: CalendarDayProps) {
-  const dateId = date.toISOString().slice(0, 10);
+  // Use the local calendar day (not toISOString, which shifts to the previous
+  // day for users east of UTC when `date` is a local-midnight Date).
+  const dateId = format(date, "yyyy-MM-dd");
   const { setNodeRef, isOver } = useDroppable({ id: `date-${dateId}` });
 
   const today = isToday(date);
@@ -58,7 +60,7 @@ export function CalendarDay({
           today && "bg-primary text-primary-foreground font-bold",
           !today && "hover:bg-accent",
         )}
-        aria-label={`${date.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`}
+        aria-label={format(date, "MMMM d, yyyy")}
       >
         {date.getDate()}
       </button>

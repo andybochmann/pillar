@@ -87,11 +87,26 @@ export async function PATCH(request: Request) {
         );
       }
 
-      // Look up each project's last column to determine completedAt
+      // Look up each project's columns to validate the target and to
+      // determine completedAt from each project's own last column.
       const projects = await Project.find(
         { _id: { $in: [...accessibleProjectIds] } },
         { columns: 1 },
       );
+
+      // Reject the move if any affected project lacks the target column —
+      // otherwise those tasks would get an orphaned columnId and vanish.
+      for (const project of projects) {
+        if (!project.columns.some((c) => c.id === columnId)) {
+          return NextResponse.json(
+            {
+              error: `Column '${columnId}' does not exist in one or more selected projects`,
+            },
+            { status: 400 },
+          );
+        }
+      }
+
       const lastColumnByProject = new Map<string, string>();
       for (const project of projects) {
         const sorted = [...project.columns].sort((a, b) => a.order - b.order);

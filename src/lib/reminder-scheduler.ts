@@ -1,9 +1,22 @@
+import type { Types } from "mongoose";
 import { Task } from "@/models/task";
 import { NotificationPreference } from "@/models/notification-preference";
 import type { IDueDateReminder } from "@/models/notification-preference";
 
 /** Grace window (ms) — reminders computed up to this far in the past still fire. */
 const GRACE_MS = 30 * 60_000; // 30 minutes
+
+/**
+ * Projection shape used by recalculateRemindersForUser. `reminderSource`
+ * distinguishes auto-scheduled reminders (safe to recompute) from manual ones
+ * (must be preserved); it is optional to tolerate legacy rows written before the
+ * field existed.
+ */
+interface ReminderTaskRow {
+  _id: Types.ObjectId;
+  reminderAt?: Date | null;
+  reminderSource?: "auto" | "manual";
+}
 
 /**
  * Compute the absolute Date for a due-date reminder given a due date,
@@ -41,6 +54,35 @@ export function computeReminderDate(
   });
 
   const [hours, minutes] = reminder.time.split(":").map(Number);
+  const wantedMinutes = hours * 60 + minutes;
+  const wantedDateMs = Date.UTC(
+    reminderDate.getUTCFullYear(),
+    reminderDate.getUTCMonth(),
+    reminderDate.getUTCDate(),
+  );
+
+  // Given a candidate UTC instant, measure how far its local (timezone) wall
+  // clock is from the wanted local date/time and return a corrected instant.
+  const correctToLocal = (candidate: Date): Date => {
+    const parts = formatter.formatToParts(candidate);
+    const getPart = (type: string) =>
+      parseInt(parts.find((p) => p.type === type)?.value ?? "0", 10);
+
+    const gotMinutes = getPart("hour") * 60 + getPart("minute");
+    let diffMinutes = wantedMinutes - gotMinutes;
+
+    // Handle day boundary crossing using full dates (not just day numbers,
+    // which break at month/year boundaries)
+    const gotDateMs = Date.UTC(
+      getPart("year"),
+      getPart("month") - 1,
+      getPart("day"),
+    );
+    const dayDiff = Math.round((gotDateMs - wantedDateMs) / (24 * 60 * 60_000));
+    diffMinutes -= dayDiff * 24 * 60;
+
+    return new Date(candidate.getTime() + diffMinutes * 60_000);
+  };
 
   // Start with a UTC guess
   const guess = new Date(
@@ -54,38 +96,12 @@ export function computeReminderDate(
     ),
   );
 
-  // Format guess in the target timezone to see what local time it shows
-  const parts = formatter.formatToParts(guess);
-  const getPart = (type: string) =>
-    parseInt(parts.find((p) => p.type === type)?.value ?? "0", 10);
-
-  const guessLocalH = getPart("hour");
-  const guessLocalM = getPart("minute");
-
-  // Calculate offset: the difference between what we wanted and what we got
-  const wantedMinutes = hours * 60 + minutes;
-  const gotMinutes = guessLocalH * 60 + guessLocalM;
-  let diffMinutes = wantedMinutes - gotMinutes;
-
-  // Handle day boundary crossing using full dates (not just day numbers,
-  // which break at month/year boundaries)
-  const wantedDateMs = Date.UTC(
-    reminderDate.getUTCFullYear(),
-    reminderDate.getUTCMonth(),
-    reminderDate.getUTCDate(),
-  );
-  const guessLocalDateMs = Date.UTC(
-    getPart("year"),
-    getPart("month") - 1,
-    getPart("day"),
-  );
-  const dayDiff = Math.round(
-    (guessLocalDateMs - wantedDateMs) / (24 * 60 * 60_000),
-  );
-  diffMinutes -= dayDiff * 24 * 60;
-
-  // Adjust
-  return new Date(guess.getTime() + diffMinutes * 60_000);
+  // First pass corrects for the timezone's base offset. On DST-transition days
+  // the offset at the guess instant differs from the offset at the corrected
+  // instant, leaving the result up to an hour off — a second pass re-measures
+  // at the corrected instant and fixes that residual.
+  const firstPass = correctToLocal(guess);
+  return correctToLocal(firstPass);
 }
 
 /**
@@ -138,7 +154,12 @@ export async function scheduleNextReminder(taskId: string): Promise<void> {
   if (futureReminderTimes.length === 0) return;
 
   futureReminderTimes.sort((a, b) => a.getTime() - b.getTime());
-  await Task.updateOne({ _id: taskId }, { reminderAt: futureReminderTimes[0] });
+  // Stamp reminderSource so recalculateRemindersForUser can tell this auto-set
+  // reminder apart from a user's manually-set one.
+  await Task.updateOne(
+    { _id: taskId },
+    { $set: { reminderAt: futureReminderTimes[0], reminderSource: "auto" } },
+  );
 }
 
 /**
@@ -158,15 +179,25 @@ export async function recalculateRemindersForUser(
     $or: [{ userId }, { assigneeId: userId }],
     dueDate: { $gte: cutoff },
     completedAt: null,
-  }).select("_id reminderAt");
+  })
+    .select("_id reminderAt reminderSource")
+    .lean<ReminderTaskRow[]>();
 
   if (tasks.length === 0) return;
 
-  // Only clear and re-schedule tasks without a manually-set reminderAt.
-  // Tasks with an existing reminderAt are preserved (they were set manually
-  // by the user or via the API, and scheduleNextReminder's guard would
-  // normally protect them — but $unset defeats that guard).
-  const autoTasks = tasks.filter((t) => !t.reminderAt);
+  // Re-schedule tasks that either have no reminder yet, or whose reminder was
+  // auto-scheduled (reminderSource === "auto"). Manually-set reminders
+  // (reminderSource === "manual") are preserved.
+  //
+  // Forward/back-compatible: before the model has `reminderSource`, this field
+  // is always undefined, so the predicate reduces to `!t.reminderAt` — the
+  // previous behavior — and no manual reminder is clobbered. Once the model +
+  // routes set reminderSource, auto-scheduled reminders (which also set
+  // reminderAt) become eligible for recalculation, fixing the bug where a
+  // preference change updated nothing.
+  const autoTasks = tasks.filter(
+    (t) => !t.reminderAt || t.reminderSource === "auto",
+  );
   if (autoTasks.length === 0) return;
 
   const autoTaskIds = autoTasks.map((t) => t._id);

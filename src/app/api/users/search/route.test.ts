@@ -39,20 +39,18 @@ describe("GET /api/users/search", () => {
     await clearTestDB();
   });
 
-  it("returns matching users who share projects", async () => {
+  it("returns full profile for an exact-email match that is a collaborator", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
     const alice = await createTestUser({ email: "alice@test.com", name: "Alice" });
-    const bob = await createTestUser({ email: "bob@test.com", name: "Bob" });
 
-    // Create a project with both current user and alice
     const category = await createTestCategory({ userId: currentUser._id });
     const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
     await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
     await createTestProjectMember({ projectId: project._id, userId: alice._id, invitedBy: currentUser._id, role: "editor" });
 
     const res = await GET(
-      new Request("http://localhost/api/users/search?email=alice"),
+      new Request("http://localhost/api/users/search?email=alice@test.com"),
     );
 
     expect(res.status).toBe(200);
@@ -63,37 +61,33 @@ describe("GET /api/users/search", () => {
     expect(data[0]).not.toHaveProperty("passwordHash");
   });
 
-  it("owners can discover any user by email, even non-members", async () => {
+  it("discloses only id + email for a non-collaborator exact-email match", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
-    const alice = await createTestUser({ email: "alice@test.com", name: "Alice" });
+    await createTestUser({ email: "alice@test.com", name: "Alice" });
 
-    // Create a project with only current user as owner
-    const category = await createTestCategory({ userId: currentUser._id });
-    const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
-    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
-
-    // alice is NOT a member of any project, but owner can still find her
     const res = await GET(
-      new Request("http://localhost/api/users/search?email=alice"),
+      new Request("http://localhost/api/users/search?email=alice@test.com"),
     );
 
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data).toHaveLength(1);
     expect(data[0].email).toBe("alice@test.com");
+    // Non-collaborator: name/image must NOT be leaked.
+    expect(data[0].name).toBeUndefined();
+    expect(data[0].image).toBeUndefined();
   });
 
-  it("excludes current user from results", async () => {
+  it("does not perform substring / directory enumeration", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
+    await createTestUser({ email: "alice@test.com", name: "Alice" });
+    await createTestUser({ email: "alan@test.com", name: "Alan" });
 
-    const category = await createTestCategory({ userId: currentUser._id });
-    const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
-    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
-
+    // A partial string is not a valid email → no results.
     const res = await GET(
-      new Request("http://localhost/api/users/search?email=me@test"),
+      new Request("http://localhost/api/users/search?email=al"),
     );
 
     expect(res.status).toBe(200);
@@ -101,7 +95,20 @@ describe("GET /api/users/search", () => {
     expect(data).toHaveLength(0);
   });
 
-  it("returns empty for short queries", async () => {
+  it("excludes the current user even on exact self-email", async () => {
+    const currentUser = await createTestUser({ email: "me@test.com" });
+    session.user.id = currentUser._id.toString();
+
+    const res = await GET(
+      new Request("http://localhost/api/users/search?email=me@test.com"),
+    );
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveLength(0);
+  });
+
+  it("returns empty for a non-email query", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
 
@@ -127,110 +134,31 @@ describe("GET /api/users/search", () => {
     expect(data).toHaveLength(0);
   });
 
-  it("returns empty when user has no project memberships", async () => {
+  it("returns empty when the exact email does not exist", async () => {
+    const currentUser = await createTestUser({ email: "me@test.com" });
+    session.user.id = currentUser._id.toString();
+
+    const res = await GET(
+      new Request("http://localhost/api/users/search?email=nobody@test.com"),
+    );
+
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data).toHaveLength(0);
+  });
+
+  it("is case-insensitive on the exact email", async () => {
     const currentUser = await createTestUser({ email: "me@test.com" });
     session.user.id = currentUser._id.toString();
     await createTestUser({ email: "alice@test.com", name: "Alice" });
 
     const res = await GET(
-      new Request("http://localhost/api/users/search?email=alice"),
+      new Request("http://localhost/api/users/search?email=ALICE@TEST.COM"),
     );
 
     expect(res.status).toBe(200);
     const data = await res.json();
-    expect(data).toHaveLength(0);
-  });
-
-  it("limits results to 10", async () => {
-    const currentUser = await createTestUser({ email: "me@test.com" });
-    session.user.id = currentUser._id.toString();
-
-    const category = await createTestCategory({ userId: currentUser._id });
-    const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
-    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
-
-    for (let i = 0; i < 15; i++) {
-      await createTestUser({ email: `user${i}@search.com` });
-    }
-
-    const res = await GET(
-      new Request("http://localhost/api/users/search?email=search.com"),
-    );
-
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.length).toBeLessThanOrEqual(10);
-  });
-
-  it("should not return members from projects where caller is only an editor", async () => {
-    const owner = await createTestUser({ email: "owner@test.com" });
-    const currentUser = await createTestUser({ email: "me@test.com" });
-    session.user.id = currentUser._id.toString();
-    const alice = await createTestUser({ email: "alice@test.com", name: "Alice" });
-
-    // Owner creates a project and invites currentUser as editor + alice as editor
-    const category = await createTestCategory({ userId: owner._id });
-    const project = await createTestProject({ categoryId: category._id, userId: owner._id });
-    await createTestProjectMember({ projectId: project._id, userId: owner._id, invitedBy: owner._id, role: "owner" });
-    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: owner._id, role: "editor" });
-    await createTestProjectMember({ projectId: project._id, userId: alice._id, invitedBy: owner._id, role: "editor" });
-
-    // currentUser is only an editor — should NOT be able to search users from this project
-    const res = await GET(
-      new Request("http://localhost/api/users/search?email=alice"),
-    );
-
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data).toHaveLength(0);
-  });
-
-  it("owners can search for any user including non-project-members", async () => {
-    const currentUser = await createTestUser({ email: "me@test.com" });
-    session.user.id = currentUser._id.toString();
-    const alice = await createTestUser({ email: "alice@test.com", name: "Alice" });
-    const bob = await createTestUser({ email: "bob@test.com", name: "Bob" });
-
-    const category = await createTestCategory({ userId: currentUser._id });
-
-    // currentUser owns a project — that's all that's needed to enable search
-    const project1 = await createTestProject({ categoryId: category._id, userId: currentUser._id });
-    await createTestProjectMember({ projectId: project1._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
-
-    // Both alice and bob are findable — owners can discover new collaborators
-    const resAlice = await GET(
-      new Request("http://localhost/api/users/search?email=alice"),
-    );
-    expect(resAlice.status).toBe(200);
-    const aliceData = await resAlice.json();
-    expect(aliceData).toHaveLength(1);
-    expect(aliceData[0].email).toBe("alice@test.com");
-
-    const resBob = await GET(
-      new Request("http://localhost/api/users/search?email=bob"),
-    );
-    expect(resBob.status).toBe(200);
-    const bobData = await resBob.json();
-    expect(bobData).toHaveLength(1);
-    expect(bobData[0].email).toBe("bob@test.com");
-  });
-
-  it("is case-insensitive", async () => {
-    const currentUser = await createTestUser({ email: "me@test.com" });
-    session.user.id = currentUser._id.toString();
-    const alice = await createTestUser({ email: "Alice@Test.com", name: "Alice" });
-
-    const category = await createTestCategory({ userId: currentUser._id });
-    const project = await createTestProject({ categoryId: category._id, userId: currentUser._id });
-    await createTestProjectMember({ projectId: project._id, userId: currentUser._id, invitedBy: currentUser._id, role: "owner" });
-    await createTestProjectMember({ projectId: project._id, userId: alice._id, invitedBy: currentUser._id, role: "editor" });
-
-    const res = await GET(
-      new Request("http://localhost/api/users/search?email=alice"),
-    );
-
-    expect(res.status).toBe(200);
-    const data = await res.json();
-    expect(data.length).toBeGreaterThanOrEqual(1);
+    expect(data).toHaveLength(1);
+    expect(data[0].email).toBe("alice@test.com");
   });
 });

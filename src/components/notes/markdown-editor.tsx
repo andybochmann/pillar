@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -53,6 +54,20 @@ export function MarkdownEditor({
       attributes: { class: "note-editor focus:outline-none" },
     },
   });
+
+  // `content` above only seeds the editor on mount. If the `value` prop later
+  // changes from outside (e.g. loading a different note, or an SSE update),
+  // push it into the editor when it differs from the current document.
+  // `emitUpdate: false` prevents onUpdate from firing (no feedback loop).
+  useEffect(() => {
+    if (!editor) return;
+    const current = (
+      editor.storage as unknown as { markdown: { getMarkdown: () => string } }
+    ).markdown.getMarkdown();
+    if (value !== current) {
+      editor.commands.setContent(value, { emitUpdate: false });
+    }
+  }, [value, editor]);
 
   if (!editor) return null;
 
