@@ -274,6 +274,7 @@ export function ListView({
       <TaskSheet
         task={selectedTask}
         columns={columns}
+        allTasks={tasks}
         open={sheetOpen}
         onOpenChange={(open) => {
           setSheetOpen(open);

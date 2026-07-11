@@ -43,6 +43,7 @@ interface KanbanColumnProps {
   onArchiveAll?: () => void;
   onArchive?: (taskId: string) => void;
   focusedTaskId?: string | null;
+  tasksById?: Map<string, { completedAt?: string | null; archived?: boolean }>;
 }
 
 export function KanbanColumn({
@@ -73,6 +74,7 @@ export function KanbanColumn({
   onArchiveAll,
   onArchive,
   focusedTaskId,
+  tasksById,
 }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [localShowForm, setLocalShowForm] = useState(false);
@@ -178,6 +180,7 @@ export function KanbanColumn({
             isLastColumn={isLastColumn}
             onArchive={onArchive}
             focused={focusedTaskId === task._id}
+            tasksById={tasksById}
           />
         ))}
         {tasks.length === 0 && !showForm && (

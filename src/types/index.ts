@@ -104,6 +104,7 @@ export interface Task {
   recurrence?: Recurrence;
   order: number;
   labels: string[];
+  blockedBy: string[];
   subtasks: Subtask[];
   timeSessions: TimeSession[];
   statusHistory: StatusHistoryEntry[];

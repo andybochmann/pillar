@@ -443,4 +443,49 @@ describe("Task Model", () => {
     expect(upcomingTasks[0].title).toBe("Due today");
     expect(upcomingTasks[1].title).toBe("Due tomorrow");
   });
+
+  describe("blockedBy", () => {
+    it("defaults to an empty array", async () => {
+      const task = await Task.create({
+        title: "No blockers",
+        projectId,
+        userId,
+        columnId: "todo",
+      });
+      expect(task.blockedBy).toEqual([]);
+    });
+
+    it("stores referenced blocker task ids", async () => {
+      const blocker = await Task.create({
+        title: "Blocker",
+        projectId,
+        userId,
+        columnId: "todo",
+      });
+      const task = await Task.create({
+        title: "Dependent",
+        projectId,
+        userId,
+        columnId: "todo",
+        blockedBy: [blocker._id],
+      });
+      expect(task.blockedBy.map(String)).toEqual([blocker._id.toString()]);
+    });
+
+    it("rejects more than 50 blockers", async () => {
+      const ids = Array.from(
+        { length: 51 },
+        () => new mongoose.Types.ObjectId(),
+      );
+      await expect(
+        Task.create({
+          title: "Too many",
+          projectId,
+          userId,
+          columnId: "todo",
+          blockedBy: ids,
+        }),
+      ).rejects.toThrow();
+    });
+  });
 });

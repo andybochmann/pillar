@@ -222,6 +222,20 @@ export function KanbanBoard({
     [tasks],
   );
 
+  // Lookup of all loaded tasks used to resolve blocker (dependency) state on cards.
+  // Built from the unfiltered task list so blockers hidden by the current filter
+  // still resolve correctly.
+  const tasksById = useMemo(
+    () =>
+      new Map(
+        tasks.map((t) => [
+          t._id,
+          { completedAt: t.completedAt, archived: t.archived },
+        ]),
+      ),
+    [tasks],
+  );
+
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t._id === event.active.id);
     setActiveTask(task ?? null);
@@ -369,7 +383,11 @@ export function KanbanBoard({
         setDndAnnouncement(
           `Moved ${task.title} to ${destColumnName}, position ${(updateData.order ?? 0) + 1}`,
         );
-      } catch {
+      } catch (err) {
+        // Surface why the move was rejected (e.g. completing a blocked task).
+        toast.error(
+          err instanceof Error ? err.message : "Failed to move task",
+        );
         const res = await fetch(`/api/tasks?projectId=${projectId}`);
         if (res.ok) setTasks(await res.json());
       }
@@ -979,6 +997,7 @@ export function KanbanBoard({
                 onArchiveAll={readOnly ? undefined : () => handleArchiveAll(column.id)}
                 onArchive={readOnly ? undefined : handleArchiveTask}
                 focusedTaskId={focusedTaskId}
+                tasksById={tasksById}
               />
             </SortableContext>
           ))}
@@ -993,6 +1012,7 @@ export function KanbanBoard({
               labelNames={labelNames}
               memberNames={memberNames}
               currentUserId={currentUserId}
+              tasksById={tasksById}
             />
           ) : null}
         </DragOverlay>
@@ -1001,6 +1021,7 @@ export function KanbanBoard({
       <TaskSheet
         task={selectedTask}
         columns={columns}
+        allTasks={tasks}
         open={sheetOpen}
         onOpenChange={(open) => {
           setSheetOpen(open);

@@ -293,6 +293,7 @@ export function CalendarPageClient({
       <TaskSheet
         task={selectedTask}
         columns={selectedProject?.columns ?? []}
+        allTasks={tasks}
         open={taskSheetOpen}
         onOpenChange={(open) => {
           setTaskSheetOpen(open);

@@ -10,6 +10,7 @@ import { Label } from "@/models/label";
 import { Notification } from "@/models/notification";
 import { Project } from "@/models/project";
 import { getProjectRole, getProjectMemberUserIds } from "@/lib/project-access";
+import { getBlockerStatus, wouldCreateCycle } from "@/lib/task-dependencies";
 import { getNextDueDate } from "@/lib/date-utils";
 import { scheduleNextReminder } from "@/lib/reminder-scheduler";
 
@@ -28,6 +29,7 @@ const UpdateTaskSchema = z.object({
     .optional(),
   order: z.number().int().min(0).optional(),
   labels: z.array(z.string().max(50)).optional(),
+  blockedBy: z.array(z.string()).max(50).optional(),
   subtasks: z
     .array(
       z.object({
@@ -139,7 +141,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     }
 
     // Find task and verify membership
-    const existingTask = await Task.findById(id).select("columnId projectId completedAt");
+    const existingTask = await Task.findById(id).select("columnId projectId completedAt blockedBy");
     if (!existingTask) {
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
@@ -191,6 +193,77 @@ export async function PATCH(request: Request, { params }: RouteParams) {
           },
           { status: 400 },
         );
+      }
+    }
+
+    // Validate blockedBy: every blocker must be a distinct task in the SAME project,
+    // never the task itself, and must not introduce a dependency cycle.
+    if (result.data.blockedBy !== undefined) {
+      const uniqueBlockerIds = [...new Set(result.data.blockedBy)];
+
+      if (uniqueBlockerIds.includes(id)) {
+        return NextResponse.json(
+          { error: "A task cannot block itself" },
+          { status: 400 },
+        );
+      }
+
+      if (uniqueBlockerIds.some((b) => !mongoose.Types.ObjectId.isValid(b))) {
+        return NextResponse.json(
+          { error: "Invalid blocker task ID" },
+          { status: 400 },
+        );
+      }
+
+      const projectTasks = await Task.find({ projectId: existingTask.projectId })
+        .select("_id blockedBy")
+        .lean();
+      const projectTaskIds = new Set(projectTasks.map((t) => t._id.toString()));
+
+      if (uniqueBlockerIds.some((b) => !projectTaskIds.has(b))) {
+        return NextResponse.json(
+          { error: "Blockers must be tasks in the same project" },
+          { status: 400 },
+        );
+      }
+
+      const normalizedTasks = projectTasks.map((t) => ({
+        _id: t._id.toString(),
+        blockedBy: (t.blockedBy ?? []).map((x) => x.toString()),
+      }));
+      if (wouldCreateCycle(id, uniqueBlockerIds, normalizedTasks)) {
+        return NextResponse.json(
+          { error: "This dependency would create a cycle" },
+          { status: 400 },
+        );
+      }
+
+      updateData.blockedBy = uniqueBlockerIds;
+    }
+
+    // Completion guard: a task cannot be completed while any of its blockers is
+    // still open (not completed and not archived). Reopening is never blocked.
+    if (!!result.data.completedAt && !existingTask.completedAt) {
+      const effectiveBlockedBy =
+        (updateData.blockedBy as string[] | undefined) ??
+        (existingTask.blockedBy ?? []).map((b) => b.toString());
+
+      if (effectiveBlockedBy.length > 0) {
+        const blockers = await Task.find({ _id: { $in: effectiveBlockedBy } })
+          .select("_id completedAt archived")
+          .lean();
+        const tasksById = new Map(
+          blockers.map((b) => [b._id.toString(), b]),
+        );
+        const { openCount } = getBlockerStatus(effectiveBlockedBy, tasksById);
+        if (openCount > 0) {
+          return NextResponse.json(
+            {
+              error: `Cannot complete: blocked by ${openCount} open task${openCount === 1 ? "" : "s"}`,
+            },
+            { status: 409 },
+          );
+        }
       }
     }
 
@@ -415,6 +488,8 @@ export async function DELETE(request: Request, { params }: RouteParams) {
   await Task.deleteOne({ _id: id });
   await Note.deleteMany({ taskId: id });
   await Notification.deleteMany({ taskId: id });
+  // Remove this task from any other task's blockedBy so no phantom blocker remains.
+  await Task.updateMany({ blockedBy: id }, { $pull: { blockedBy: id } });
 
   const targetUserIds = await getProjectMemberUserIds(task.projectId.toString());
   emitSyncEvent({

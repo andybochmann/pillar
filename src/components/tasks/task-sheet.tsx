@@ -21,6 +21,7 @@ import { TaskLabelsSection } from "@/components/tasks/sections/task-labels-secti
 import { TaskDueRecurrenceSection } from "@/components/tasks/sections/task-due-recurrence-section";
 import { TaskReminderSection } from "@/components/tasks/sections/task-reminder-section";
 import { TaskSubtasksSection } from "@/components/tasks/sections/task-subtasks-section";
+import { TaskBlockedBySection } from "@/components/tasks/sections/task-blocked-by-section";
 import { TaskNotesSection } from "@/components/tasks/sections/task-notes-section";
 import { TaskCommentsSection } from "@/components/tasks/sections/task-comments-section";
 import { TaskTimeTrackingSection } from "@/components/tasks/sections/task-time-tracking-section";
@@ -40,6 +41,7 @@ import type {
 interface TaskSheetProps {
   task: Task | null;
   columns: Column[];
+  allTasks?: Task[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
@@ -58,6 +60,7 @@ interface TaskSheetProps {
 export function TaskSheet({
   task,
   columns,
+  allTasks,
   open,
   onOpenChange,
   onUpdate,
@@ -89,6 +92,7 @@ export function TaskSheet({
           key={task._id}
           task={task}
           columns={columns}
+          allTasks={allTasks}
           onUpdate={onUpdate}
           onDelete={onDelete}
           onDuplicate={onDuplicate}
@@ -111,6 +115,7 @@ export function TaskSheet({
 interface TaskSheetFormProps {
   task: Task;
   columns: Column[];
+  allTasks?: Task[];
   onUpdate: (id: string, data: Partial<Task>) => Promise<unknown>;
   onDelete: (id: string) => Promise<void>;
   onDuplicate?: (task: Task) => void;
@@ -128,6 +133,7 @@ interface TaskSheetFormProps {
 function TaskSheetForm({
   task,
   columns,
+  allTasks,
   onUpdate,
   onDelete,
   onDuplicate,
@@ -169,6 +175,7 @@ function TaskSheetForm({
     endDate: task.recurrence?.endDate,
   });
   const [subtasks, setSubtasks] = useState<Subtask[]>(task.subtasks ?? []);
+  const [blockedBy, setBlockedBy] = useState<string[]>(task.blockedBy ?? []);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState("");
   const [aiEnabled, setAiEnabled] = useState(false);
   const [generateDialogOpen, setGenerateDialogOpen] = useState(false);
@@ -183,6 +190,7 @@ function TaskSheetForm({
   // Sync local state when task prop changes from external updates (e.g. real-time sync)
   const prevLabelsRef = useRef(task.labels);
   const prevSubtasksRef = useRef(task.subtasks);
+  const prevBlockedByRef = useRef(task.blockedBy);
   useEffect(() => {
     // Don't overwrite fields the user is currently editing
     if (saveStatus === "saving") return;
@@ -215,6 +223,13 @@ function TaskSheetForm({
       setSubtasks(task.subtasks ?? []);
       prevSubtasksRef.current = task.subtasks;
     }
+
+    const blockedByKey = JSON.stringify(task.blockedBy);
+    const prevBlockedByKey = JSON.stringify(prevBlockedByRef.current);
+    if (blockedByKey !== prevBlockedByKey) {
+      setBlockedBy(task.blockedBy ?? []);
+      prevBlockedByRef.current = task.blockedBy;
+    }
   }, [
     saveStatus,
     task.columnId,
@@ -227,6 +242,7 @@ function TaskSheetForm({
     task.recurrence?.endDate,
     task.labels,
     task.subtasks,
+    task.blockedBy,
   ]);
 
   useEffect(() => {
@@ -359,6 +375,11 @@ function TaskSheetForm({
       : [...labels, labelId];
     setLabels(newLabels);
     saveField({ labels: newLabels });
+  }
+
+  function handleBlockedByChange(ids: string[]) {
+    setBlockedBy(ids);
+    saveField({ blockedBy: ids });
   }
 
   function handleToggleSubtask(id: string) {
@@ -520,6 +541,17 @@ function TaskSheetForm({
             aiEnabled={aiEnabled}
             onGenerateClick={() => setGenerateDialogOpen(true)}
             maxSubtasks={50}
+          />
+
+          <Separator />
+
+          <TaskBlockedBySection
+            taskId={task._id}
+            blockedBy={blockedBy}
+            allTasks={(allTasks ?? []).filter(
+              (t) => t.projectId === task.projectId,
+            )}
+            onChange={handleBlockedByChange}
           />
 
           <TaskNotesSection

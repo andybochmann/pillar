@@ -92,6 +92,7 @@ export default async function ProjectPage({ params }: PageProps) {
     dueDate: t.dueDate?.toISOString(),
     order: t.order,
     labels: t.labels.map((l) => l.toString()),
+    blockedBy: (t.blockedBy ?? []).map((b) => b.toString()),
     subtasks: (t.subtasks ?? []).map((s) => ({
       _id: s._id.toString(),
       title: s.title,

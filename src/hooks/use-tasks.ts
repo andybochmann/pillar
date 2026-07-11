@@ -17,12 +17,27 @@ type TaskUpdateFields = Pick<
   | "recurrence"
   | "order"
   | "labels"
+  | "blockedBy"
   | "subtasks"
   | "completedAt"
   | "assigneeId"
   | "reminderAt"
   | "archived"
 >;
+
+/**
+ * Remove a deleted task from the list and pull its id from any remaining task's
+ * `blockedBy`, so a deleted blocker doesn't leave a phantom "blocked" state.
+ */
+function pruneDeletedTask(tasks: Task[], deletedId: string): Task[] {
+  return tasks
+    .filter((t) => t._id !== deletedId)
+    .map((t) =>
+      t.blockedBy?.includes(deletedId)
+        ? { ...t, blockedBy: t.blockedBy.filter((b) => b !== deletedId) }
+        : t,
+    );
+}
 
 interface UseTasksReturn {
   tasks: Task[];
@@ -133,7 +148,7 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
       const body = await res.json();
       throw new Error(body.error || "Failed to delete task");
     }
-    setTasks((prev) => prev.filter((t) => t._id !== id));
+    setTasks((prev) => pruneDeletedTask(prev, id));
   }, []);
 
   const duplicateTask = useCallback(
@@ -217,7 +232,7 @@ export function useTasks(initialTasks: Task[] = [], projectId?: string): UseTask
         }
         break;
       case "deleted":
-        setTasks((prev) => prev.filter((t) => t._id !== event.entityId));
+        setTasks((prev) => pruneDeletedTask(prev, event.entityId));
         break;
       case "reordered":
         if (projectId && (!event.projectId || event.projectId === projectId)) fetchTasks(projectId);
