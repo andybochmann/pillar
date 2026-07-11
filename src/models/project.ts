@@ -4,6 +4,7 @@ export interface IColumn {
   id: string;
   name: string;
   order: number;
+  wipLimit?: number;
 }
 
 export interface IProject extends Document {
@@ -24,6 +25,7 @@ const ColumnSchema = new Schema<IColumn>(
     id: { type: String, required: true },
     name: { type: String, required: true, trim: true },
     order: { type: Number, required: true },
+    wipLimit: { type: Number, min: 1 },
   },
   { _id: false },
 );

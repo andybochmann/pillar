@@ -14,6 +14,12 @@ interface KanbanColumnProps {
   column: Column;
   columns: Column[];
   tasks: Task[];
+  /**
+   * True number of tasks in this column, ignoring any active board filters.
+   * Used for the WIP-limit count/warning so filtering the board can't mask an
+   * over-limit column. Defaults to the rendered `tasks.length`.
+   */
+  wipCount?: number;
   onAddTask: (title: string) => Promise<void>;
   onTaskClick: (task: Task) => void;
   onPriorityChange?: (taskId: string, priority: Priority) => void;
@@ -43,6 +49,7 @@ export function KanbanColumn({
   column,
   columns,
   tasks,
+  wipCount,
   onAddTask,
   onTaskClick,
   onPriorityChange,
@@ -71,6 +78,20 @@ export function KanbanColumn({
   const [localShowForm, setLocalShowForm] = useState(false);
   const showForm = showFormProp || localShowForm;
 
+  // Count against the true column size (ignoring board filters) so an active
+  // filter can't hide an over-limit column. Falls back to the rendered count.
+  const count = wipCount ?? tasks.length;
+  const hasWipLimit = typeof column.wipLimit === "number";
+  const overLimit = hasWipLimit && count > column.wipLimit!;
+  const countLabel = hasWipLimit
+    ? `${count} / ${column.wipLimit}`
+    : `${count}`;
+  const regionLabel = hasWipLimit
+    ? `${column.name} column, ${count} of ${column.wipLimit} tasks${
+        overLimit ? ", over WIP limit" : ""
+      }`
+    : `${column.name} column, ${count} tasks`;
+
   function setShowForm(open: boolean) {
     setLocalShowForm(open);
     onFormOpenChange?.(open);
@@ -80,18 +101,30 @@ export function KanbanColumn({
     <div
       ref={setNodeRef}
       role="region"
-      aria-label={`${column.name} column, ${tasks.length} tasks`}
+      aria-label={regionLabel}
       className={cn(
         "flex w-64 min-w-[16rem] flex-shrink-0 flex-col rounded-lg bg-muted/50 p-3 sm:w-72 sm:min-w-[18rem]",
         isOver && "ring-2 ring-primary/30",
+        overLimit && "ring-2 ring-destructive/50",
       )}
     >
       {/* Column header */}
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <h3 className="text-sm font-semibold">{column.name}</h3>
-          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-            {tasks.length}
+          <span
+            className={cn(
+              "rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground",
+              overLimit &&
+                "bg-destructive/10 font-medium text-destructive",
+            )}
+            aria-label={
+              overLimit
+                ? `${count} tasks, over WIP limit of ${column.wipLimit}`
+                : undefined
+            }
+          >
+            {countLabel}
           </span>
         </div>
         <div className="flex items-center gap-1">

@@ -214,6 +214,14 @@ export function KanbanBoard({
     [filteredTasks],
   );
 
+  // True per-column count for WIP limits — from the unfiltered task set (still
+  // excluding archived) so an active board filter can't hide an over-limit column.
+  const getColumnTaskCount = useCallback(
+    (columnId: string) =>
+      tasks.filter((t) => t.columnId === columnId && !t.archived).length,
+    [tasks],
+  );
+
   function handleDragStart(event: DragStartEvent) {
     const task = tasks.find((t) => t._id === event.active.id);
     setActiveTask(task ?? null);
@@ -945,6 +953,7 @@ export function KanbanBoard({
                 column={column}
                 columns={sortedColumns}
                 tasks={getColumnTasks(column.id)}
+                wipCount={getColumnTaskCount(column.id)}
                 onAddTask={(title) => handleAddTask(column.id, title)}
                 onTaskClick={handleTaskClick}
                 onPriorityChange={readOnly ? undefined : handlePriorityChange}
