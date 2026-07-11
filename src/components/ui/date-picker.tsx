@@ -1,6 +1,6 @@
 "use client";
 
-import { format } from "date-fns";
+import { format, addDays } from "date-fns";
 import { CalendarIcon, X } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -32,6 +32,14 @@ function formatDateString(date: Date): string {
   return format(date, "yyyy-MM-dd");
 }
 
+// Quick-select chips resolve to a local calendar date, matching how the
+// calendar itself emits values (yyyy-MM-dd, no timezone shift).
+const QUICK_OPTIONS: { label: string; getDate: () => Date }[] = [
+  { label: "Today", getDate: () => new Date() },
+  { label: "Tomorrow", getDate: () => addDays(new Date(), 1) },
+  { label: "Next week", getDate: () => addDays(new Date(), 7) },
+];
+
 export function DatePicker({
   value,
   onChange,
@@ -42,6 +50,11 @@ export function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const selected = parseDateString(value);
+
+  function selectDate(date: Date) {
+    onChange(formatDateString(date));
+    setOpen(false);
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -73,6 +86,38 @@ export function DatePicker({
         )}
       </div>
       <PopoverContent className="w-auto p-0" align="start">
+        <div className="flex flex-wrap gap-1 border-b p-2">
+          {QUICK_OPTIONS.map((option) => {
+            const date = option.getDate();
+            const optionValue = formatDateString(date);
+            return (
+              <Button
+                key={option.label}
+                type="button"
+                variant={value === optionValue ? "default" : "secondary"}
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() => selectDate(date)}
+              >
+                {option.label}
+              </Button>
+            );
+          })}
+          {clearable && value && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => {
+                onChange("");
+                setOpen(false);
+              }}
+            >
+              Clear
+            </Button>
+          )}
+        </div>
         <Calendar
           mode="single"
           selected={selected}
